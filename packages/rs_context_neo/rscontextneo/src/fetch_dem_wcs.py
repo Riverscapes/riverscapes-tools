@@ -32,8 +32,6 @@ from osgeo import gdal, osr
 from rscommons.download_dem import verify_areas
 from rsxml import Logger
 from rsxml.util import safe_makedirs, safe_remove_file
-from shapely.geometry import shape
-from shapely.ops import unary_union
 
 from rscontextneo.src.fetch_dem import (
     _BUFFER_DIST_DEG,
@@ -43,6 +41,7 @@ from rscontextneo.src.fetch_dem import (
     HILLSHADE_RELPATH,
     SLOPE_RELPATH,
 )
+from rscontextneo.src.utils.geom import load_geojson_geometry
 from rscontextneo.src.utils.gpkg import geojson_to_gpkg
 
 # ── WCS endpoint constants ────────────────────────────────────────────────────
@@ -160,7 +159,7 @@ def fetch_dem_from_wcs(
     bounds_gpkg_layer = bounds_gpkg + "/bounds"
 
     # ── 1. Load AOI polygon and compute buffered bounding box ─────────────────
-    polygon = _load_bounds_polygon(bounds_geojson)
+    polygon = load_geojson_geometry(bounds_geojson)
     buffered = polygon.buffer(_BUFFER_DIST_DEG)
     west, south, east, north = buffered.bounds
 
@@ -331,31 +330,6 @@ def _bbox_wgs84_to_epsg(
     xs = [c[0] for c in corners]
     ys = [c[1] for c in corners]
     return min(xs), min(ys), max(xs), max(ys)
-
-
-def _load_bounds_polygon(bounds_geojson: str):
-    """
-    Return a Shapely geometry representing the union of all features in the
-    GeoJSON file.  Handles FeatureCollection, Feature, and bare geometry objects.
-    """
-    with open(bounds_geojson, encoding="utf-8") as f:
-        data = json.load(f)
-
-    geoj_type = data.get("type", "")
-    if geoj_type == "FeatureCollection":
-        geoms = [
-            shape(feat["geometry"])
-            for feat in data.get("features", [])
-            if feat.get("geometry")
-        ]
-    elif geoj_type == "Feature":
-        geoms = [shape(data["geometry"])] if data.get("geometry") else []
-    else:
-        geoms = [shape(data)]
-
-    if not geoms:
-        raise ValueError(f"No geometries found in bounds GeoJSON: {bounds_geojson}")
-    return unary_union(geoms)
 
 
 def _utm_epsg_from_latlon(lat: float, lon: float) -> int:

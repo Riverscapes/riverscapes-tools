@@ -5,33 +5,6 @@ from typing import List, Union
 from osgeo import gdal
 
 
-def add_column(
-    curs: sqlite3.Cursor,
-    table: str,
-    column_name: str,
-    column_type: str,
-) -> None:
-    """Add *column_name* to *table* if it does not already exist.
-
-    Parameters
-    ----------
-    curs : sqlite3.Cursor
-        Active cursor.
-    table : str
-        Table name.
-    column_name : str
-        Name of the column to add.
-    column_type : str
-        SQLite type affinity string, e.g. ``'REAL'`` or ``'INTEGER'``.
-    """
-    curs.execute(f"PRAGMA table_info({table})")
-    existing = {row[1] for row in curs.fetchall()}
-    if column_name not in existing:
-        curs.execute(f"ALTER TABLE {table} ADD COLUMN {column_name} {column_type}")
-    else:
-        pass  # column already present — nothing to do
-
-
 def create_index(
     curs: sqlite3.Cursor,
     table: str,

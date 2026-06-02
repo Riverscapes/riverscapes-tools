@@ -1,12 +1,11 @@
 from __future__ import annotations
 
-import json
 import os
 from datetime import datetime
-from logging import Logger
 
 from osgeo import ogr
 from rscommons import initGDALOGRErrors
+from rsxml import Logger
 from rsxml.project_xml import (
     BoundingBox,
     Coords,
@@ -21,8 +20,6 @@ from rsxml.project_xml import (
     Realization,
 )
 from rsxml.util import pretty_duration
-from shapely.geometry import shape
-from shapely.ops import unary_union
 
 from rscontextneo.__version__ import __version__
 from rscontextneo.src.fetch_dem import (
@@ -33,6 +30,7 @@ from rscontextneo.src.utils.breach_diff import (
     BREACH_DIFF_GPKG_RELPATH,
     BREACH_DIFF_LAYER_NAME,
 )
+from rscontextneo.src.utils.geom import load_geojson_geometry
 
 initGDALOGRErrors()
 
@@ -266,30 +264,7 @@ def build_project_bounds(
         ``None`` if the bounds could not be computed (non-fatal).
     """
     try:
-        with open(bounds_geojson, encoding="utf-8") as f:
-            data = json.load(f)
-
-        geoms = []
-        geoj_type = data.get("type", "")
-        if geoj_type == "FeatureCollection":
-            geoms = [
-                shape(feat["geometry"])
-                for feat in data.get("features", [])
-                if feat.get("geometry")
-            ]
-        elif geoj_type == "Feature":
-            if data.get("geometry"):
-                geoms = [shape(data["geometry"])]
-        else:
-            geoms = [shape(data)]
-
-        if not geoms:
-            log.warning(
-                "Could not extract geometries from bounds GeoJSON — skipping ProjectBounds"
-            )
-            return None
-
-        merged = unary_union(geoms)
+        merged = load_geojson_geometry(bounds_geojson)
         centroid = merged.centroid
         minx, miny, maxx, maxy = merged.bounds  # (minLng, minLat, maxLng, maxLat)
 
@@ -338,8 +313,7 @@ def _dataset_exists(output_folder: str, dataset: Dataset | Geopackage) -> bool:
         if gpkg_ds is None:
             return False
         existing_layers = {
-            gpkg_ds.GetLayerByIndex(i).GetName()
-            for i in range(gpkg_ds.GetLayerCount())
+            gpkg_ds.GetLayerByIndex(i).GetName() for i in range(gpkg_ds.GetLayerCount())
         }
         gpkg_ds = None  # close
         for lyr in dataset.layers:
@@ -363,6 +337,8 @@ def write_project_xml(
     log: Logger,
     debug: bool = False,
     dem_source: str = "tnm",
+    rail: str | None = None,
+    roads: str | None = None,
 ) -> None:
     """
     Create or overwrite the Riverscapes project XML file.
@@ -403,6 +379,13 @@ def write_project_xml(
         DEM backend used (``'tnm'`` or ``'wcs'``).  Only the TNM path writes
         a tile footprints GeoPackage, so ``TILE_FOOTPRINTS`` is only
         registered when this is ``'tnm'``.
+    rail : str or None
+        S3 Tables path for the rail layer (``'<catalog>/<namespace>/<table>'``).
+        When provided a ``'rail'`` layer is registered in the transportation
+        GeoPackage dataset.  Pass ``None`` to omit.
+    roads : str or None
+        S3 Tables path for the roads layer (same format as *rail*).
+        When provided a ``'roads'`` layer is registered.  Pass ``None`` to omit.
     """
     log.info("Writing project XML")
 
@@ -463,6 +446,37 @@ def write_project_xml(
         candidate_datasets.append(LayerTypes["TILE_FOOTPRINTS"])
     if debug:
         candidate_datasets.append(LayerTypes["BREACH_DIFF_POINTS"])
+    if rail is not None or roads is not None:
+        transport_layers = []
+        if roads is not None:
+            transport_layers.append(
+                GeopackageLayer(
+                    lyr_name="roads",
+                    name="Roads",
+                    ds_type=GeoPackageDatasetTypes.VECTOR,
+                )
+            )
+        if rail is not None:
+            transport_layers.append(
+                GeopackageLayer(
+                    lyr_name="rail", name="Rail", ds_type=GeoPackageDatasetTypes.VECTOR
+                )
+            )
+        transport_ds = Geopackage(
+            xml_id="TRANSPORTATION",
+            name="Transportation",
+            path="transportation/transportation.gpkg",
+            layers=transport_layers,
+            meta_data=MetaData(
+                [
+                    Meta(
+                        "Description",
+                        "Transportation features (roads and rail) sourced from AWS S3 Tables via Athena.",
+                    ),
+                ]
+            ),
+        )
+        candidate_datasets.append(transport_ds)
 
     realization_datasets = []
     for ds in candidate_datasets:

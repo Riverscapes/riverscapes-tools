@@ -36,6 +36,7 @@ import sys
 from typing import List
 
 from osgeo import gdal, ogr, osr
+from rscommons import GeopackageLayer
 from rscommons.hand import run_subprocess
 from rsxml import Logger
 
@@ -495,15 +496,13 @@ def vectorize_subwatersheds(
         :func:`gdal.Polygonize` returns an error.
     """
     if not force and os.path.isfile(gpkg_path):
-        check_ds = ogr.Open(gpkg_path)
-        if check_ds is not None and check_ds.GetLayerByName(layer_name) is not None:
-            log.info(
-                f"subwatersheds vector layer already exists in {os.path.basename(gpkg_path)}"
-                " — skipping (use force=True to re-run)"
-            )
-            check_ds = None
-            return
-        check_ds = None
+        with GeopackageLayer(gpkg_path, layer_name) as chk:
+            if chk.ogr_layer is not None:
+                log.info(
+                    f"subwatersheds vector layer already exists in {os.path.basename(gpkg_path)}"
+                    " — skipping (use force=True to re-run)"
+                )
+                return
 
     if not os.path.isfile(subwatersheds_raster_path):
         raise FileNotFoundError(
@@ -527,29 +526,21 @@ def vectorize_subwatersheds(
     srs = osr.SpatialReference()
     srs.ImportFromWkt(raster_ds.GetProjection())
 
-    vector_ds = ogr.Open(gpkg_path, 1)  # 1 = update
-    if vector_ds is None:
-        raise RuntimeError(f"Could not open GeoPackage for update: {gpkg_path}")
+    with GeopackageLayer(gpkg_path, layer_name, write=True) as vector_layer:
+        # create() deletes the layer if it already exists then recreates it —
+        # no need for a separate DeleteLayer call.
+        vector_layer.create(ogr.wkbMultiPolygon, spatial_ref=srs)
+        vector_layer.create_field("WSNO", ogr.OFTInteger)
 
-    if force:
-        for i in range(vector_ds.GetLayerCount()):
-            if vector_ds.GetLayer(i).GetName() == layer_name:
-                vector_ds.DeleteLayer(i)
-                break
-
-    layer = vector_ds.CreateLayer(layer_name, srs=srs, geom_type=ogr.wkbMultiPolygon)
-    layer.CreateField(ogr.FieldDefn("WSNO", ogr.OFTInteger))
-
-    err = gdal.Polygonize(band, mask_band, layer, 0, [], callback=None)
-    if err != gdal.CE_None:
-        raise RuntimeError(
-            f"gdal.Polygonize failed with error code {err}: {gdal.GetLastErrorMsg()}"
+        err = gdal.Polygonize(
+            band, mask_band, vector_layer.ogr_layer, 0, [], callback=None
         )
+        if err != gdal.CE_None:
+            raise RuntimeError(
+                f"gdal.Polygonize failed with error code {err}: {gdal.GetLastErrorMsg()}"
+            )
 
-    vector_ds.SyncToDisk()
-    vector_ds = None
     raster_ds = None
-
     log.info(f"  → {gpkg_path} (layer: {layer_name})")
 
 

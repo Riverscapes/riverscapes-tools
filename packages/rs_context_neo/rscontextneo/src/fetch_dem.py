@@ -15,7 +15,6 @@ Author:     Matt Reimer
 Date:       2026-05-25
 """
 
-import json
 import os
 import shutil
 from collections import Counter, defaultdict
@@ -24,6 +23,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import numpy as np
 import shapely.wkt as shapely_wkt
 from osgeo import gdal, ogr, osr
+from rscommons import GeopackageLayer
 from rscommons.download import download_file, download_unzip
 from rscommons.download_dem import find_rasters, verify_areas
 from rscommons.geographic_raster import gdal_dem_geographic
@@ -31,12 +31,12 @@ from rscommons.national_map import get_1m_dem_urls
 from rscommons.raster_warp import raster_vrt_stitch
 from rsxml import Logger
 from rsxml.util import safe_makedirs, safe_remove_file
-from shapely.geometry import box as shapely_box
-from shapely.geometry import shape
+from shapely.geometry import Polygon, box as shapely_box
 from shapely.ops import transform as shapely_transform
 from shapely.ops import unary_union
 
 from rscontextneo.src.utils.dem import get_epsg, is_geographic_epsg
+from rscontextneo.src.utils.geom import load_geojson_geometry
 from rscontextneo.src.utils.gpkg import geojson_to_gpkg
 
 # Output paths (relative to the project output_folder)
@@ -70,6 +70,27 @@ _DEM_CREATION_OPTIONS = [
 # 4 workers is a safe default that saturates a typical connection without
 # hammering the USGS TNM servers hard enough to trigger throttling.
 _DEFAULT_DOWNLOAD_WORKERS = 4
+
+# Shared field schema for both GeoPackage layers written by
+# _write_tile_footprints_gpkg().  Keys are field names; values are OGR types.
+_TILE_SCHEMA: dict[str, int] = {
+    "filename": ogr.OFTString,
+    "source_path": ogr.OFTString,
+    "original_epsg": ogr.OFTInteger,
+    "original_crs_name": ogr.OFTString,
+    "is_reprojected": ogr.OFTInteger,
+    "final_epsg": ogr.OFTInteger,
+    "final_crs_name": ogr.OFTString,
+    "width_px": ogr.OFTInteger,
+    "height_px": ogr.OFTInteger,
+    "resolution_m": ogr.OFTReal,
+    "file_size_mb": ogr.OFTReal,
+    "nodata_value": ogr.OFTReal,
+    "x_min_native": ogr.OFTReal,
+    "y_min_native": ogr.OFTReal,
+    "x_max_native": ogr.OFTReal,
+    "y_max_native": ogr.OFTReal,
+}
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
@@ -589,7 +610,7 @@ def _resolve_tiles(
 
     # ── Step 2: measure coverage for every CRS group ───────────────────────────
     # Load AOI once - same polygon is tested against every group.
-    aoi_polygon = _load_aoi_polygon_wgs84(bounds_geojson)
+    aoi_polygon = load_geojson_geometry(bounds_geojson)
 
     best_epsg: int = target_epsg
     best_tiles: list = groups[target_epsg]
@@ -630,34 +651,7 @@ def _resolve_tiles(
     return best_tiles, best_epsg
 
 
-def _load_aoi_polygon_wgs84(bounds_geojson: str):
-    """
-    Return a Shapely geometry representing the AOI in WGS84.
-
-    Handles GeoJSON FeatureCollections, Features, and bare geometry objects.
-    The returned geometry is the union of all features so multi-polygon AOIs
-    are handled correctly.
-    """
-    with open(bounds_geojson, encoding="utf-8") as f:
-        data = json.load(f)
-
-    geoj_type = data.get("type", "")
-    if geoj_type == "FeatureCollection":
-        geoms = [
-            shape(feat["geometry"])
-            for feat in data.get("features", [])
-            if feat.get("geometry")
-        ]
-    elif geoj_type == "Feature":
-        geoms = [shape(data["geometry"])] if data.get("geometry") else []
-    else:
-        # Bare geometry object
-        geoms = [shape(data)]
-
-    if not geoms:
-        raise ValueError(f"No geometries found in bounds GeoJSON: {bounds_geojson}")
-
-    return unary_union(geoms)
+# ── Private: tile coverage check ────────────────────────────────────────────
 
 
 def _compute_tile_coverage(
@@ -684,7 +678,7 @@ def _compute_tile_coverage(
     tiles_epsg : int
         The CRS of the tiles.
     aoi_polygon_wgs84 : shapely geometry
-        The AOI polygon in WGS84 (from :func:`_load_aoi_polygon_wgs84`).
+        The AOI polygon in WGS84 (from :func:`load_geojson_geometry`).
     log : Logger
         Caller-supplied logger.
 
@@ -784,197 +778,93 @@ def _write_tile_footprints_gpkg(
         yields no valid-data features), this falls back to the bounding-box
         polygon from ``tile_footprints``.
 
-    Both layers share the same attribute schema (see below).  The GeoPackage is
-    written immediately after the mosaic is assembled (before scratch cleanup)
-    so it reflects the complete download set including any tiles that were
-    ultimately discarded because the majority CRS alone provided full coverage.
-
-    Attribute schema
-    ----------------
-    filename          Original base filename of the downloaded tile.
-    source_path       Absolute path to the tile on disk at mosaic time.
-    original_epsg     EPSG code of the tile's native CRS (integer).
-    original_crs_name Human-readable name of the native CRS (e.g.
-                      ``'NAD83 / UTM zone 11N'``).
-    is_reprojected    1 if this tile's CRS differed from *final_epsg* and
-                      required reprojection to be included in the mosaic;
-                      0 if it was already in the correct CRS.  Only tiles
-                      that were actually used in the mosaic are recorded here.
-    final_epsg        The EPSG code used for the assembled DEM mosaic.
-    final_crs_name    Human-readable name of the final mosaic CRS.
-    width_px          Tile width in pixels.
-    height_px         Tile height in pixels.
-    resolution_m      Pixel size in metres (x-direction; square pixels assumed).
-    file_size_mb      File size in megabytes at time of writing.
-    nodata_value      Raster nodata sentinel value (NULL if none is set).
-    x_min_native      Left edge of the tile extent in its native CRS.
-    y_min_native      Bottom edge of the tile extent in its native CRS.
-    x_max_native      Right edge of the tile extent in its native CRS.
-    y_max_native      Top edge of the tile extent in its native CRS.
+    Both layers share the same attribute schema (see :data:`_TILE_SCHEMA`).
 
     Parameters
     ----------
     dem_rasters : list[str]
-        Tile paths that were actually used in the DEM mosaic (after CRS
-        resolution — discarded tiles are excluded).
+        Tile paths that were actually used in the DEM mosaic.
     final_epsg : int
-        The EPSG code that was chosen for the final mosaic.
+        The EPSG code chosen for the final mosaic.
     gpkg_path : str
         Output GeoPackage path.  Overwritten if it already exists.
     log : Logger
         Caller-supplied logger.
     """
     log.info(f"Writing tile footprints GeoPackage: {gpkg_path}")
-
-    # Overwrite any existing file so a force-rebuild always produces a fresh record.
-    driver = ogr.GetDriverByName("GPKG")
-    if os.path.exists(gpkg_path):
-        driver.DeleteDataSource(gpkg_path)
     safe_makedirs(os.path.dirname(gpkg_path))
-    ds = driver.CreateDataSource(gpkg_path)
-    if ds is None:
-        log.warning(
-            f"Could not create tile footprints GeoPackage at {gpkg_path} - skipping"
-        )
-        return
 
-    # The footprint geometries are stored in WGS84 so they are immediately
-    # viewable in any GIS without needing to know the project CRS.
-    wgs84 = osr.SpatialReference()
-    wgs84.ImportFromEPSG(4326)
-    wgs84.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-
-    layer = ds.CreateLayer("tile_footprints", srs=wgs84, geom_type=ogr.wkbPolygon)
-
-    # ── Schema ───────────────────────────────────────────────────────────────────
-    fields = [
-        ("filename", ogr.OFTString),  # original base filename
-        ("source_path", ogr.OFTString),  # absolute path on disk at mosaic time
-        ("original_epsg", ogr.OFTInteger),  # native EPSG code
-        ("original_crs_name", ogr.OFTString),  # human-readable native CRS name
-        (
-            "is_reprojected",
-            ogr.OFTInteger,
-        ),  # 1 = would need reprojection; 0 = already in final CRS
-        ("final_epsg", ogr.OFTInteger),  # EPSG of the assembled mosaic
-        ("final_crs_name", ogr.OFTString),  # human-readable mosaic CRS name
-        ("width_px", ogr.OFTInteger),  # tile width in pixels
-        ("height_px", ogr.OFTInteger),  # tile height in pixels
-        ("resolution_m", ogr.OFTReal),  # pixel size in metres
-        ("file_size_mb", ogr.OFTReal),  # file size at write time
-        ("nodata_value", ogr.OFTReal),  # nodata sentinel (may be NULL)
-        ("x_min_native", ogr.OFTReal),  # left edge in native CRS
-        ("y_min_native", ogr.OFTReal),  # bottom edge in native CRS
-        ("x_max_native", ogr.OFTReal),  # right edge in native CRS
-        ("y_max_native", ogr.OFTReal),  # top edge in native CRS
-    ]
-    for field_name, field_type in fields:
-        layer.CreateField(ogr.FieldDefn(field_name, field_type))
-
-    # Resolve the final CRS name once - it is the same for every feature.
+    # Resolve the final CRS name once — it is the same for every feature.
     final_srs = osr.SpatialReference()
     final_srs.ImportFromEPSG(final_epsg)
     final_crs_name = final_srs.GetName() or f"EPSG:{final_epsg}"
 
-    feat_defn = layer.GetLayerDefn()
-    n_written = 0
-    n_skipped = 0
+    # WGS84 target SRS used for reprojecting tile corners / data footprints.
+    wgs84_srs = osr.SpatialReference()
+    wgs84_srs.ImportFromEPSG(4326)
+    wgs84_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-    for tile_path in dem_rasters:
-        # ── Open tile and read metadata ─────────────────────────────────────────
-        tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
-        if tile_ds is None:
-            log.warning(
-                f"  Could not open {os.path.basename(tile_path)} - skipping footprint"
-            )
-            n_skipped += 1
-            continue
+    # ── Layer 1: tile_footprints ──────────────────────────────────────────
+    # Simple bounding-box polygon per tile, in WGS84.
+    # GeopackageLayer.create() handles deleting the existing GPKG and creating
+    # a fresh datasource + layer in one call.
+    n_written = n_skipped = 0
+    with GeopackageLayer(gpkg_path, "tile_footprints", write=True) as lyr:
+        lyr.create(ogr.wkbPolygon, epsg=4326, fields=_TILE_SCHEMA)
 
-        gt = tile_ds.GetGeoTransform()
-        width = tile_ds.RasterXSize
-        height = tile_ds.RasterYSize
-        band = tile_ds.GetRasterBand(1)
-        nodata = band.GetNoDataValue()  # None if not set
+        for tile_path in dem_rasters:
+            tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
+            if tile_ds is None:
+                log.warning(f"  Could not open {os.path.basename(tile_path)} - skipping footprint")
+                n_skipped += 1
+                continue
 
-        # Read the tile's native CRS from its embedded WKT.
-        src_srs = osr.SpatialReference()
-        src_srs.ImportFromWkt(tile_ds.GetProjection())
-        src_srs.AutoIdentifyEPSG()
-        src_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        tile_ds = None  # close file handle as soon as we have what we need
+            gt = tile_ds.GetGeoTransform()
+            width = tile_ds.RasterXSize
+            height = tile_ds.RasterYSize
+            nodata = tile_ds.GetRasterBand(1).GetNoDataValue()
 
-        epsg_code_str = src_srs.GetAuthorityCode(None)
-        src_epsg = int(epsg_code_str) if epsg_code_str else None
-        src_crs_name = src_srs.GetName() or (
-            f"EPSG:{src_epsg}" if src_epsg else "Unknown"
-        )
+            src_srs = osr.SpatialReference()
+            src_srs.ImportFromWkt(tile_ds.GetProjection())
+            src_srs.AutoIdentifyEPSG()
+            src_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            tile_ds = None  # close file handle
 
-        # ── Derive tile extent in its native CRS ─────────────────────────────────
-        # gt[0], gt[3] = top-left corner (x, y)
-        # gt[1]        = pixel width  (positive)
-        # gt[5]        = pixel height (negative for north-up rasters)
-        x_min = gt[0]
-        y_max = gt[3]
-        x_max = gt[0] + width * gt[1]
-        y_min = gt[3] + height * gt[5]
+            epsg_code_str = src_srs.GetAuthorityCode(None)
+            src_epsg = int(epsg_code_str) if epsg_code_str else None
+            src_crs_name = src_srs.GetName() or (f"EPSG:{src_epsg}" if src_epsg else "Unknown")
 
-        # ── Transform the four corners to WGS84 for the footprint geometry ────
-        # We transform the four bounding-box corners rather than the full
-        # raster outline.  For UTM projections the bbox is the actual tile
-        # footprint (tiles are axis-aligned in their native CRS), and the
-        # curvature introduced by reprojecting four corner points to WGS84 is
-        # negligible at the scale of a single 3DEP tile.
-        wgs84_srs = osr.SpatialReference()
-        wgs84_srs.ImportFromEPSG(4326)
-        wgs84_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        ct = osr.CoordinateTransformation(src_srs, wgs84_srs)
+            x_min = gt[0];  y_max = gt[3]
+            x_max = gt[0] + width * gt[1];  y_min = gt[3] + height * gt[5]
 
-        # Ring goes: SW → NW → NE → SE → SW (closed)
-        corners_native = [
-            (x_min, y_min),  # SW
-            (x_min, y_max),  # NW
-            (x_max, y_max),  # NE
-            (x_max, y_min),  # SE
-            (x_min, y_min),  # close the ring
-        ]
-        # TransformPoint returns (x, y, z) - slice to (lon, lat)
-        corners_wgs84 = [ct.TransformPoint(x, y)[:2] for x, y in corners_native]
-        ring_wkt = ", ".join(f"{lon} {lat}" for lon, lat in corners_wgs84)
-        geom = ogr.CreateGeometryFromWkt(f"POLYGON (({ring_wkt}))")
+            # Transform the four bounding-box corners to WGS84.
+            ct = osr.CoordinateTransformation(src_srs, wgs84_srs)
+            corners_native = [(x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min)]
+            corners_wgs84 = [ct.TransformPoint(x, y)[:2] for x, y in corners_native]
+            geom = Polygon(corners_wgs84)  # Shapely closes the ring automatically
 
-        # ── Build and write the feature ───────────────────────────────────────────
-        feat = ogr.Feature(feat_defn)
-        feat.SetGeometry(geom)
-        feat.SetField("filename", os.path.basename(tile_path))
-        feat.SetField("source_path", tile_path)
-        feat.SetField("original_epsg", src_epsg or 0)
-        feat.SetField("original_crs_name", src_crs_name)
-        # is_reprojected = 1 means this tile's CRS differs from the mosaic CRS
-        # and required reprojection.  Tiles that were discarded by _resolve_tiles
-        # are never passed here, so every feature represents an actual contributor.
-        feat.SetField(
-            "is_reprojected", 0 if (src_epsg is None or src_epsg == final_epsg) else 1
-        )
-        feat.SetField("final_epsg", final_epsg)
-        feat.SetField("final_crs_name", final_crs_name)
-        feat.SetField("width_px", width)
-        feat.SetField("height_px", height)
-        feat.SetField("resolution_m", abs(gt[1]))
-        feat.SetField("file_size_mb", os.path.getsize(tile_path) / 1_048_576)
-        feat.SetField("x_min_native", x_min)
-        feat.SetField("y_min_native", y_min)
-        feat.SetField("x_max_native", x_max)
-        feat.SetField("y_max_native", y_max)
-        # nodata may be None if the tile has no nodata value set - leave the
-        # field NULL in that case rather than writing a meaningless 0.
-        if nodata is not None:
-            feat.SetField("nodata_value", nodata)
+            attrs = {
+                "filename": os.path.basename(tile_path),
+                "source_path": tile_path,
+                "original_epsg": src_epsg or 0,
+                "original_crs_name": src_crs_name,
+                "is_reprojected": 0 if (src_epsg is None or src_epsg == final_epsg) else 1,
+                "final_epsg": final_epsg,
+                "final_crs_name": final_crs_name,
+                "width_px": width,
+                "height_px": height,
+                "resolution_m": abs(gt[1]),
+                "file_size_mb": os.path.getsize(tile_path) / 1_048_576,
+                "x_min_native": x_min,
+                "y_min_native": y_min,
+                "x_max_native": x_max,
+                "y_max_native": y_max,
+            }
+            if nodata is not None:
+                attrs["nodata_value"] = nodata
 
-        layer.CreateFeature(feat)
-        feat = None
-        n_written += 1
-
-    ds.SyncToDisk()
+            lyr.create_feature(geom, attrs)
+            n_written += 1
 
     log.info(
         f"Tile footprints layer written: {gpkg_path}  "
@@ -983,171 +873,138 @@ def _write_tile_footprints_gpkg(
         + ")"
     )
 
-    # ── data_footprints layer ─────────────────────────────────────────────────
-    # Each feature's geometry is the polygonised outline of non-nodata pixels
-    # in that tile, reprojected to WGS84.  Falls back to the bounding box when
-    # no nodata is set or when polygonization yields no valid-data polygons.
-
-    data_layer = ds.CreateLayer(
-        "data_footprints", srs=wgs84, geom_type=ogr.wkbMultiPolygon
-    )
-    for field_name, field_type in fields:
-        data_layer.CreateField(ogr.FieldDefn(field_name, field_type))
-
-    data_feat_defn = data_layer.GetLayerDefn()
+    # ── Layer 2: data_footprints ─────────────────────────────────────────
+    # Polygonised outline of non-nodata pixels per tile, in WGS84.
+    # Opening the same GPKG path with a new layer name opens it in update
+    # mode via the DatasetRegistry — tile_footprints is preserved.
     mem_drv = ogr.GetDriverByName("Memory")
-    n_data_written = 0
-    n_data_skipped = 0
+    n_data_written = n_data_skipped = 0
+    with GeopackageLayer(gpkg_path, "data_footprints", write=True) as lyr2:
+        lyr2.create(ogr.wkbMultiPolygon, epsg=4326, fields=_TILE_SCHEMA)
 
-    for tile_path in dem_rasters:
-        # ── Open tile ────────────────────────────────────────────────────────
-        tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
-        if tile_ds is None:
-            log.warning(
-                f"  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping"
-            )
-            n_data_skipped += 1
-            continue
+        for tile_path in dem_rasters:
+            tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
+            if tile_ds is None:
+                log.warning(f"  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping")
+                n_data_skipped += 1
+                continue
 
-        gt_d = tile_ds.GetGeoTransform()
-        width_d = tile_ds.RasterXSize
-        height_d = tile_ds.RasterYSize
-        band_d = tile_ds.GetRasterBand(1)
-        nodata_d = band_d.GetNoDataValue()
+            gt_d = tile_ds.GetGeoTransform()
+            width_d = tile_ds.RasterXSize
+            height_d = tile_ds.RasterYSize
+            band_d = tile_ds.GetRasterBand(1)
+            nodata_d = band_d.GetNoDataValue()
 
-        src_srs_d = osr.SpatialReference()
-        src_srs_d.ImportFromWkt(tile_ds.GetProjection())
-        src_srs_d.AutoIdentifyEPSG()
-        src_srs_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            src_srs_d = osr.SpatialReference()
+            src_srs_d.ImportFromWkt(tile_ds.GetProjection())
+            src_srs_d.AutoIdentifyEPSG()
+            src_srs_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
 
-        epsg_d_str = src_srs_d.GetAuthorityCode(None)
-        src_epsg_d = int(epsg_d_str) if epsg_d_str else None
-        src_crs_d = src_srs_d.GetName() or (
-            f"EPSG:{src_epsg_d}" if src_epsg_d else "Unknown"
-        )
+            epsg_d_str = src_srs_d.GetAuthorityCode(None)
+            src_epsg_d = int(epsg_d_str) if epsg_d_str else None
+            src_crs_d = src_srs_d.GetName() or (f"EPSG:{src_epsg_d}" if src_epsg_d else "Unknown")
 
-        x_min_d = gt_d[0]
-        y_max_d = gt_d[3]
-        x_max_d = gt_d[0] + width_d * gt_d[1]
-        y_min_d = gt_d[3] + height_d * gt_d[5]
+            x_min_d = gt_d[0];  y_max_d = gt_d[3]
+            x_max_d = gt_d[0] + width_d * gt_d[1];  y_min_d = gt_d[3] + height_d * gt_d[5]
 
-        # ── Build binary data-presence mask ──────────────────────────────────
-        arr = band_d.ReadAsArray()  # shape (height, width)
-        tile_ds = None  # release file handle
+            arr = band_d.ReadAsArray()
+            tile_ds = None  # release file handle
 
-        if nodata_d is not None and not np.isnan(nodata_d):
-            mask_arr = np.where(arr == nodata_d, np.uint8(0), np.uint8(1))
-        elif nodata_d is not None and np.isnan(nodata_d):
-            if np.issubdtype(arr.dtype, np.floating):
-                mask_arr = np.where(np.isnan(arr), np.uint8(0), np.uint8(1))
+            # Build binary data-presence mask
+            if nodata_d is not None and not np.isnan(nodata_d):
+                mask_arr = np.where(arr == nodata_d, np.uint8(0), np.uint8(1))
+            elif nodata_d is not None and np.isnan(nodata_d):
+                mask_arr = (
+                    np.where(np.isnan(arr), np.uint8(0), np.uint8(1))
+                    if np.issubdtype(arr.dtype, np.floating)
+                    else np.ones((height_d, width_d), dtype=np.uint8)
+                )
             else:
-                mask_arr = np.ones(
-                    (height_d, width_d), dtype=np.uint8
-                )  # integer dtype cannot hold NaN
-        else:
-            # No nodata value: treat all pixels as valid.
-            mask_arr = np.ones((height_d, width_d), dtype=np.uint8)
+                mask_arr = np.ones((height_d, width_d), dtype=np.uint8)
 
-        # ── Create in-memory mask raster for gdal.Polygonize ─────────────────
-        mem_raster_drv = gdal.GetDriverByName("MEM")
-        mask_ds = mem_raster_drv.Create("", width_d, height_d, 1, gdal.GDT_Byte)
-        mask_ds.SetGeoTransform(gt_d)
-        mask_ds.SetProjection(src_srs_d.ExportToWkt())
-        mask_band = mask_ds.GetRasterBand(1)
-        mask_band.WriteArray(mask_arr)
-        mask_band.SetNoDataValue(0)
+            # Polygonize into an in-memory OGR layer
+            mem_raster_drv = gdal.GetDriverByName("MEM")
+            mask_ds = mem_raster_drv.Create("", width_d, height_d, 1, gdal.GDT_Byte)
+            mask_ds.SetGeoTransform(gt_d)
+            mask_ds.SetProjection(src_srs_d.ExportToWkt())
+            mask_band = mask_ds.GetRasterBand(1)
+            mask_band.WriteArray(mask_arr)
+            mask_band.SetNoDataValue(0)
 
-        # ── Polygonize valid-data pixels into a Memory OGR layer ──────────────
-        poly_ds = mem_drv.CreateDataSource("")
-        poly_layer = poly_ds.CreateLayer("polygons", srs=src_srs_d)
-        poly_layer.CreateField(ogr.FieldDefn("val", ogr.OFTInteger))
-        val_idx = poly_layer.GetLayerDefn().GetFieldIndex("val")
-        gdal.Polygonize(mask_band, None, poly_layer, val_idx, [], callback=None)
-        mask_ds = None  # release mask raster
+            poly_ds = mem_drv.CreateDataSource("")
+            poly_layer = poly_ds.CreateLayer("polygons", srs=src_srs_d)
+            poly_layer.CreateField(ogr.FieldDefn("val", ogr.OFTInteger))
+            val_idx = poly_layer.GetLayerDefn().GetFieldIndex("val")
+            gdal.Polygonize(mask_band, None, poly_layer, val_idx, [], callback=None)
+            mask_ds = None
 
-        # ── Collect geometries where val == 1 (valid data) ────────────────────
-        valid_geoms = []
-        poly_layer.ResetReading()
-        for poly_feat in poly_layer:
-            if poly_feat.GetField("val") == 1:
-                geom_ref = poly_feat.GetGeometryRef()
-                if geom_ref is not None:
-                    valid_geoms.append(shapely_wkt.loads(geom_ref.ExportToWkt()))
-        poly_ds = None  # release memory OGR datasource
+            valid_geoms = []
+            poly_layer.ResetReading()
+            for poly_feat in poly_layer:
+                if poly_feat.GetField("val") == 1:
+                    geom_ref = poly_feat.GetGeometryRef()
+                    if geom_ref is not None:
+                        valid_geoms.append(shapely_wkt.loads(geom_ref.ExportToWkt()))
+            poly_ds = None
 
-        # ── Compute union; fall back to bbox if empty ─────────────────────────
-        use_bbox_fallback = False
-        if valid_geoms:
-            union_geom = unary_union(valid_geoms)
-            if union_geom.is_empty:
+            # Union valid geometries; fall back to the bounding box if empty
+            if valid_geoms:
+                union_geom = unary_union(valid_geoms)
+                use_bbox_fallback = union_geom.is_empty
+            else:
                 use_bbox_fallback = True
-        else:
-            use_bbox_fallback = True
 
-        if use_bbox_fallback:
-            log.warning(
-                f"  [data_footprints] No valid-data polygons for "
-                f"{os.path.basename(tile_path)} - using bounding box"
-            )
-            union_geom = shapely_box(x_min_d, y_min_d, x_max_d, y_max_d)
+            if use_bbox_fallback:
+                log.warning(
+                    f"  [data_footprints] No valid-data polygons for "
+                    f"{os.path.basename(tile_path)} - using bounding box"
+                )
+                union_geom = shapely_box(x_min_d, y_min_d, x_max_d, y_max_d)
 
-        # ── Reproject union to WGS84 ──────────────────────────────────────────
-        wgs84_d = osr.SpatialReference()
-        wgs84_d.ImportFromEPSG(4326)
-        wgs84_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-        ct_d = osr.CoordinateTransformation(src_srs_d, wgs84_d)
+            # Reproject to WGS84 (as OGR geometry so Transform() can be used in-place)
+            wgs84_d = osr.SpatialReference()
+            wgs84_d.ImportFromEPSG(4326)
+            wgs84_d.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+            ct_d = osr.CoordinateTransformation(src_srs_d, wgs84_d)
 
-        ogr_geom = ogr.CreateGeometryFromWkt(union_geom.wkt)
-        if ogr_geom is None:
-            log.warning(
-                f"  [data_footprints] CreateGeometryFromWkt returned None for "
-                f"{os.path.basename(tile_path)} - skipping"
-            )
-            n_data_skipped += 1
-            continue
-        if ogr_geom.Transform(ct_d) != 0:
-            log.warning(
-                f"  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping"
-            )
-            n_data_skipped += 1
-            continue
-        ogr_geom = ogr.ForceTo(ogr_geom, ogr.wkbMultiPolygon)
-        if ogr_geom is None:
-            log.warning(
-                f"  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping"
-            )
-            n_data_skipped += 1
-            continue
+            ogr_geom = ogr.CreateGeometryFromWkt(union_geom.wkt)
+            if ogr_geom is None:
+                log.warning(f"  [data_footprints] CreateGeometryFromWkt returned None for {os.path.basename(tile_path)} - skipping")
+                n_data_skipped += 1
+                continue
+            if ogr_geom.Transform(ct_d) != 0:
+                log.warning(f"  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping")
+                n_data_skipped += 1
+                continue
+            ogr_geom = ogr.ForceTo(ogr_geom, ogr.wkbMultiPolygon)
+            if ogr_geom is None:
+                log.warning(f"  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping")
+                n_data_skipped += 1
+                continue
 
-        # ── Write feature ────────────────────────────────────────────────────
-        data_feat = ogr.Feature(data_feat_defn)
-        data_feat.SetGeometry(ogr_geom)
-        data_feat.SetField("filename", os.path.basename(tile_path))
-        data_feat.SetField("source_path", tile_path)
-        data_feat.SetField("original_epsg", src_epsg_d or 0)
-        data_feat.SetField("original_crs_name", src_crs_d)
-        data_feat.SetField(
-            "is_reprojected",
-            0 if (src_epsg_d is None or src_epsg_d == final_epsg) else 1,
-        )
-        data_feat.SetField("final_epsg", final_epsg)
-        data_feat.SetField("final_crs_name", final_crs_name)
-        data_feat.SetField("width_px", width_d)
-        data_feat.SetField("height_px", height_d)
-        data_feat.SetField("resolution_m", abs(gt_d[1]))
-        data_feat.SetField("file_size_mb", os.path.getsize(tile_path) / 1_048_576)
-        data_feat.SetField("x_min_native", x_min_d)
-        data_feat.SetField("y_min_native", y_min_d)
-        data_feat.SetField("x_max_native", x_max_d)
-        data_feat.SetField("y_max_native", y_max_d)
-        if nodata_d is not None:
-            data_feat.SetField("nodata_value", nodata_d)
-        data_layer.CreateFeature(data_feat)
-        data_feat = None
-        n_data_written += 1
+            attrs_d = {
+                "filename": os.path.basename(tile_path),
+                "source_path": tile_path,
+                "original_epsg": src_epsg_d or 0,
+                "original_crs_name": src_crs_d,
+                "is_reprojected": 0 if (src_epsg_d is None or src_epsg_d == final_epsg) else 1,
+                "final_epsg": final_epsg,
+                "final_crs_name": final_crs_name,
+                "width_px": width_d,
+                "height_px": height_d,
+                "resolution_m": abs(gt_d[1]),
+                "file_size_mb": os.path.getsize(tile_path) / 1_048_576,
+                "x_min_native": x_min_d,
+                "y_min_native": y_min_d,
+                "x_max_native": x_max_d,
+                "y_max_native": y_max_d,
+            }
+            if nodata_d is not None:
+                attrs_d["nodata_value"] = nodata_d
 
-    ds.SyncToDisk()
-    ds = None
+            # create_feature() accepts ogr.Geometry directly
+            lyr2.create_feature(ogr_geom, attrs_d)
+            n_data_written += 1
 
     log.info(
         f"Data footprints layer written: {gpkg_path}  "
@@ -1155,6 +1012,10 @@ def _write_tile_footprints_gpkg(
         + (f", {n_data_skipped} skipped" if n_data_skipped else "")
         + ")"
     )
+
+
+
+
 
 
 def should_resample(
@@ -1197,3 +1058,4 @@ def should_resample(
 
     log.info("Source resolution close enough to target - resampling not required.")
     return False
+

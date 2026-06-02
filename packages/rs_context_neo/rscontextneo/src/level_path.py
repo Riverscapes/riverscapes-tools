@@ -34,10 +34,11 @@ Date:       2026-05-27
 import sqlite3
 from typing import List, Union
 
+from osgeo import ogr
+from rscommons import GeopackageLayer
 from rsxml import Logger
 
 from rscontextneo.src.utils.gpkg import (
-    add_column,
     create_index,
     drop_table_triggers,
     restore_table_triggers,
@@ -94,13 +95,17 @@ def calc_level_paths(gpkg_path: str, layer_name: str, force: bool, log: Logger) 
     """
     log.info(f"Opening GeoPackage for level-path calculation: {gpkg_path}")
 
+    # ── Ensure the level_path column and lookup indexes exist ─────────────────
+    # Use GeopackageLayer.create_field() to add the column through OGR — it
+    # checks for an existing field with the same name and type, making this
+    # idempotent without needing a PRAGMA table_info query.
+    with GeopackageLayer(gpkg_path, layer_name, write=True) as lyr:
+        lyr.create_field("level_path", ogr.OFTReal)
+
+    # Indexes are added via sqlite3 (VectorBase has no create_index equivalent).
     conn = sqlite3.connect(gpkg_path)
     try:
         curs = conn.cursor()
-
-        # Ensure the destination column and lookup indexes exist before the
-        # transaction so that DDL changes are durable even on error.
-        add_column(curs, layer_name, "level_path", "REAL")
         create_index(curs, layer_name, ["LINKNO"])
         create_index(curs, layer_name, ["DSLINKNO"])
         create_index(curs, layer_name, ["USLINKNO1"])

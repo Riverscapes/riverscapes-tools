@@ -62,6 +62,9 @@ def rs_context_neo(
     cores: int | None = None,
     dem_source: str = "tnm",
     debug: bool = False,
+    rail: str | None = None,
+    roads: str | None = None,
+    athena_output: str | None = None,
 ) -> None:
     """
     Run the Riverscapes Context Neo tool for a single watershed.
@@ -98,6 +101,15 @@ def rs_context_neo(
                             the TAUDEM_CORES env var, falling back to 2.
         debug (bool): If True, intermediate files are not deleted after processing
                         and more verbose logging and diagnostics are enabled.
+        rail (str | None): S3 Tables path for transportation rail data
+                           (format: ``'<catalog>/<namespace>/<table>'``).  Pass
+                           ``None`` to skip the rail layer.
+        roads (str | None): S3 Tables path for transportation roads data
+                            (same format as *rail*).  Pass ``None`` to skip.
+        athena_output (str | None): S3 URI where Athena should write query
+                                    result files, e.g.
+                                    ``'s3://bucket/athena-results/'``.
+                                    Required when *rail* or *roads* is provided.
     """
     log = Logger("RS Context Neo")
     start_time = time.time()
@@ -125,11 +137,13 @@ def rs_context_neo(
         raise ValueError(f"breach_dist must be a positive integer, got {breach_dist}")
     if dem is not None and not os.path.isfile(dem):
         raise FileNotFoundError(f"User-supplied DEM not found: {dem}")
+    if (rail or roads) and not athena_output:
+        raise ValueError("athena_output is required when rail or roads is provided.")
 
     safe_makedirs(output_folder)
 
     # ── Step 1: Acquire bounds GeoJSON and DEM ─────────────────────────────────
-    log.info("Step 1 of 3: Acquiring project bounds and DEM")
+    log.info("Step 1: Acquiring project bounds and DEM")
     step_timer = Timer()
     if aoi is not None:
         log.info(f"  Input source: Custom AOI GeoJSON — {aoi}")
@@ -171,7 +185,7 @@ def rs_context_neo(
     log.info(f"  Step 1 complete in {pretty_duration(step_timer.ellapsed())}")
 
     # ── Step 2: D8 Hydrology ──────────────────────────────────────────────────
-    log.info("Step 2 of 3: Running D8 hydrology processing chain")
+    log.info("Step 2: Running D8 hydrology processing chain")
     log.info(
         f"  Stream threshold: {threshold:,} cells, breach distance: {breach_dist} cells"
     )
@@ -197,8 +211,19 @@ def rs_context_neo(
             log=log,
         )
 
-    # ── Step 3: Write project XML ─────────────────────────────────────────────
-    log.info("Step 3 of 3: Writing Riverscapes project XML")
+    # ── Step 3: Transportation layers ─────────────────────────────────────────
+    if rail or roads:
+        from rscontextneo.src.transportation import (
+            fetch_transportation,  # pylint: disable=import-outside-toplevel
+        )
+
+        log.info("Step 3: Fetching transportation layers")
+        step_timer = Timer()
+        fetch_transportation(output_folder, rail, roads, athena_output, log)
+        log.info(f"  Step 3 complete in {pretty_duration(step_timer.ellapsed())}")
+
+    # ── Step 4: Write project XML ─────────────────────────────────────────────
+    log.info("Step 4: Writing Riverscapes project XML")
     elapsed_time = time.time() - start_time
     try:
         write_project_xml(
@@ -215,6 +240,8 @@ def rs_context_neo(
             log=log,
             debug=debug,
             dem_source=dem_source,
+            rail=rail,
+            roads=roads,
         )
     except Exception as exc:
         log.error(f"Failed to write project XML: {exc}")
@@ -335,6 +362,28 @@ def main():
         default=None,
     )
     parser.add_argument(
+        "--rail",
+        help="S3 Tables path for transportation rail data (format: catalog/namespace/table). "
+        "Example: s3tablescatalog/riverscapes-data/demo/transportation_rail",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--roads",
+        help="S3 Tables path for transportation roads data (format: catalog/namespace/table). "
+        "Example: s3tablescatalog/riverscapes-data/demo/transportation_roads",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--athena_output",
+        help="S3 URI where Athena should write query result files. "
+        "Required when --rail or --roads is provided. "
+        "Example: s3://riverscapes-data/athena-results/",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
         "--meta",
         help="Riverscapes project metadata as comma separated key=value pairs",
         type=str,
@@ -380,11 +429,33 @@ def main():
     if args.cores:
         log.info(f"TauDEM cores:      {args.cores}")
     log.info(f"Force download:    {args.force}")
+    if args.rail:
+        log.info(f"Rail:              {args.rail}")
+    if args.roads:
+        log.info(f"Roads:             {args.roads}")
+    if args.athena_output:
+        log.info(f"Athena output:     {args.athena_output}")
+
+    if (args.rail or args.roads) and not args.athena_output:
+        raise ValueError(
+            "--athena_output is required when --rail or --roads is provided. "
+            "Provide an S3 URI such as: s3://your-bucket/athena-results/"
+        )
 
     meta = parse_metadata(args.meta) if args.meta else {}
     main_timer = time.time()
 
     try:
+        # Early format validation for --rail/--roads
+        from rscontextneo.src.transportation import (
+            parse_s3tables_arg,  # pylint: disable=import-outside-toplevel
+        )
+
+        if args.rail:
+            parse_s3tables_arg(args.rail)
+        if args.roads:
+            parse_s3tables_arg(args.roads)
+
         if args.debug is True:
             # Leave this import here so that we don't over-import if not needed
             from rscommons.debug import ThreadRun
@@ -406,6 +477,9 @@ def main():
                 cores=args.cores,
                 dem_source=args.dem_source,
                 debug=args.debug,
+                rail=args.rail,
+                roads=args.roads,
+                athena_output=args.athena_output,
             )
             log.debug(f"Return code: {retcode}, [Max process usage] {max_obj}")
         else:
@@ -423,6 +497,9 @@ def main():
                 cores=args.cores,
                 dem_source=args.dem_source,
                 debug=args.debug,
+                rail=args.rail,
+                roads=args.roads,
+                athena_output=args.athena_output,
             )
     except Exception as e:
         log.error(e)

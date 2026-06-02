@@ -15,7 +15,9 @@ from logging import Logger
 import numpy as np
 import rasterio
 from osgeo import ogr, osr
+from rscommons import GeopackageLayer
 from rsxml import ProgressBar
+from shapely.geometry import Point
 
 from rscontextneo.src.utils.rasters import skip_if_exists
 
@@ -76,11 +78,7 @@ def create_breach_diff_points(
         f"vs {os.path.basename(dem_breach_path)}"
     )
 
-    # ── Set up OGR output ──────────────────────────────────────────────────────
-    driver = ogr.GetDriverByName("GPKG")
     os.makedirs(os.path.dirname(output_gpkg), exist_ok=True)
-    if os.path.isfile(output_gpkg):
-        driver.DeleteDataSource(output_gpkg)
 
     try:
         with (
@@ -88,90 +86,81 @@ def create_breach_diff_points(
             rasterio.open(dem_breach_path) as src_breach,
         ):
             transform = src_dem.transform
-            wkt_crs = src_dem.crs.to_wkt()
             dem_nodata = src_dem.nodata
             breach_nodata = src_breach.nodata
 
-            ds = driver.CreateDataSource(output_gpkg)
+            # Read the raster CRS so the output layer carries the correct projection.
             srs = osr.SpatialReference()
-            srs.ImportFromWkt(wkt_crs)
-            layer = ds.CreateLayer(
-                BREACH_DIFF_LAYER_NAME, srs=srs, geom_type=ogr.wkbPoint
-            )
+            srs.ImportFromWkt(src_dem.crs.to_wkt())
 
-            field_defn = ogr.FieldDefn("diff_m", ogr.OFTReal)
-            field_defn.SetWidth(12)
-            field_defn.SetPrecision(4)
-            layer.CreateField(field_defn)
-            feat_defn = layer.GetLayerDefn()
+            # GeopackageLayer.create() deletes any existing layer of the same name
+            # and creates a fresh one — no need for a separate "delete first" step.
+            with GeopackageLayer(
+                output_gpkg, BREACH_DIFF_LAYER_NAME, write=True
+            ) as out_layer:
+                out_layer.create(ogr.wkbPoint, spatial_ref=srs)
+                out_layer.create_field("diff_m", ogr.OFTReal)
 
-            # ── Iterate over native blocks ─────────────────────────────────────
-            windows = list(src_dem.block_windows(1))
-            progbar = ProgressBar(len(windows), 50, "Breach difference points")
-            n_pixels = 0
+                # ── Iterate over native raster blocks ──────────────────────────
+                windows = list(src_dem.block_windows(1))
+                progbar = ProgressBar(len(windows), 50, "Breach difference points")
+                n_pixels = 0
 
-            layer.StartTransaction()
-            for counter, (_ji, window) in enumerate(windows):
-                progbar.update(counter)
+                out_layer.ogr_layer.StartTransaction()
+                for counter, (_ji, window) in enumerate(windows):
+                    progbar.update(counter)
 
-                dem_block = src_dem.read(1, window=window, masked=True)
-                # boundless=True fills any pixels that fall outside the breach
-                # raster's extent with nodata rather than raising an error;
-                # this handles the common case where WBT writes its output at
-                # a slightly different size/extent than the input DEM.
-                breach_block = src_breach.read(1, window=window, masked=True)
+                    dem_block = src_dem.read(1, window=window, masked=True)
+                    # boundless=True fills any pixels that fall outside the breach
+                    # raster's extent with nodata rather than raising an error;
+                    # this handles the common case where WBT writes its output at
+                    # a slightly different size/extent than the input DEM.
+                    breach_block = src_breach.read(1, window=window, masked=True)
 
-                # Mask out nodata explicitly in case the raster has no mask band
-                if dem_nodata is not None:
-                    dem_block = np.ma.masked_equal(dem_block, dem_nodata)
-                if breach_nodata is not None:
-                    breach_block = np.ma.masked_equal(breach_block, breach_nodata)
+                    # Mask out nodata explicitly in case the raster has no mask band
+                    if dem_nodata is not None:
+                        dem_block = np.ma.masked_equal(dem_block, dem_nodata)
+                    if breach_nodata is not None:
+                        breach_block = np.ma.masked_equal(breach_block, breach_nodata)
 
-                diff_block = dem_block - breach_block
+                    diff_block = dem_block - breach_block
 
-                # Pixels where both are valid and difference meets threshold
-                valid_mask = ~np.ma.getmaskarray(diff_block) & (
-                    np.ma.getdata(diff_block) >= MIN_DIFF_METRES
-                )
+                    # Pixels where both are valid and difference meets threshold
+                    valid_mask = ~np.ma.getmaskarray(diff_block) & (
+                        np.ma.getdata(diff_block) >= MIN_DIFF_METRES
+                    )
 
-                row_idxs, col_idxs = np.where(valid_mask)
-                if row_idxs.size == 0:
-                    continue
+                    row_idxs, col_idxs = np.where(valid_mask)
+                    if row_idxs.size == 0:
+                        continue
 
-                n_pixels += int(row_idxs.size)
+                    n_pixels += int(row_idxs.size)
 
-                # Convert block-local indices to dataset-level row/col then to XY
-                win_row_off = window.row_off
-                win_col_off = window.col_off
-                abs_rows = row_idxs + win_row_off
-                abs_cols = col_idxs + win_col_off
+                    # Convert block-local indices to dataset-level row/col then to XY
+                    abs_rows = row_idxs + window.row_off
+                    abs_cols = col_idxs + window.col_off
+                    xs, ys = rasterio.transform.xy(
+                        transform, abs_rows.tolist(), abs_cols.tolist()
+                    )
+                    diff_vals = np.ma.getdata(diff_block)[row_idxs, col_idxs]
 
-                xs, ys = rasterio.transform.xy(
-                    transform,
-                    abs_rows.tolist(),
-                    abs_cols.tolist(),
-                )
+                    for x, y, dv in zip(xs, ys, diff_vals):
+                        out_layer.create_feature(
+                            Point(float(x), float(y)), {"diff_m": float(dv)}
+                        )
 
-                diff_vals = np.ma.getdata(diff_block)[row_idxs, col_idxs]
+                    # Commit every 5 000 pixels to keep memory use bounded.
+                    if n_pixels % 5_000 < len(row_idxs):
+                        out_layer.ogr_layer.CommitTransaction()
+                        out_layer.ogr_layer.StartTransaction()
 
-                for x, y, dv in zip(xs, ys, diff_vals):
-                    geom = ogr.Geometry(ogr.wkbPoint)
-                    geom.AddPoint(float(x), float(y))
-                    feat = ogr.Feature(feat_defn)
-                    feat.SetGeometry(geom)
-                    feat.SetField("diff_m", float(dv))
-                    layer.CreateFeature(feat)
-                    feat = None
-
-            layer.CommitTransaction()
-            progbar.finish()
-
-            ds.FlushCache()
-            ds = None
+                out_layer.ogr_layer.CommitTransaction()
+                progbar.finish()
 
     except Exception as exc:
-        # Clean up a partially-written output so a re-run starts fresh
+        # Clean up a partially-written output so a re-run starts fresh.
         if os.path.isfile(output_gpkg):
+            driver = ogr.GetDriverByName("GPKG")
             try:
                 driver.DeleteDataSource(output_gpkg)
             except Exception:
