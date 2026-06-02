@@ -27,6 +27,8 @@ import os
 import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
+import time
+
 import requests
 from osgeo import gdal, osr
 from rscommons.download_dem import verify_areas
@@ -65,6 +67,12 @@ _WCS_TILE_WORKERS = 4
 # HTTP timeout per individual tile request (seconds).  Each tile is at most
 # 1 000×1 000 px so responses are small and should arrive well within 120 s.
 _WCS_TIMEOUT_S = 120
+
+# Maximum number of attempts per tile (1 original + N-1 retries).
+_WCS_MAX_ATTEMPTS = 5
+
+# Initial back-off delay in seconds; doubles on each subsequent retry.
+_WCS_RETRY_BACKOFF_S = 5
 
 
 # ── Public entry point ────────────────────────────────────────────────────────
@@ -596,21 +604,92 @@ def _wcs_request_tile(
         "FORMAT": _WCS_FORMAT,
     }
 
-    response = requests.get(
-        _WCS_URL, params=params, stream=True, timeout=_WCS_TIMEOUT_S
+    last_exc: Exception | None = None
+    for attempt in range(1, _WCS_MAX_ATTEMPTS + 1):
+        try:
+            response = requests.get(
+                _WCS_URL, params=params, stream=True, timeout=_WCS_TIMEOUT_S
+            )
+            response.raise_for_status()
+
+            # WCS errors come back as XML with a 200 status — detect by Content-Type
+            content_type = response.headers.get("Content-Type", "")
+            if "xml" in content_type.lower() or "text" in content_type.lower():
+                body = response.content[:1_000].decode("utf-8", errors="replace")
+                raise ValueError(
+                    f"WCS endpoint returned a non-raster payload "
+                    f"(Content-Type: {content_type!r}):\n{body}"
+                )
+
+            safe_makedirs(os.path.dirname(out_path))
+            with open(out_path, "wb") as fh:
+                for chunk in response.iter_content(chunk_size=65_536):
+                    fh.write(chunk)
+
+            # Validate the written tile by forcing GDAL to read every block.
+            # A truncated download produces a valid-looking file header but
+            # raises a RuntimeError here when GDAL hits the missing data.
+            _validate_tile(out_path)
+            return  # success
+
+        except requests.HTTPError as exc:
+            # Only retry on transient server-side errors (5xx).  Client errors
+            # (4xx, e.g. 400 Bad Request for an oversized tile) are permanent.
+            if exc.response is not None and exc.response.status_code < 500:
+                raise
+            last_exc = exc
+        except (requests.ConnectionError, requests.Timeout, RuntimeError) as exc:
+            # RuntimeError covers GDAL validation failures from _validate_tile.
+            last_exc = exc
+        finally:
+            # If we're about to retry, remove the potentially corrupt file so
+            # the cache check at the top of the next attempt doesn't skip it.
+            if last_exc is not None and os.path.isfile(out_path):
+                try:
+                    os.remove(out_path)
+                except OSError:
+                    pass
+
+        if attempt < _WCS_MAX_ATTEMPTS:
+            delay = _WCS_RETRY_BACKOFF_S * (2 ** (attempt - 1))
+            log.warning(
+                f"  Tile {os.path.basename(out_path)}: attempt {attempt}/{_WCS_MAX_ATTEMPTS} failed "
+                f"({last_exc}) — retrying in {delay}s ..."
+            )
+            time.sleep(delay)
+
+    raise RuntimeError(
+        f"Tile {os.path.basename(out_path)} failed after {_WCS_MAX_ATTEMPTS} attempts: {last_exc}"
     )
-    response.raise_for_status()
 
-    # WCS errors come back as XML with a 200 status — detect by Content-Type
-    content_type = response.headers.get("Content-Type", "")
-    if "xml" in content_type.lower() or "text" in content_type.lower():
-        body = response.content[:1_000].decode("utf-8", errors="replace")
-        raise ValueError(
-            f"WCS endpoint returned a non-raster payload "
-            f"(Content-Type: {content_type!r}):\n{body}"
-        )
 
-    safe_makedirs(os.path.dirname(out_path))
-    with open(out_path, "wb") as fh:
-        for chunk in response.iter_content(chunk_size=65_536):
-            fh.write(chunk)
+def _validate_tile(path: str) -> None:
+    """Open *path* with GDAL and force-read every block via ``Checksum()``.
+
+    ``gdal.Band.Checksum()`` iterates over every tile/strip in the file,
+    which causes GDAL (and libtiff underneath) to raise a ``RuntimeError``
+    for any truncated or corrupt block before the file is added to a VRT
+    mosaic.  Catching the error here lets the retry loop re-download the
+    affected tile rather than propagating a hard crash during ``gdal.Translate``.
+
+    Parameters
+    ----------
+    path : str
+        Path to the GeoTIFF tile to validate.
+
+    Raises
+    ------
+    RuntimeError
+        If GDAL cannot open the file or ``Checksum()`` encounters a read error.
+    """
+    ds = gdal.Open(path)
+    if ds is None:
+        raise RuntimeError(f"GDAL could not open tile: {path} — {gdal.GetLastErrorMsg()}")
+    try:
+        band = ds.GetRasterBand(1)
+        if band is None:
+            raise RuntimeError(f"Tile has no raster band: {path}")
+        # Checksum() reads every encoded block; a truncated tile raises here.
+        band.Checksum()
+    finally:
+        ds = None  # release GDAL reference

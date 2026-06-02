@@ -11,7 +11,6 @@ Author:     Matt Reimer
 Date:       2026-06-01
 """
 
-import os
 import sqlite3
 import time
 from typing import Optional
@@ -236,64 +235,64 @@ def athena_to_gpkg(
                 global_row_idx = 0
 
                 for page_num, page in enumerate(all_pages):
-                rows = page.get("ResultSet", {}).get("Rows", [])
+                    rows = page.get("ResultSet", {}).get("Rows", [])
 
-                # Skip header row on the first page only.
-                start_row = 1 if page_num == 0 else 0
+                    # Skip header row on the first page only.
+                    start_row = 1 if page_num == 0 else 0
 
-                for row_data in rows[start_row:]:
-                    cells = row_data.get("Data", [])
+                    for row_data in rows[start_row:]:
+                        cells = row_data.get("Data", [])
 
-                    # Extract geometry
-                    wkb_bytes = _extract_wkb(cells, geom_col_idx, global_row_idx, log)
-                    if wkb_bytes is None:
-                        rows_skipped += 1
-                        global_row_idx += 1
-                        continue
-
-                    geom = ogr.CreateGeometryFromWkb(wkb_bytes)
-                    if geom is None:
-                        log.warning(f"Row {global_row_idx}: ogr.CreateGeometryFromWkb() returned None — skipping")
-                        rows_skipped += 1
-                        global_row_idx += 1
-                        continue
-
-                    feat = ogr.Feature(feat_defn)
-                    feat.SetGeometry(geom)
-
-                    # Set attribute fields
-                    for field_idx, (col_name, ogr_type) in enumerate(attr_fields):
-                        src_idx = col_index.get(col_name)
-                        if src_idx is None:
+                        # Extract geometry
+                        wkb_bytes = _extract_wkb(cells, geom_col_idx, global_row_idx, log)
+                        if wkb_bytes is None:
+                            rows_skipped += 1
+                            global_row_idx += 1
                             continue
-                        raw_val = cells[src_idx].get("VarCharValue", "") if src_idx < len(cells) else ""
 
-                        # NULL sentinel: Athena represents NULLs as empty VarCharValue
-                        if raw_val == "":
-                            # Leave field unset (OGR will write NULL)
-                            pass
-                        elif ogr_type == ogr.OFTInteger:
-                            try:
-                                feat.SetField(field_idx, int(raw_val))
-                            except (ValueError, TypeError):
-                                pass
-                        elif ogr_type == ogr.OFTInteger64:
-                            try:
-                                feat.SetField(field_idx, int(raw_val))
-                            except (ValueError, TypeError):
-                                pass
-                        elif ogr_type == ogr.OFTReal:
-                            try:
-                                feat.SetField(field_idx, float(raw_val))
-                            except (ValueError, TypeError):
-                                pass
-                        else:
-                            feat.SetField(field_idx, raw_val)
+                        geom = ogr.CreateGeometryFromWkb(wkb_bytes)
+                        if geom is None:
+                            log.warning(f"Row {global_row_idx}: ogr.CreateGeometryFromWkb() returned None — skipping")
+                            rows_skipped += 1
+                            global_row_idx += 1
+                            continue
 
-                    layer.CreateFeature(feat)
-                    feat = None
-                    rows_written += 1
-                    global_row_idx += 1
+                        feat = ogr.Feature(feat_defn)
+                        feat.SetGeometry(geom)
+
+                        # Set attribute fields
+                        for field_idx, (col_name, ogr_type) in enumerate(attr_fields):
+                            src_idx = col_index.get(col_name)
+                            if src_idx is None:
+                                continue
+                            raw_val = cells[src_idx].get("VarCharValue", "") if src_idx < len(cells) else ""
+
+                            # NULL sentinel: Athena represents NULLs as empty VarCharValue
+                            if raw_val == "":
+                                # Leave field unset (OGR will write NULL)
+                                pass
+                            elif ogr_type == ogr.OFTInteger:
+                                try:
+                                    feat.SetField(field_idx, int(raw_val))
+                                except (ValueError, TypeError):
+                                    pass
+                            elif ogr_type == ogr.OFTInteger64:
+                                try:
+                                    feat.SetField(field_idx, int(raw_val))
+                                except (ValueError, TypeError):
+                                    pass
+                            elif ogr_type == ogr.OFTReal:
+                                try:
+                                    feat.SetField(field_idx, float(raw_val))
+                                except (ValueError, TypeError):
+                                    pass
+                            else:
+                                feat.SetField(field_idx, raw_val)
+
+                        layer.CreateFeature(feat)
+                        feat = None
+                        rows_written += 1
+                        global_row_idx += 1
 
                 layer.CommitTransaction()
             except Exception:
