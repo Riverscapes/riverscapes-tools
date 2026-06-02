@@ -813,6 +813,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "affine" },
+    { name = "boto3" },
     { name = "cython" },
     { name = "geopandas" },
     { name = "jinja2" },
@@ -857,6 +858,7 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "affine", specifier = ">=2.4" },
+    { name = "boto3", specifier = ">=1.42.68" },
     { name = "cython", specifier = ">=3.0" },
     { name = "geopandas", specifier = ">=1.1.1" },
     { name = "jinja2", specifier = ">=3.1" },

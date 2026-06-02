@@ -17,7 +17,7 @@ from typing import Optional
 
 from osgeo import ogr, osr
 from rscommons import GeopackageLayer
-from rsxml import Logger
+from rsxml import Logger, ProgressBar
 
 from rscontextneo.src.utils.gpkg import drop_table_triggers, restore_table_triggers
 
@@ -52,6 +52,7 @@ def athena_to_gpkg(
     field_rename: Optional[dict] = None,
     workgroup: str = "primary",
     catalog: Optional[str] = None,
+    aoi_wkt: Optional[str] = None,
 ) -> int:
     """Export an Athena table to a GeoPackage layer.
 
@@ -96,6 +97,11 @@ def athena_to_gpkg(
         When provided it is passed as ``Catalog`` in the
         ``QueryExecutionContext``.  Pass ``None`` (default) to use the
         workgroup's default catalog.
+    aoi_wkt : str, optional
+        Well-Known Text (WKT) string for the area of interest (EPSG:4326).
+        When provided, a ``WHERE ST_Intersects(...)`` clause is appended to
+        the SELECT query so only features that intersect the AOI are
+        returned.  Pass ``None`` (default) to fetch all rows.
 
     Returns
     -------
@@ -119,6 +125,22 @@ def athena_to_gpkg(
     if field_rename is None:
         field_rename = {}
 
+    # Validate the S3 output path early — Athena requires it to be a valid
+    # S3 URI beginning with "s3://".  A missing trailing slash is the most
+    # common mistake; it causes an opaque InvalidRequestException from the
+    # Athena API rather than a useful message, so we normalise it here.
+    if not s3_output_location.startswith("s3://"):
+        raise ValueError(
+            f"s3_output_location must begin with 's3://' (got: {s3_output_location!r}). "
+            "Example: 's3://my-bucket/athena-results/'"
+        )
+    if not s3_output_location.endswith("/"):
+        log.warning(
+            f"s3_output_location does not end with '/': {s3_output_location!r}. "
+            "Appending trailing slash — Athena requires a folder-style S3 path."
+        )
+        s3_output_location = s3_output_location + "/"
+
     log.info(f"Exporting Athena table '{database}.{table_name}' → '{gpkg_path}' / layer '{layer_name}'")
 
     # ------------------------------------------------------------------
@@ -141,10 +163,40 @@ def athena_to_gpkg(
     # ------------------------------------------------------------------
     # 2. Fetch all rows from Athena (paginated)
     # ------------------------------------------------------------------
-    log.info(f"Running SELECT * FROM \"{table_name}\" ...")
-    query_sql = f'SELECT * FROM "{table_name}"'
+    # Build the column list (S3 Tables / Iceberg does not support SELECT *).
+    # Athena uses Presto/Trino SQL syntax which requires double-quoted identifiers.
+    col_list = ", ".join(f'"{c}"' for c, _ in columns)
+
+    # For federated / S3-Tables catalogs the recommended pattern is to embed
+    # the full 3-part identifier in the SQL and omit Catalog from the
+    # QueryExecutionContext.  Using only a bare table name with Catalog in
+    # the context is rejected by Athena for DQL queries against those
+    # catalog types (even though DESCRIBE accepts it).
+    # select_catalog is intentionally omitted from the SELECT context — for
+    # federated/S3-Tables catalogs the full 3-part identifier is embedded in the
+    # SQL and re-sending Catalog in the context is rejected by Athena.
+    select_catalog = None
+    if catalog:
+        # Double-quote each component so slashes in the catalog name are
+        # handled correctly by the Presto/Trino engine.
+        query_sql = f'SELECT {col_list} FROM "{catalog}"."{database}"."{table_name}"'
+    else:
+        query_sql = f'SELECT {col_list} FROM "{table_name}"'
+
+    if aoi_wkt:
+        log.info("Applying AOI spatial filter to query")
+        # Escape any single quotes in the WKT so the SQL string remains valid.
+        safe_wkt = aoi_wkt.replace("'", "''")
+        # Escape internal double-quotes in the column identifier (Presto/Trino idiom).
+        safe_geom_col = geom_col.replace('"', '""')
+        query_sql += (
+            f" WHERE ST_Intersects(ST_GeomFromBinary(\"{safe_geom_col}\"),"
+            f" ST_GeometryFromText('{safe_wkt}'))")
+        log.debug(f"AOI WKT length: {len(safe_wkt)} chars")
+
+    log.info(f"Running: {query_sql[:200]}")
     pages = _run_query_paginated(
-        athena_client, database, query_sql, s3_output_location, workgroup, log, catalog=catalog
+        athena_client, database, query_sql, s3_output_location, workgroup, log, catalog=select_catalog
     )
 
     # Flatten pages into a row iterator so we can sample the first WKB
@@ -194,7 +246,9 @@ def athena_to_gpkg(
         # ------------------------------------------------------------------
         # 5. Build attribute field definitions (skip geom_col)
         # ------------------------------------------------------------------
-        attr_fields: list[tuple[str, int]] = []  # (gpkg_field_name, ogr_type)
+        # Each entry: (source_cell_index, ogr_type, gpkg_field_index)
+        # Pre-computing these indices avoids per-row dict lookups in the hot loop.
+        attr_fields: list[tuple[int, int, int]] = []
         for col_name, athena_type in columns:
             if col_name == geom_col:
                 continue  # geometry handled separately
@@ -215,8 +269,12 @@ def athena_to_gpkg(
 
             # create_field() is idempotent (returns existing def if name+type match)
             # and automatically sets width=18 / precision=10 for OFTReal fields.
+            # The layer is freshly created so the i-th field we add has OGR index i.
+            field_idx = len(attr_fields)
             gpkg_layer.create_field(gpkg_name, ogr_type)
-            attr_fields.append((col_name, ogr_type))
+            src_idx = col_index.get(col_name)
+            if src_idx is not None:
+                attr_fields.append((src_idx, ogr_type, field_idx))
 
         feat_defn = gpkg_layer.ogr_layer.GetLayerDefn()
         layer = gpkg_layer.ogr_layer  # keep a short alias for the feature loop below
@@ -224,83 +282,82 @@ def athena_to_gpkg(
         # ------------------------------------------------------------------
         # 6. Bulk insert with transaction + rtree trigger management
         # ------------------------------------------------------------------
+
+        # Pre-count total data rows across all pages (page 0 has a header row).
+        total_rows = sum(
+            len(page.get("ResultSet", {}).get("Rows", [])) - (1 if i == 0 else 0)
+            for i, page in enumerate(all_pages)
+        )
+        log.info(f"Writing {total_rows:,} rows to layer '{layer_name}' ...")
+        progress_bar = ProgressBar(total_rows, text=f"Writing '{layer_name}'")
+
         conn = sqlite3.connect(gpkg_path)
         triggers = drop_table_triggers(conn, layer_name)
         layer.StartTransaction()
         try:
-            try:
-                rows_written = 0
-                rows_skipped = 0
-                # Absolute row index across all pages (used for skip warnings).
-                global_row_idx = 0
+            rows_written = 0
+            rows_skipped = 0
 
-                for page_num, page in enumerate(all_pages):
-                    rows = page.get("ResultSet", {}).get("Rows", [])
+            for page_num, page in enumerate(all_pages):
+                rows = page.get("ResultSet", {}).get("Rows", [])
 
-                    # Skip header row on the first page only.
-                    start_row = 1 if page_num == 0 else 0
+                # Skip header row on the first page only.
+                start_row = 1 if page_num == 0 else 0
 
-                    for row_data in rows[start_row:]:
-                        cells = row_data.get("Data", [])
+                for global_row_idx, row_data in enumerate(rows[start_row:], start=rows_written + rows_skipped):
+                    cells = row_data.get("Data", [])
 
-                        # Extract geometry
-                        wkb_bytes = _extract_wkb(cells, geom_col_idx, global_row_idx, log)
-                        if wkb_bytes is None:
-                            rows_skipped += 1
-                            global_row_idx += 1
-                            continue
+                    # Extract geometry
+                    wkb_bytes = _extract_wkb(cells, geom_col_idx, global_row_idx, log)
+                    if wkb_bytes is None:
+                        rows_skipped += 1
+                        progress_bar.update(rows_written + rows_skipped)
+                        continue
 
-                        geom = ogr.CreateGeometryFromWkb(wkb_bytes)
-                        if geom is None:
-                            log.warning(f"Row {global_row_idx}: ogr.CreateGeometryFromWkb() returned None — skipping")
-                            rows_skipped += 1
-                            global_row_idx += 1
-                            continue
+                    geom = ogr.CreateGeometryFromWkb(wkb_bytes)
+                    if geom is None:
+                        log.warning(f"Row {global_row_idx}: ogr.CreateGeometryFromWkb() returned None — skipping")
+                        rows_skipped += 1
+                        progress_bar.update(rows_written + rows_skipped)
+                        continue
 
-                        feat = ogr.Feature(feat_defn)
-                        feat.SetGeometry(geom)
+                    feat = ogr.Feature(feat_defn)
+                    feat.SetGeometry(geom)
 
-                        # Set attribute fields
-                        for field_idx, (col_name, ogr_type) in enumerate(attr_fields):
-                            src_idx = col_index.get(col_name)
-                            if src_idx is None:
-                                continue
-                            raw_val = cells[src_idx].get("VarCharValue", "") if src_idx < len(cells) else ""
+                    # Set attribute fields using pre-computed (src_idx, ogr_type, field_idx) tuples.
+                    for src_idx, ogr_type, field_idx in attr_fields:
+                        raw_val = cells[src_idx].get("VarCharValue", "") if src_idx < len(cells) else ""
 
-                            # NULL sentinel: Athena represents NULLs as empty VarCharValue
-                            if raw_val == "":
-                                # Leave field unset (OGR will write NULL)
+                        # NULL sentinel: Athena represents NULLs as empty VarCharValue.
+                        # Leave the field unset so OGR writes NULL.
+                        if raw_val == "":
+                            pass
+                        elif ogr_type in (ogr.OFTInteger, ogr.OFTInteger64):
+                            try:
+                                feat.SetField(field_idx, int(raw_val))
+                            except (ValueError, TypeError):
                                 pass
-                            elif ogr_type == ogr.OFTInteger:
-                                try:
-                                    feat.SetField(field_idx, int(raw_val))
-                                except (ValueError, TypeError):
-                                    pass
-                            elif ogr_type == ogr.OFTInteger64:
-                                try:
-                                    feat.SetField(field_idx, int(raw_val))
-                                except (ValueError, TypeError):
-                                    pass
-                            elif ogr_type == ogr.OFTReal:
-                                try:
-                                    feat.SetField(field_idx, float(raw_val))
-                                except (ValueError, TypeError):
-                                    pass
-                            else:
-                                feat.SetField(field_idx, raw_val)
+                        elif ogr_type == ogr.OFTReal:
+                            try:
+                                feat.SetField(field_idx, float(raw_val))
+                            except (ValueError, TypeError):
+                                pass
+                        else:
+                            feat.SetField(field_idx, raw_val)
 
-                        layer.CreateFeature(feat)
-                        feat = None
-                        rows_written += 1
-                        global_row_idx += 1
+                    layer.CreateFeature(feat)
+                    feat = None
+                    rows_written += 1
+                    progress_bar.update(rows_written + rows_skipped)
 
-                layer.CommitTransaction()
-            except Exception:
-                try:
-                    layer.RollbackTransaction()
-                except Exception as rb_err:
-                    log.warning(f"RollbackTransaction failed: {rb_err}")
-                raise
+            layer.CommitTransaction()
+            progress_bar.finish()
+        except Exception:
+            try:
+                layer.RollbackTransaction()
+            except Exception as rb_err:
+                log.warning(f"RollbackTransaction failed: {rb_err}")
+            raise
         finally:
             restore_table_triggers(conn, triggers)
             conn.commit()
@@ -354,24 +411,42 @@ def _describe_table(
     list of (col_name, data_type) tuples
         Column definitions in declaration order.
     """
-    sql = f'DESCRIBE "{table_name}"'
+    sql = f"DESCRIBE `{table_name}`"
     pages = _run_query_paginated(
         athena_client, database, sql, s3_output_location, workgroup, log, catalog=catalog
     )
     columns: list[tuple[str, str]] = []
-    first_page = True
     for page in pages:
         rows = page.get("ResultSet", {}).get("Rows", [])
-        start = 1 if first_page else 0
-        first_page = False
-        for row in rows[start:]:
+        log.debug(f"DESCRIBE raw rows ({len(rows)}): {rows}")
+        for row in rows:
             cells = row.get("Data", [])
-            if len(cells) < 2:
+            if not cells:
                 continue
-            col_name = cells[0].get("VarCharValue", "").strip()
-            data_type = cells[1].get("VarCharValue", "").strip().upper()
-            if col_name and not col_name.startswith("#"):
-                columns.append((col_name, data_type))
+
+            # S3 Tables (Iceberg) DESCRIBE returns each row as a single
+            # tab-delimited cell: "col_name\tdata_type\tcomment".
+            # Standard Glue-backed tables return separate cells per column.
+            # Handle both formats.
+            if len(cells) == 1:
+                parts = cells[0].get("VarCharValue", "").split("\t")
+                col_name = parts[0].strip() if len(parts) > 0 else ""
+                data_type = parts[1].strip().upper() if len(parts) > 1 else ""
+            else:
+                col_name = cells[0].get("VarCharValue", "").strip()
+                data_type = cells[1].get("VarCharValue", "").strip().upper() if len(cells) > 1 else ""
+
+            # Skip header / section marker rows (start with '#') and blank separator rows.
+            if not col_name or col_name.startswith("#"):
+                continue
+
+            # A blank col_name (e.g. from a "\t\t" row) signals the end of the
+            # column list — everything after is partition / bucketing metadata.
+            # Stop processing immediately.
+            if data_type == "":
+                return columns
+
+            columns.append((col_name, data_type))
     return columns
 
 
@@ -419,6 +494,13 @@ def _run_query_paginated(
     TimeoutError
         If the query does not finish within ``_ATHENA_POLL_TIMEOUT_S`` seconds.
     """
+    # Athena requires OutputLocation to end with a trailing slash.
+    # Normalise here so callers don't have to remember — an S3 "folder"
+    # path without a trailing slash causes an immediate
+    # InvalidRequestException before any query work begins.
+    if not s3_output_location.endswith("/"):
+        s3_output_location = s3_output_location + "/"
+
     # Start execution.
     ctx: dict = {"Database": database}
     if catalog:
@@ -434,12 +516,14 @@ def _run_query_paginated(
 
     # Poll until terminal state.
     elapsed = 0.0
+    _HEARTBEAT_INTERVAL_S = 30
+    _next_heartbeat = _HEARTBEAT_INTERVAL_S
     while True:
         status_resp = athena_client.get_query_execution(QueryExecutionId=execution_id)
         state = status_resp["QueryExecution"]["Status"]["State"]
 
         if state == "SUCCEEDED":
-            log.info(f"Athena query SUCCEEDED ({execution_id})")
+            log.info(f"Athena query SUCCEEDED ({execution_id}) after {int(elapsed)}s")
             break
         if state in ("FAILED", "CANCELLED"):
             reason = status_resp["QueryExecution"]["Status"].get("StateChangeReason", "unknown")
@@ -452,6 +536,10 @@ def _run_query_paginated(
                 f"Athena query {execution_id} did not finish within "
                 f"{_ATHENA_POLL_TIMEOUT_S}s (current state: {state})"
             )
+
+        if elapsed >= _next_heartbeat:
+            log.info(f"Athena query still running ({execution_id}) — {int(elapsed)}s elapsed, state: {state}")
+            _next_heartbeat += _HEARTBEAT_INTERVAL_S
 
         time.sleep(_ATHENA_POLL_INTERVAL_S)
         elapsed += _ATHENA_POLL_INTERVAL_S
@@ -595,20 +683,25 @@ def _map_athena_type(col_name: str, athena_type: str, log: Logger) -> int:
     # Normalise: strip any length/precision qualifiers, e.g. "VARCHAR(255)" → "VARCHAR"
     base_type = athena_type.split("(")[0].strip()
 
+    _TYPE_MAP: dict[str, int] = {
+        "INT": ogr.OFTInteger,
+        "INTEGER": ogr.OFTInteger,
+        "TINYINT": ogr.OFTInteger,
+        "SMALLINT": ogr.OFTInteger,
+        "BIGINT": ogr.OFTInteger64,
+        "DOUBLE": ogr.OFTReal,
+        "FLOAT": ogr.OFTReal,
+        "REAL": ogr.OFTReal,
+        "DECIMAL": ogr.OFTReal,
+        "STRING": ogr.OFTString,
+        "VARCHAR": ogr.OFTString,
+        "CHAR": ogr.OFTString,
+    }
+
     if base_type == "BIGINT":
         log.warning(
             f"Column '{col_name}': OFTInteger64 is not supported by ESRI (Athena type: BIGINT)"
         )
-        return ogr.OFTInteger64
-
-    if base_type in ("INT", "INTEGER", "TINYINT", "SMALLINT"):
-        return ogr.OFTInteger
-
-    if base_type in ("DOUBLE", "FLOAT", "REAL", "DECIMAL"):
-        return ogr.OFTReal
-
-    if base_type in ("STRING", "VARCHAR", "CHAR"):
-        return ogr.OFTString
 
     # VARBINARY is the geometry column — callers should never pass it here,
     # but guard defensively.
@@ -618,6 +711,9 @@ def _map_athena_type(col_name: str, athena_type: str, log: Logger) -> int:
             "this column should be the geometry column and not mapped to a field"
         )
         return ogr.OFTString
+
+    if base_type in _TYPE_MAP:
+        return _TYPE_MAP[base_type]
 
     log.warning(
         f"Column '{col_name}': unmapped Athena type '{athena_type}' — falling back to OFTString"

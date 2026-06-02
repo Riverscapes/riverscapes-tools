@@ -50,7 +50,7 @@
         "--dem_source", "wcs",
         "--rail", "s3tablescatalog/riverscapes-data/demo/transportation_rail",
         "--roads", "s3tablescatalog/riverscapes-data/demo/transportation_roads",
-        "--athena_output", "s3://riverscapes-athena-output/output/rs_contex_neo",
+        "--athena_output", "s3://riverscapes-athena-output/output/rs_context_neo/",
         "--verbose",
         "--debug"
       ]
@@ -73,7 +73,7 @@
         "--breach_dist", "${input:BREACH_DIST}",
         "--rail", "s3tablescatalog/riverscapes-data/demo/transportation_rail",
         "--roads", "s3tablescatalog/riverscapes-data/demo/transportation_roads",
-        "--athena_output", "s3://riverscapes-athena-output/output/rs_contex_neo",
+        "--athena_output", "s3://riverscapes-athena-output/output/rs_context_neo",
         "--verbose",
         "--debug"
       ]

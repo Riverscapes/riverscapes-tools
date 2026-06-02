@@ -43,6 +43,7 @@ dependencies = [
     "rsxml>=2.2.1",
     "geopandas>=1.1.1",
     "whitebox==2.3.6",
+    "boto3>=1.42.68",
 ]
 
 [project.optional-dependencies]

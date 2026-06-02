@@ -109,6 +109,9 @@ def rs_context_neo(
         athena_output (str | None): S3 URI where Athena should write query
                                     result files, e.g.
                                     ``'s3://bucket/athena-results/'``.
+                                    **Must end with a trailing slash** — Athena
+                                    treats this as a folder path and rejects
+                                    paths without the trailing ``/``.
                                     Required when *rail* or *roads* is provided.
     """
     log = Logger("RS Context Neo")
@@ -219,7 +222,7 @@ def rs_context_neo(
 
         log.info("Step 3: Fetching transportation layers")
         step_timer = Timer()
-        fetch_transportation(output_folder, rail, roads, athena_output, log)
+        fetch_transportation(output_folder, rail, roads, athena_output, log, aoi_geojson=bounds_geojson)
         log.info(f"  Step 3 complete in {pretty_duration(step_timer.ellapsed())}")
 
     # ── Step 4: Write project XML ─────────────────────────────────────────────
@@ -379,6 +382,7 @@ def main():
         "--athena_output",
         help="S3 URI where Athena should write query result files. "
         "Required when --rail or --roads is provided. "
+        "Must end with a trailing slash (Athena requires a folder-style path). "
         "Example: s3://riverscapes-data/athena-results/",
         type=str,
         default=None,
@@ -405,6 +409,12 @@ def main():
     # args are resolved even when the variable is not in the shell environment.
     _env_path = os.path.join(os.path.dirname(__file__), ".env")
     args = dotenv.parse_args_env(parser, env_path=_env_path)
+
+    # rsxml.dotenv wraps every string argument through pathlib.Path() when
+    # resolving {env:VAR} tokens, which collapses 's3://' → 's3:/' on
+    # POSIX systems.  Restore the double-slash for any S3 URI arguments.
+    if args.athena_output and args.athena_output.startswith("s3:/") and not args.athena_output.startswith("s3://"):
+        args.athena_output = "s3://" + args.athena_output[4:]
 
     log = Logger("RS Context Neo")
     log.setup(
