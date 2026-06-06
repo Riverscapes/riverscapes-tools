@@ -1,0 +1,376 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://tools.riverscapes.net/rs-context-neo/config-schema/1.0",
+  "title": "RS Context Neo — Regional Configuration",
+  "description": "Defines the DEM source, hydrology parameters, and optional data layers for one regional deployment of RS Context Neo. Pair this profile with per-run flags (--aoi, --output, --force, --debug) on the command line.",
+  "type": "object",
+  "required": ["dem", "hydrology"],
+  "additionalProperties": false,
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "URI reference to this schema. Used by editors for validation and auto-complete."
+    },
+
+    "profile_name": {
+      "type": "string",
+      "description": "Short human-readable name for this profile, e.g. 'US CONUS' or 'New Zealand'."
+    },
+
+    "description": {
+      "type": "string",
+      "description": "Longer description of this profile: region covered, data sources used, known limitations, etc."
+    },
+
+    "download_dir": {
+      "type": "string",
+      "description": "Persistent cache directory for downloaded DEM files. Re-used across runs so tiles are not re-fetched. Required for both 'tnm' and 'wcs' sources. Supports {env:VAR} substitution."
+    },
+
+    "scratch_dir": {
+      "type": "string",
+      "description": "Temporary working directory for unzipped tiles and intermediate files. Defaults to <download_dir>/scratch when omitted. Safe to delete after each run. Supports {env:VAR} substitution."
+    },    
+
+    "dem": {
+      "type": "object",
+      "title": "DEM Acquisition",
+      "description": "Controls how the project DEM is obtained. Three acquisition modes are supported: 'tnm' (USGS National Map tile download, US only), 'wcs' (any OGC WCS endpoint), and 'file' (local file path). String values support {env:VAR} substitution.",
+      "required": ["source"],
+      "additionalProperties": false,
+
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": ["tnm", "wcs", "file"],
+          "description": "'tnm' — USGS National Map 3DEP tile API (contiguous US + Alaska). 'wcs' — any OGC WCS 1.0.0 endpoint; configure the URL and coverage in wcs_options. 'file' — use a local DEM file specified by filepath."
+        },
+
+        "aoi": {
+          "type": "string",
+          "description": "Path to GeoJSON AOI file for downloading tiles. Required when source is 'tnm' or 'wcs'. Supports {env:VAR} substitution.",
+          "examples": ["{env:AOI_GEOJSON_PATH}"]
+        },
+
+        "resolution": {
+          "type": "number",
+          "minimum": 0.5,
+          "maximum": 30.0,
+          "description": "Target output resolution in metres. At 1 m a 100 km² watershed produces a ~10 GB DEM; scale up for large or memory-constrained runs. The hydrology threshold should be scaled proportionally: threshold ≈ 50000 × (resolution / 1)².",
+          "default": 1.0
+        },
+
+        "filepath": {
+          "type": "string",
+          "description": "Path to a local DEM file. Required when source is 'file'. Supports {env:VAR} substitution.",
+          "examples": ["{env:DEM_FILEPATH}"]
+        },
+
+        "tnm_options": {
+          "type": "object",
+          "title": "National Map (TNM) Options",
+          "description": "Fine-tuning options for the 'tnm' source. Ignored when source is 'wcs' or 'file'.",
+          "additionalProperties": false,
+          "properties": {
+            "download_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "default": 4,
+              "description": "Number of tiles to download in parallel. Each tile is an independent HTTPS download; 4 workers saturates a typical connection without hammering the USGS TNM servers."
+            },
+            "buffer_deg": {
+              "type": "number",
+              "minimum": 0.001,
+              "maximum": 1.0,
+              "default": 0.01,
+              "description": "Degrees to buffer the AOI bounding box when querying The National Map for tiles. The small buffer ensures tiles that partially overlap the AOI edge are included."
+            }
+          }
+        },
+
+        "wcs_options": {
+          "type": "object",
+          "title": "WCS Options",
+          "description": "Configuration for the 'wcs' source. Required when source is 'wcs'. Supports {env:VAR} substitution in all string fields.",
+          "additionalProperties": false,
+          "properties": {
+            "url": {
+              "type": "string",
+              "description": "Base URL of the OGC WCS 1.0.0 endpoint, without query parameters. Example: 'https://elevation.nationalmap.gov/arcgis/services/3DEPElevation/ImageServer/WCSServer'. Supports {env:VAR} substitution."
+            },
+            "coverage": {
+              "type": "string",
+              "description": "WCS coverage identifier (the layer name passed to the COVERAGE parameter). Obtain from the service's GetCapabilities response. Supports {env:VAR} substitution."
+            },
+            "version": {
+              "type": "string",
+              "default": "1.0.0",
+              "description": "WCS protocol version. Only 1.0.0 has been tested."
+            },
+            "format": {
+              "type": "string",
+              "default": "GeoTIFF",
+              "description": "Requested response format. Must be a format string accepted by the WCS endpoint."
+            },
+            "tile_pixels": {
+              "type": "integer",
+              "minimum": 256,
+              "maximum": 8192,
+              "default": 2000,
+              "description": "Maximum pixel dimension (width and height) per WCS tile request. Large coverages are split into a grid of tiles each no larger than this. Keep below the server's hard pixel limit (ArcGIS Image Server enforces 4096 px; 2000 is a safe default)."
+            },
+            "download_workers": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 32,
+              "default": 4,
+              "description": "Number of WCS tile requests to issue in parallel."
+            },
+            "timeout_s": {
+              "type": "integer",
+              "minimum": 10,
+              "maximum": 600,
+              "default": 120,
+              "description": "HTTP timeout in seconds per individual tile request."
+            },
+            "max_attempts": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 10,
+              "default": 5,
+              "description": "Maximum number of download attempts per tile (1 original + N-1 retries). Retries apply to 5xx server errors, connection errors, and GDAL validation failures."
+            },
+            "retry_backoff_s": {
+              "type": "number",
+              "minimum": 1.0,
+              "maximum": 60.0,
+              "default": 5.0,
+              "description": "Initial back-off delay in seconds before the first retry. Doubles on each subsequent attempt (exponential back-off)."
+            }
+          }
+        }
+      },
+
+      "if": {
+        "properties": {
+          "source": {
+            "enum": ["tnm", "wcs"]
+          }
+        }
+      },
+      "then": {
+        "required": ["aoi", "resolution"]
+      },
+      "else": {
+        "required": ["filepath"]
+      }
+    },
+
+    "hydrology": {
+      "type": "object",
+      "title": "Hydrology Parameters",
+      "description": "Parameters controlling the D8 hydrology processing chain (WhiteboxTools breach conditioning + TauDEM flow routing + stream network extraction).",
+      "additionalProperties": false,
+      "properties": {
+        "threshold": {
+          "type": "integer",
+          "minimum": 1,
+          "default": 50000,
+          "description": "Minimum upstream cell count to classify a cell as stream (units: cells). At 1 m resolution, 50 000 cells = 0.05 km² of contributing area.\n**Scaling for coarser DEMs:** threshold ≈ 50000 / (resolution_m)²\n*   At 3 m resolution: threshold ≈ 50000 / 9 ≈ 5556 cells\n*   At 10 m resolution: threshold ≈ 50000 / 100 = 500 cells\n**Higher values** → fewer, larger streams (coarser network)\n**Lower values** → more, smaller streams (denser network)\n**Important:** This formula provides a starting point. Adjust based on your watershed size and desired detail:\n*   For small watersheds (<10 km²), consider using 10000–30000 to capture headwater channels\n*   For large watersheds (>100 km²), you may want 100000+ to focus on mainstem rivers\n*   See [STREAM_THRESHOLD.md](../docs/STREAM_THRESHOLD.md) for guidance on post-compute filtering using the `USContArea` field."
+        },
+        "breach_dist": {
+          "type": "integer",
+          "minimum": 0,
+          "default": 100,
+          "description": "WhiteboxTools breach depression maximum distance (in cells). Controls how far pits will be drained to fix depressions before flow routing. Lower values are more aggressive at preserving shallow depressions; higher values fill more aggressively. Set to 0 to disable breach depression preprocessing."
+        },
+        "cores": {
+          "anyOf": [
+            { "type": "integer", "minimum": 1 },
+            { "type": "null" }
+          ],
+          "default": null,
+          "description": "Number of CPU cores to use for WhiteboxTools and TauDEM operations. null means use all available cores."
+        }
+      }
+    },
+
+    "layers": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "$comment": "s3tables — fetches vector layers from AWS S3 Tables via Athena",
+            "type": "object",
+            "title": "S3Tables Layer",
+            "required": ["id", "label", "type", "output_path", "athena_output", "sublayers"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for this layer within the project XML."
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable layer name shown in the Riverscapes Viewer."
+              },
+              "type": { "type": "string", "const": "s3tables" },
+              "output_path": {
+                "type": "string",
+                "description": "Output GeoPackage path relative to the project output folder."
+              },
+              "athena_output": {
+                "type": "string",
+                "description": "S3 path for Athena query results, e.g. 's3://bucket/athena-output/'. Supports {env:VAR} substitution."
+              },
+              "sublayers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["layer_name", "s3tables_path"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "layer_name": {
+                      "type": "string",
+                      "description": "Layer name in the Athena table."
+                    },
+                    "s3tables_path": {
+                      "type": "string",
+                      "description": "s3tables:// ARN for the source table. Supports {env:VAR} substitution."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "$comment": "cog_clip — clips a remote Cloud-Optimized GeoTIFF to the AOI",
+            "type": "object",
+            "title": "COG Clip Layer",
+            "required": ["id", "label", "type", "output_path", "url"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for this layer within the project XML."
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable layer name shown in the Riverscapes Viewer."
+              },
+              "type": { "type": "string", "const": "cog_clip" },
+              "output_path": {
+                "type": "string",
+                "description": "Output raster path relative to the project output folder, e.g. 'vegetation/evt.tif'."
+              },
+              "url": {
+                "type": "string",
+                "description": "URL or GDAL virtual path to the source raster. Use '/vsicurl/https://...' for HTTPS COGs, '/vsis3/bucket/key' for S3 objects, or a plain local path. Supports {env:VAR} substitution."
+              },
+              "band": {
+                "type": "integer",
+                "minimum": 1,
+                "default": 1,
+                "description": "Raster band to extract. Defaults to band 1."
+              },
+              "nodata": {
+                "type": ["number", "null"],
+                "default": null,
+                "description": "Nodata value to assign in the output raster. null uses the source raster's nodata value."
+              }
+            }
+          },
+          {
+            "$comment": "wfs — fetches vector features from an OGC WFS endpoint",
+            "type": "object",
+            "title": "WFS Layer",
+            "required": ["id", "label", "type", "output_path", "url", "typename", "layer_name"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for this layer within the project XML."
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable layer name shown in the Riverscapes Viewer."
+              },
+              "type": { "type": "string", "const": "wfs" },
+              "output_path": {
+                "type": "string",
+                "description": "Output GeoPackage path relative to the project output folder."
+              },
+              "url": {
+                "type": "string",
+                "description": "Base URL of the OGC WFS endpoint, without query parameters. Supports {env:VAR} substitution."
+              },
+              "typename": {
+                "type": "string",
+                "description": "WFS feature type name (the TYPENAMES parameter). Obtain from the service's GetCapabilities response. Supports {env:VAR} substitution."
+              },
+              "layer_name": {
+                "type": "string",
+                "description": "Name for the layer inside the output GeoPackage."
+              },
+              "version": {
+                "type": "string",
+                "default": "2.0.0",
+                "description": "WFS protocol version. '2.0.0' is recommended; use '1.1.0' for older services."
+              }
+            }
+          },
+          {
+            "$comment": "wcs_raster — fetches a raster from an OGC WCS endpoint",
+            "type": "object",
+            "title": "WCS Raster Layer",
+            "required": ["id", "label", "type", "output_path", "url", "coverage", "layer_name"],
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique identifier for this layer within the project XML."
+              },
+              "label": {
+                "type": "string",
+                "description": "Human-readable layer name shown in the Riverscapes Viewer."
+              },
+              "type": { "type": "string", "const": "wcs_raster" },
+              "output_path": {
+                "type": "string",
+                "description": "Output raster path relative to the project output folder."
+              },
+              "url": {
+                "type": "string",
+                "description": "Base URL of the OGC WCS endpoint. Supports {env:VAR} substitution."
+              },
+              "coverage": {
+                "type": "string",
+                "description": "WCS coverage identifier (layer name). Obtain from the service's GetCapabilities response. Supports {env:VAR} substitution."
+              },
+              "layer_name": {
+                "type": "string",
+                "description": "Key used to register this raster in the project XML, e.g. 'PRECIPITATION'."
+              },
+              "version": {
+                "type": "string",
+                "default": "1.0.0",
+                "description": "WCS protocol version."
+              }
+            }
+          }
+        ]
+      }
+    },
+
+    "metadata": {
+      "type": "object",
+      "title": "Project Metadata Defaults",
+      "description": "Key-value pairs added to the Riverscapes project XML as hidden metadata. Merged with (and overridden by) any --meta values passed on the command line. Supports {env:VAR} substitution in values.",
+      "additionalProperties": {
+        "type": "string"
+      }
+    }
+  }
+}

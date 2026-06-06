@@ -1,0 +1,32 @@
+{
+  "$schema": "../config.schema.json",
+  "profile_name": "Generic WCS Profile",
+  "description": "Template for regions where elevation data is available via an OGC WCS 1.0.0 endpoint. Adjust wcs_options to point at your national or regional elevation service. The hydrology defaults are scaled for a 10 m DEM — if your service delivers at a different resolution, update threshold and breach_dist accordingly (see property descriptions in schema.json). Remove or add entries in 'layers' to match the data sources available for your region.",
+
+  "dem": {
+    "source": "wcs",
+    "resolution": 10.0,
+    "download_dir": "{env:DEM_DOWNLOAD_DIR}",
+    "wcs_options": {
+      "url": "{env:DEM_WCS_URL}",
+      "coverage": "{env:DEM_WCS_COVERAGE}",
+      "version": "1.0.0",
+      "format": "GeoTIFF",
+      "tile_pixels": 2000,
+      "download_workers": 4,
+      "timeout_s": 120,
+      "max_attempts": 5,
+      "retry_backoff_s": 5.0
+    }
+  },
+
+  "hydrology": {
+    "threshold": 500,
+    "breach_dist": 10,
+    "cores": null
+  },
+
+  "layers": [],
+
+  "metadata": {}
+}

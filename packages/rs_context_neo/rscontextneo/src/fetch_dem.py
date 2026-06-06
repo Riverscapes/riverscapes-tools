@@ -106,6 +106,7 @@ def fetch_dem_from_3dep(
     cleanup_scratch: bool = True,
     download_workers: int = _DEFAULT_DOWNLOAD_WORKERS,
     debug: bool = False,
+    buffer_deg: float = _BUFFER_DIST_DEG,
 ) -> tuple[str, str, str]:
     """
     Download and assemble a 3DEP 1-metre DEM for the area defined by a GeoJSON
@@ -184,7 +185,7 @@ def fetch_dem_from_3dep(
 
     # ── 1. Identify and download tiles ───────────────────────────────────────
     log.info("Querying The National Map for 3DEP 1 m tiles ...")
-    source_urls = get_1m_dem_urls(bounds_gpkg_layer, _BUFFER_DIST_DEG)
+    source_urls = get_1m_dem_urls(bounds_gpkg_layer, buffer_deg)
     log.info(f"{len(source_urls)} tile(s) identified on The National Map")
 
     dem_rasters = _download_tiles_parallel(

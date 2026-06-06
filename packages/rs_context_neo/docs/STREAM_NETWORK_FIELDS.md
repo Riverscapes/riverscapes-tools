@@ -173,6 +173,12 @@ SELECT * FROM network_intersected WHERE USContArea >= 200000
 See [STREAM_THRESHOLD.md](STREAM_THRESHOLD.md) for a full explanation of how
 to use `USContArea` for post-compute filtering.
 
+**Important:** The `--threshold` parameter controls the *minimum* contributing area
+for stream classification. If you need to filter by watershed size (e.g., "show only
+streams draining ≥ 0.1 km²"), use `USContArea` in a SQL WHERE clause rather than
+rerunning the pipeline with a different threshold. This preserves the full network
+density while allowing flexible display tuning.
+
 ---
 
 ### `DSContArea` — Downstream contributing area (downstream end)
@@ -219,6 +225,10 @@ Zero slope occurs when `strmDrop = 0` or `Length = 0`.
 **Note:** This is the mean gradient over the entire reach. It does not capture
 within-reach variability (e.g. a reach that is mostly flat with one steep
 cascade will show an intermediate average).
+
+**Use cases:** filtering by channel steepness; identifying steep mountain streams
+vs. gentle lowland rivers; computing hydraulic radius or Froude number for flow
+regime analysis.
 
 ---
 

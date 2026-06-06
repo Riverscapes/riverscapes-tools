@@ -1,7 +1,4 @@
 {
-  // Use IntelliSense to learn about possible attributes.
-  // Hover to view descriptions of existing attributes.
-  // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
   "version": "0.2.0",
   "inputs": [
     {
@@ -10,28 +7,16 @@
       "description": "Path to a GeoJSON defining the area of interest",
       "default": "{env:DATA_ROOT}/aoi/my_area.geojson"
     },
-      {
-        "type": "promptString",
-        "id": "BREACH_DIST",
-        "description": "Distance (in meters) to use when breaching DEM sinks (higher = more aggressive breaching)",
-        "default": "100"
-      },
     {
       "type": "promptString",
       "id": "DEM",
       "description": "Path to an already-downloaded DEM raster file",
       "default": "{env:DATA_ROOT}/dems/my_dem.tif"
-    },
-    {
-      "type": "promptString",
-      "id": "THRESHOLD",
-      "description": "Contributing-area cell threshold for stream classification (higher = coarser network)",
-      "default": "50000"
     }
   ],
   "configurations": [
     {
-      "name": "RS Context Neo (--aoi)",
+      "name": "RS Context Neo (--aoi, US CONUS)",
       "type": "debugpy",
       "request": "launch",
       "module": "rscontextneo.rs_context_neo",
@@ -42,21 +27,15 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       },
       "args": [
+        "--config", "${workspaceFolder}/config/us_conus.json",
         "--aoi", "${input:AOI}",
         "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
-        "--download_dir", "{env:DATA_ROOT}/downloads",
-        "--threshold", "${input:THRESHOLD}",
-        "--breach_dist", "${input:BREACH_DIST}",
-        "--dem_source", "wcs",
-        "--rail", "s3tablescatalog/riverscapes-data/demo/transportation_rail",
-        "--roads", "s3tablescatalog/riverscapes-data/demo/transportation_roads",
-        "--athena_output", "s3://riverscapes-athena-output/output/rs_context_neo/",
         "--verbose",
         "--debug"
       ]
     },
     {
-      "name": "RS Context Neo (--dem)",
+      "name": "RS Context Neo (--dem, US CONUS)",
       "type": "debugpy",
       "request": "launch",
       "module": "rscontextneo.rs_context_neo",
@@ -67,13 +46,28 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       },
       "args": [
+        "--config", "${workspaceFolder}/config/us_conus.json",
         "--dem", "${input:DEM}",
         "--output", "{env:DATA_ROOT}/rs_context_neo/dem",
-        "--threshold", "${input:THRESHOLD}",
-        "--breach_dist", "${input:BREACH_DIST}",
-        "--rail", "s3tablescatalog/riverscapes-data/demo/transportation_rail",
-        "--roads", "s3tablescatalog/riverscapes-data/demo/transportation_roads",
-        "--athena_output", "s3://riverscapes-athena-output/output/rs_context_neo",
+        "--verbose",
+        "--debug"
+      ]
+    },
+    {
+      "name": "RS Context Neo (--aoi, WCS template)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "rscontextneo.rs_context_neo",
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/rscontextneo/.env",
+      "env": {
+        "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
+      },
+      "args": [
+        "--config", "${workspaceFolder}/config/global_wcs.json",
+        "--aoi", "${input:AOI}",
+        "--output", "{env:DATA_ROOT}/rs_context_neo/wcs",
         "--verbose",
         "--debug"
       ]

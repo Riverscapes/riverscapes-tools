@@ -87,6 +87,16 @@ def fetch_dem_from_wcs(
     force_download: bool = False,
     cleanup_scratch: bool = True,
     debug: bool = False,
+    *,
+    wcs_url: str = _WCS_URL,
+    wcs_coverage: str = _WCS_COVERAGE,
+    wcs_version: str = _WCS_VERSION,
+    wcs_format: str = _WCS_FORMAT,
+    wcs_tile_pixels: int = _WCS_TILE_PIXELS,
+    wcs_download_workers: int = _WCS_TILE_WORKERS,
+    wcs_timeout_s: int = _WCS_TIMEOUT_S,
+    wcs_max_attempts: int = _WCS_MAX_ATTEMPTS,
+    wcs_retry_backoff_s: float = _WCS_RETRY_BACKOFF_S,
 ) -> tuple[str, str, str]:
     """
     Download and assemble a 3DEP DEM for the AOI using the USGS WCS endpoint,
@@ -195,6 +205,15 @@ def fetch_dem_from_wcs(
         log=log,
         request_epsg=output_epsg,
         debug=debug,
+        wcs_url=wcs_url,
+        wcs_coverage=wcs_coverage,
+        wcs_version=wcs_version,
+        wcs_format=wcs_format,
+        wcs_tile_pixels=wcs_tile_pixels,
+        wcs_download_workers=wcs_download_workers,
+        wcs_timeout_s=wcs_timeout_s,
+        wcs_max_attempts=wcs_max_attempts,
+        wcs_retry_backoff_s=wcs_retry_backoff_s,
     )
 
     # ── 4. Clip to AOI bounds (no reprojection — raster is already in UTM) ───
@@ -360,6 +379,16 @@ def _wcs_get_coverage(
     log: Logger,
     request_epsg: int = 4326,
     debug: bool = False,
+    *,
+    wcs_url: str = _WCS_URL,
+    wcs_coverage: str = _WCS_COVERAGE,
+    wcs_version: str = _WCS_VERSION,
+    wcs_format: str = _WCS_FORMAT,
+    wcs_tile_pixels: int = _WCS_TILE_PIXELS,
+    wcs_download_workers: int = _WCS_TILE_WORKERS,
+    wcs_timeout_s: int = _WCS_TIMEOUT_S,
+    wcs_max_attempts: int = _WCS_MAX_ATTEMPTS,
+    wcs_retry_backoff_s: float = _WCS_RETRY_BACKOFF_S,
 ) -> None:
     """
     Download a WCS coverage for *bbox* and save it to *out_path*.
@@ -417,16 +446,16 @@ def _wcs_get_coverage(
         total_w = max(1, int(round((east - west) * m_per_deg_lon / output_res_m)))
         total_h = max(1, int(round((north - south) * m_per_deg_lat / output_res_m)))
 
-    n_cols = math.ceil(total_w / _WCS_TILE_PIXELS)
-    n_rows = math.ceil(total_h / _WCS_TILE_PIXELS)
+    n_cols = math.ceil(total_w / wcs_tile_pixels)
+    n_rows = math.ceil(total_h / wcs_tile_pixels)
     n_tiles = n_cols * n_rows
 
     log.info(
         f"WCS coverage: {total_w}×{total_h} px total → "
-        f"{n_cols}×{n_rows} = {n_tiles} tile(s) of ≤{_WCS_TILE_PIXELS} px/dim"
+        f"{n_cols}×{n_rows} = {n_tiles} tile(s) of ≤{wcs_tile_pixels} px/dim"
     )
-    log.info(f"  Coverage:  {_WCS_COVERAGE}")
-    log.info(f"  Endpoint:  {_WCS_URL}")
+    log.info(f"  Coverage:  {wcs_coverage}")
+    log.info(f"  Endpoint:  {wcs_url}")
     log.info(f"  Request CRS: EPSG:{request_epsg}")
 
     # Extent of one tile column / row in the request CRS units
@@ -478,11 +507,11 @@ def _wcs_get_coverage(
             # In projected CRS units are metres so the calculation is exact;
             # in EPSG:4326 we fall back to the degree-to-metre approximation.
             if request_epsg != 4326:
-                t_w = max(1, min(_WCS_TILE_PIXELS, round((t_east - t_west) / output_res_m)))
-                t_h = max(1, min(_WCS_TILE_PIXELS, round((t_north - t_south) / output_res_m)))
+                t_w = max(1, min(wcs_tile_pixels, round((t_east - t_west) / output_res_m)))
+                t_h = max(1, min(wcs_tile_pixels, round((t_north - t_south) / output_res_m)))
             else:
-                t_w = max(1, min(_WCS_TILE_PIXELS, round((t_east - t_west) * m_per_deg_lon / output_res_m)))
-                t_h = max(1, min(_WCS_TILE_PIXELS, round((t_north - t_south) * m_per_deg_lat / output_res_m)))
+                t_w = max(1, min(wcs_tile_pixels, round((t_east - t_west) * m_per_deg_lon / output_res_m)))
+                t_h = max(1, min(wcs_tile_pixels, round((t_north - t_south) * m_per_deg_lat / output_res_m)))
 
             t_path = os.path.join(tiles_folder, f"tile_r{row:03d}_c{col:03d}.tif")
             tile_specs.append(((t_west, t_south, t_east, t_north), t_w, t_h, t_path))
@@ -495,13 +524,15 @@ def _wcs_get_coverage(
     tiles_keyed: list[tuple[int, str]] = []
     errors: list[str] = []
 
-    effective_workers = min(_WCS_TILE_WORKERS, n_tiles)
+    effective_workers = min(wcs_download_workers, n_tiles)
     log.info(f"Downloading {n_tiles} tile(s) with {effective_workers} worker(s) ...")
 
     with ThreadPoolExecutor(max_workers=effective_workers) as executor:
         future_to_path = {
             executor.submit(
-                _wcs_request_tile, t_bbox, t_w, t_h, t_path, force, log, request_epsg
+                _wcs_request_tile, t_bbox, t_w, t_h, t_path, force, log, request_epsg,
+                wcs_url, wcs_coverage, wcs_version, wcs_format,
+                wcs_timeout_s, wcs_max_attempts, wcs_retry_backoff_s,
             ): t_path
             for t_bbox, t_w, t_h, t_path in tile_specs
         }
@@ -559,6 +590,13 @@ def _wcs_request_tile(
     force: bool,
     log: Logger,
     request_epsg: int = 4326,
+    wcs_url: str = _WCS_URL,
+    wcs_coverage: str = _WCS_COVERAGE,
+    wcs_version: str = _WCS_VERSION,
+    wcs_format: str = _WCS_FORMAT,
+    wcs_timeout_s: int = _WCS_TIMEOUT_S,
+    wcs_max_attempts: int = _WCS_MAX_ATTEMPTS,
+    wcs_retry_backoff_s: float = _WCS_RETRY_BACKOFF_S,
 ) -> None:
     """
     Issue a single WCS 1.0.0 GetCoverage request for one tile and write the
@@ -594,21 +632,21 @@ def _wcs_request_tile(
     x_min, y_min, x_max, y_max = bbox
     params = {
         "SERVICE": "WCS",
-        "VERSION": _WCS_VERSION,
+        "VERSION": wcs_version,
         "REQUEST": "GetCoverage",
-        "COVERAGE": _WCS_COVERAGE,
+        "COVERAGE": wcs_coverage,
         "CRS": f"EPSG:{request_epsg}",
         "BBOX": f"{x_min},{y_min},{x_max},{y_max}",
         "WIDTH": str(width_px),
         "HEIGHT": str(height_px),
-        "FORMAT": _WCS_FORMAT,
+        "FORMAT": wcs_format,
     }
 
     last_exc: Exception | None = None
-    for attempt in range(1, _WCS_MAX_ATTEMPTS + 1):
+    for attempt in range(1, wcs_max_attempts + 1):
         try:
             response = requests.get(
-                _WCS_URL, params=params, stream=True, timeout=_WCS_TIMEOUT_S
+                wcs_url, params=params, stream=True, timeout=wcs_timeout_s
             )
             response.raise_for_status()
 
@@ -650,16 +688,16 @@ def _wcs_request_tile(
                 except OSError:
                     pass
 
-        if attempt < _WCS_MAX_ATTEMPTS:
-            delay = _WCS_RETRY_BACKOFF_S * (2 ** (attempt - 1))
+        if attempt < wcs_max_attempts:
+            delay = wcs_retry_backoff_s * (2 ** (attempt - 1))
             log.warning(
-                f"  Tile {os.path.basename(out_path)}: attempt {attempt}/{_WCS_MAX_ATTEMPTS} failed "
+                f"  Tile {os.path.basename(out_path)}: attempt {attempt}/{wcs_max_attempts} failed "
                 f"({last_exc}) — retrying in {delay}s ..."
             )
             time.sleep(delay)
 
     raise RuntimeError(
-        f"Tile {os.path.basename(out_path)} failed after {_WCS_MAX_ATTEMPTS} attempts: {last_exc}"
+        f"Tile {os.path.basename(out_path)} failed after {wcs_max_attempts} attempts: {last_exc}"
     )
 
 

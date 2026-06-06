@@ -45,6 +45,10 @@ from rscontextneo.src.utils.rasters import compress_inplace, skip_if_exists
 # ── MPI tuneable constants ────────────────────────────────────────────────────
 # Environment variable that controls MPI parallelism (shared with taudem package)
 _CORES_ENV_VAR = "TAUDEM_CORES"
+
+# Default core count when neither explicit argument nor environment variable is set.
+# This value is used for small watersheds or when users don't specify a core count.
+# For large DEMs (>100 km²), consider setting TAUDEM_CORES explicitly to avoid memory issues.
 _DEFAULT_CORES = 2
 
 # Environment variable for injecting extra mpiexec flags (space-separated).
@@ -68,12 +72,21 @@ _MACOS_MPI_ENV: dict[str, str] = {
 
 def resolve_cores(cores: int | None) -> int:
     """
-    Determine the number of MPI ranks to use.
+    Determine the number of MPI ranks to use for TauDEM steps.
 
     Priority (highest → lowest):
-        1. Explicit ``cores`` argument.
+        1. Explicit ``cores`` argument passed by caller.
         2. ``TAUDEM_CORES`` environment variable.
         3. Built-in default (:data:`_DEFAULT_CORES`).
+
+    For large DEMs (>100 km²) or high-resolution data, consider setting
+    ``TAUDEM_CORES`` explicitly to avoid memory issues. The default of 2 is
+    suitable for small watersheds or when running interactively.
+
+    Returns
+    -------
+    int
+        Number of MPI ranks to use.
     """
     if cores is not None:
         return cores

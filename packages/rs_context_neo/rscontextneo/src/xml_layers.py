@@ -22,6 +22,7 @@ from rsxml.project_xml import (
 from rsxml.util import pretty_duration
 
 from rscontextneo.__version__ import __version__
+from rscontextneo.src.config import AppConfig, S3TablesLayerConfig
 from rscontextneo.src.fetch_dem import (
     SLOPE_RELPATH,
     TILE_FOOTPRINTS_RELPATH,
@@ -330,15 +331,9 @@ def write_project_xml(
     meta: dict[str, str],
     aoi: str | None,
     dem: str | None,
-    threshold: int,
-    output_res: float,
-    breach_dist: int,
     elapsed_time: float,
     log: Logger,
     debug: bool = False,
-    dem_source: str = "tnm",
-    rail: str | None = None,
-    roads: str | None = None,
 ) -> None:
     """
     Create or overwrite the Riverscapes project XML file.
@@ -351,8 +346,7 @@ def write_project_xml(
     output_folder : str
         Root of the RS Context Neo project folder.
     descriptor : str
-        Short human-readable description of the input source (e.g.
-        ``'Custom AOI'`` or ``'User-supplied DEM'``).
+        Short human-readable description of the input source.
     bounds_geojson : str
         Absolute path to the project bounds GeoJSON (WGS84).
     meta : dict[str, str]
@@ -361,33 +355,21 @@ def write_project_xml(
         Original AOI path (recorded as hidden metadata).
     dem : str or None
         Original DEM path (recorded as hidden metadata).
-    threshold : int
-        Minimum upstream cell count for stream classification (units: cells).
-        Recorded in project metadata as ``StreamThreshold``.
-    output_res : float
-        Target DEM resolution in metres. Recorded as ``OutputResolution``.
-    breach_dist : int
-        Maximum breach search distance in cells. Recorded as ``BreachDist``.
     elapsed_time : float
-        Total processing time in seconds (``time.time()`` delta). Recorded as
-        ``ProcTimeS`` (hidden) and ``Processing Time`` (human-readable).
+        Total processing time in seconds. Recorded as ``ProcTimeS`` (hidden)
+        and ``Processing Time`` (human-readable).
     log : Logger
         Caller-supplied logger.
     debug : bool
         If True, the BREACH_DIFF_POINTS debug layer is registered.
-    dem_source : str
-        DEM backend used (``'tnm'`` or ``'wcs'``).  Only the TNM path writes
-        a tile footprints GeoPackage, so ``TILE_FOOTPRINTS`` is only
-        registered when this is ``'tnm'``.
-    rail : str or None
-        S3 Tables path for the rail layer (``'<catalog>/<namespace>/<table>'``).
-        When provided a ``'rail'`` layer is registered in the transportation
-        GeoPackage dataset.  Pass ``None`` to omit.
-    roads : str or None
-        S3 Tables path for the roads layer (same format as *rail*).
-        When provided a ``'roads'`` layer is registered.  Pass ``None`` to omit.
     """
     log.info("Writing project XML")
+
+    cfg = AppConfig.get()
+    threshold = cfg.hydrology.threshold
+    output_res = cfg.dem.resolution
+    breach_dist = cfg.hydrology.breach_dist
+    dem_source = cfg.dem.source
 
     project_name = f"RSContext Neo — {descriptor}"
     xml_path = os.path.join(output_folder, "project.rs.xml")
@@ -446,37 +428,33 @@ def write_project_xml(
         candidate_datasets.append(LayerTypes["TILE_FOOTPRINTS"])
     if debug:
         candidate_datasets.append(LayerTypes["BREACH_DIFF_POINTS"])
-    if rail is not None or roads is not None:
-        transport_layers = []
-        if roads is not None:
-            transport_layers.append(
+
+    # Register optional layers declared in the config
+    for layer_cfg in cfg.layers:
+        if isinstance(layer_cfg, S3TablesLayerConfig):
+            transport_layers = [
                 GeopackageLayer(
-                    lyr_name="roads",
-                    name="Roads",
+                    lyr_name=sl.layer_name,
+                    name=sl.layer_name.capitalize(),
                     ds_type=GeoPackageDatasetTypes.VECTOR,
                 )
+                for sl in layer_cfg.sublayers
+            ]
+            transport_ds = Geopackage(
+                xml_id=layer_cfg.id,
+                name=layer_cfg.label,
+                path=layer_cfg.output_path,
+                layers=transport_layers,
+                meta_data=MetaData(
+                    [
+                        Meta(
+                            "Description",
+                            "Transportation features sourced from AWS S3 Tables via Athena.",
+                        ),
+                    ]
+                ),
             )
-        if rail is not None:
-            transport_layers.append(
-                GeopackageLayer(
-                    lyr_name="rail", name="Rail", ds_type=GeoPackageDatasetTypes.VECTOR
-                )
-            )
-        transport_ds = Geopackage(
-            xml_id="TRANSPORTATION",
-            name="Transportation",
-            path="transportation/transportation.gpkg",
-            layers=transport_layers,
-            meta_data=MetaData(
-                [
-                    Meta(
-                        "Description",
-                        "Transportation features (roads and rail) sourced from AWS S3 Tables via Athena.",
-                    ),
-                ]
-            ),
-        )
-        candidate_datasets.append(transport_ds)
+            candidate_datasets.append(transport_ds)
 
     realization_datasets = []
     for ds in candidate_datasets:
