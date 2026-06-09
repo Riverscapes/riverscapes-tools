@@ -1,7 +1,7 @@
 """
 Raster clipping for RS Context Neo.
 
-Clips a source raster (local file or S3 COG via /vsis3/) to the project
+Clips a source raster (local file or S3 COG via /vsicurl/ + presigned URL) to the project
 extent (supplied as a WGS84 GeoJSON) and writes the result to the project
 output folder.
 
@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import os
 
+import boto3
 from osgeo import gdal, osr
 from rsxml import Logger
 from rsxml.util import safe_makedirs
@@ -74,8 +75,11 @@ def fetch_raster_layer(
     # ── 4. Determine GDAL source path ─────────────────────────────────────────
     raw_input = layer_cfg.input
     if raw_input.startswith("s3://"):
-        gdal_src = "/vsis3/" + raw_input[len("s3://"):]
-        source_type = "S3"
+        # Use /vsicurl/ + a presigned HTTPS URL instead of the deprecated /vsis3/ handler.
+        # GDAL's /vsicurl/ supports HTTP range requests, which is exactly how COGs
+        # deliver tiled data efficiently — no full download required.
+        gdal_src = _s3_to_vsicurl(raw_input)
+        source_type = "S3 (via presigned /vsicurl/)"
     elif os.path.isabs(raw_input):
         gdal_src = raw_input
         source_type = "local (absolute)"
@@ -98,10 +102,11 @@ def fetch_raster_layer(
         except OSError:
             pass  # samefile can fail on non-existent paths; proceed normally
 
-    # ── 6. Configure S3 access if needed ──────────────────────────────────────
-    # S3 HTTP options must be active for BOTH gdal.Open (IFD/header fetch) AND
-    # gdal.Translate (pixel data fetch from COG), so we save/restore around
-    # the entire operation at the end of the function rather than only around Open.
+    # ── 6. Configure HTTP access options for /vsicurl/ COG reads ─────────────
+    # These options apply to GDAL's /vsicurl/ handler (HTTP range requests).
+    # They must remain active for BOTH gdal.Open (header/IFD fetch) AND
+    # gdal.Translate (lazy COG tile fetch), so we save/restore around the
+    # entire operation rather than only around Open.
     _s3_config = {
         "CPL_VSIL_CURL_USE_HEAD": "NO",
         "GDAL_HTTP_TIMEOUT": "60",
@@ -109,7 +114,7 @@ def fetch_raster_layer(
         "GDAL_HTTP_RETRY_DELAY": "5",
     }
     _s3_prev: dict[str, str | None] = {}
-    if gdal_src.startswith("/vsis3/"):
+    if gdal_src.startswith("/vsicurl/"):
         _s3_prev = {k: gdal.GetConfigOption(k) for k in _s3_config}
         for k, v in _s3_config.items():
             gdal.SetConfigOption(k, v)
@@ -119,10 +124,10 @@ def fetch_raster_layer(
     try:
         ds = gdal.Open(gdal_src, gdal.GA_ReadOnly)
     except RuntimeError as exc:
-        if gdal_src.startswith("/vsis3/"):
+        if gdal_src.startswith("/vsicurl/"):
             _restore_s3_config(_s3_prev)
             raise RuntimeError(
-                f"Failed to open S3 raster '{gdal_src}'. "
+                f"Failed to open S3 raster (via presigned URL) for '{raw_input}'. "
                 f"Check AWS credentials and bucket access. "
                 f"GDAL error: {gdal.GetLastErrorMsg()}"
             ) from exc
@@ -132,9 +137,9 @@ def fetch_raster_layer(
     if ds is None:
         gdal_msg = gdal.GetLastErrorMsg()
         _restore_s3_config(_s3_prev)
-        if gdal_src.startswith("/vsis3/"):
+        if gdal_src.startswith("/vsicurl/"):
             raise RuntimeError(
-                f"GDAL could not open S3 raster '{gdal_src}'. "
+                f"GDAL could not open S3 raster (via presigned URL) for '{raw_input}'. "
                 f"Check AWS credentials and bucket access. "
                 f"GDAL error: {gdal_msg}"
             )
@@ -225,8 +230,49 @@ def fetch_raster_layer(
     return abs_output
 
 
+def _s3_to_vsicurl(s3_url: str, expiration: int = 3600) -> str:
+    """
+    Convert an ``s3://bucket/key`` URL into a ``/vsicurl/<presigned-https-url>``
+    path that GDAL can open via its HTTP virtual filesystem.
+
+    Using ``/vsicurl/`` instead of the legacy ``/vsis3/`` handler avoids the
+    GDAL S3 deprecation warning and works with any standard AWS credentials
+    already configured in the environment (env vars, ~/.aws/credentials, IAM
+    role, etc.).
+
+    Parameters
+    ----------
+    s3_url : str
+        Full S3 URL in the form ``s3://bucket/path/to/file.tif``.
+    expiration : int
+        Presigned URL lifetime in seconds (default 1 hour).  The URL only
+        needs to stay valid for the duration of the gdal.Open + gdal.Translate
+        call, so 3600 s is more than enough.
+
+    Returns
+    -------
+    str
+        A ``/vsicurl/<url>`` string ready to pass to ``gdal.Open``.
+    """
+    if not s3_url.startswith("s3://"):
+        raise ValueError(f"Expected an s3:// URL, got: {s3_url!r}")
+
+    without_scheme = s3_url[len("s3://"):]
+    bucket, _, key = without_scheme.partition("/")
+    if not bucket or not key:
+        raise ValueError(f"Could not parse bucket/key from S3 URL: {s3_url!r}")
+
+    s3_client = boto3.client("s3")
+    presigned_url = s3_client.generate_presigned_url(
+        "get_object",
+        Params={"Bucket": bucket, "Key": key},
+        ExpiresIn=expiration,
+    )
+    return "/vsicurl/" + presigned_url
+
+
 def _restore_s3_config(prev: dict[str, str | None]) -> None:
-    """Restore GDAL config options saved before S3 access."""
+    """Restore GDAL config options saved before S3/HTTP access."""
     for k, v in prev.items():
         gdal.SetConfigOption(k, v)  # setting None unsets the option
 

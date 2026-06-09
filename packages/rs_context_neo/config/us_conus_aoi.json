@@ -32,7 +32,7 @@
       "data_product_version": "2.4.0",
       "docs_url": "https://tools.riverscapes.net/rscontext/data/#EXVEG",
       "description": "LandFire Existing Vegetation Type (EVT) raster: Complexes of plant communities representing NatureServe's terrestrial Ecological Systems classification. The source is a single raster for the entire nation that is downloaded and then clipped to the riverscapes context project extent. This raster has the same raster properties and data extent as the DEM."
-    },
+    },    
     {
       "id": "TRANSPORTATION",
       "label": "Transportation",

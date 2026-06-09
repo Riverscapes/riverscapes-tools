@@ -75,6 +75,7 @@ def breach_depressions_least_cost(
 
     wbt = whitebox.WhiteboxTools()
     wbt.set_verbose_mode(True if debug else False)
+    wbt.set_compress_rasters(True)
 
     err = wbt.breach_depressions_least_cost(
         dem=dem_path,
