@@ -182,7 +182,7 @@
         "landfire", // Theme used as both folder name and prefix for output files
         "{env:DATA_ROOT}/../nhd/NHDPlus_H_National_Release_2_GDB.gdb",
         "{env:DATA_ROOT}/../landfire/LF2024_FBFM13_CONUS/Tif/LF2024_FBFM13_CONUS.tif",
-        "{env:DATA_ROOT}/../network_attributes",
+        "{env:DATA_ROOT}/../network_attributes/outputs",
         "--integer", // Leave this off and assumes float rasters, which means it will calculate mean and stddev. With this flag it assumes integer rasters and calculates mode and unique values instead
         "--skip", "-9999"
         // "--verbose",
@@ -198,14 +198,14 @@
       "module": "rscontext.scripts.network_attributes.scrape-vector",
       "console": "integratedTerminal",
       "args": [
-        "17", // Comma separated list of HUC2s to process
-        "ownership", // Theme used as both folder name and prefix for output files
+        "1,2,3,4,5,6,7,8,9", // Comma separated list of HUC2s to process
+        "rail", // Theme used as both folder name and prefix for output files
         "{env:DATA_ROOT}/../nhd/NHDPlus_H_National_Release_2_GDB.gdb",
-        "{env:DATA_ROOT}/../surface_management_agency_fixed.gpkg",
-        "{env:DATA_ROOT}/../network_attributes",
-        "--layer", "ownership",
-        "--fields", "sma_code",
-        "--verbose",
+        "{env:DATA_ROOT}/../roads/national_rail.gpkg",
+        "{env:DATA_ROOT}/../network_attributes/outputs",
+        "--layer", "Trans_RailFeature",
+        // "--fields", "sma_code",
+        // "--verbose",
       ]   ,
          "env": {
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"

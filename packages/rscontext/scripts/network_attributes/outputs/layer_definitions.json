@@ -18,14 +18,20 @@
                 {
                     "name": "area_sqm",
                     "dtype": "FLOAT",
-                    "friendly_name": "Catchment Area (sqm)",
-                    "description": "The area of the catchment in square meters."
+                    "data_unit": "m^2",
+                    "friendly_name": "Catchment Area",
+                    "description": "The area of the NHD catchment."
                 },
                 {
                     "name": "sma_code",
                     "dtype": "STRUCTURED",
                     "friendly_name": "Ownership Distribution",
                     "description": "A map where keys are ownership abbreviations (e.g. 'PVT', 'BLM') and values are the area (sq m) of the catchment that falls into each category."
+                },
+                {
+                    "container": "map",
+                    "key_dtype": "STRING",
+                    "val_dtype": "FLOAT"
                 }
             ]
         },
@@ -36,7 +42,7 @@
             "source_url": "https://landfire.gov/data/FullExtentDownloads?field_version_target_id=All&field_theme_target_id=All&field_region_id_target_id=4",
             "layer_type": "Vector",
             "columns": [
-                 {
+                {
                     "name": "NHDPlusID",
                     "dtype": "INTEGER",
                     "friendly_name": "NHDPlusID",
