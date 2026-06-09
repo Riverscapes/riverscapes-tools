@@ -1,0 +1,472 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "rs_context_neo",
+  "tool_schema_version": "1.0.0",
+  "layers": [
+    {
+      "layer_id": "DEM",
+      "layer_name": "DEM",
+      "path": "topography/dem.tif",
+      "layer_type": "DEM",
+      "description": "1-metre 3DEP DEM downloaded from The National Map (or user-supplied file)",
+      "summary": "Raw digital elevation model for the project extent.",
+      "theme": "Topography",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "HILLSHADE",
+      "layer_name": "DEM Hillshade",
+      "path": "topography/dem_hillshade.tif",
+      "layer_type": "HillShade",
+      "description": "Hillshade of the DEM (GDAL DEMProcessing). Produced for all DEM sources.",
+      "summary": "Shaded-relief rendering of the DEM for visual reference.",
+      "theme": "Topography",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "SLOPE",
+      "layer_name": "Slope",
+      "path": "topography/slope.tif",
+      "layer_type": "Raster",
+      "description": "Topographic slope in degrees (GDAL DEMProcessing Horn method, calculated from the raw DEM)",
+      "summary": "Slope raster in degrees derived from the raw DEM.",
+      "theme": "Topography",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "DEM_FILLED",
+      "layer_name": "Pit-filled DEM",
+      "path": "hydrology/dem_filled.tif",
+      "layer_type": "Raster",
+      "description": "DEM with topographic sinks filled (TauDEM pitremove)",
+      "summary": "Hydrologically conditioned DEM with sinks removed.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "DEM_BREACH",
+      "layer_name": "Breach-conditioned DEM",
+      "path": "hydrology/dem_breach.tif",
+      "layer_type": "Raster",
+      "description": "DEM hydrologically conditioned via least-cost depression breaching (WhiteboxTools BreachDepressionsLeastCost)",
+      "summary": "DEM with depressions breached along least-cost paths to enforce drainage.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "D8_FLOW",
+      "layer_name": "D8 Flow Direction",
+      "path": "hydrology/d8_flow.tif",
+      "layer_type": "Raster",
+      "description": "D8 flow direction raster (1-8 encoding, TauDEM d8flowdir)",
+      "summary": "D8 flow direction grid encoding the steepest-descent neighbor for each cell.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "D8_CONTRIB_AREA",
+      "layer_name": "D8 Contributing Area",
+      "path": "hydrology/d8_contributing_area.tif",
+      "layer_type": "Raster",
+      "description": "D8 flow accumulation — cell values are upstream cell counts (TauDEM aread8). Multiply by (cell size in metres)² to convert to m².",
+      "summary": "Upstream contributing area in cells for every grid cell.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "STREAM_RASTER",
+      "layer_name": "Stream Raster",
+      "path": "hydrology/stream_raster.tif",
+      "layer_type": "Raster",
+      "description": "Binary stream mask: 1 where upstream contributing area ≥ StreamThreshold cells, 0 elsewhere (TauDEM threshold)",
+      "summary": "Binary raster identifying stream cells at the configured contributing-area threshold.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "STREAM_ORDER",
+      "layer_name": "Stream Order",
+      "path": "hydrology/stream_order.tif",
+      "layer_type": "Raster",
+      "description": "Strahler stream-order raster (TauDEM streamnet)",
+      "summary": "Strahler stream-order assigned to each stream cell.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "SUBWATERSHEDS",
+      "layer_name": "Subwatersheds",
+      "path": "hydrology/subwatersheds.tif",
+      "layer_type": "Raster",
+      "description": "Subwatershed raster — one unique integer value per stream reach (TauDEM streamnet)",
+      "summary": "Raster of subwatershed catchments, one integer per reach.",
+      "theme": "Hydrology",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "TILE_FOOTPRINTS",
+      "layer_name": "DEM Tile Footprints",
+      "path": "topography/tile_footprints.gpkg",
+      "layer_type": "Geopackage",
+      "description": "Polygon footprints of every 3DEP tile downloaded. Only produced when `dem.source` is `tnm`. Contains sub-layers tile_footprints and data_footprints sharing the same schema.",
+      "summary": "Polygon footprints of downloaded 3DEP tiles with per-tile provenance attributes.",
+      "theme": "Topography",
+      "xml_metadata": {},
+      "columns": [
+        {
+          "name": "filename",
+          "dtype": "STRING",
+          "friendly_name": "Tile Filename",
+          "description": "Original filename of the 3DEP tile",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "source_path",
+          "dtype": "STRING",
+          "friendly_name": "Source Path",
+          "description": "Full path or URL of the source tile",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "original_epsg",
+          "dtype": "INTEGER",
+          "friendly_name": "Original EPSG",
+          "description": "EPSG code of the tile's native CRS",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "original_crs_name",
+          "dtype": "STRING",
+          "friendly_name": "Original CRS Name",
+          "description": "Name of the tile's native CRS",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "is_reprojected",
+          "dtype": "INTEGER",
+          "friendly_name": "Reprojected",
+          "description": "1 if the tile was reprojected to match the mosaic CRS, 0 otherwise",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "final_epsg",
+          "dtype": "INTEGER",
+          "friendly_name": "Final EPSG",
+          "description": "EPSG code of the mosaic CRS used for this tile",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "final_crs_name",
+          "dtype": "STRING",
+          "friendly_name": "Final CRS Name",
+          "description": "Name of the mosaic CRS used for this tile",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "width_px",
+          "dtype": "INTEGER",
+          "friendly_name": "Width (px)",
+          "data_unit": "px",
+          "description": "Tile width in pixels",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "height_px",
+          "dtype": "INTEGER",
+          "friendly_name": "Height (px)",
+          "data_unit": "px",
+          "description": "Tile height in pixels",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "resolution_m",
+          "dtype": "FLOAT",
+          "friendly_name": "Resolution",
+          "data_unit": "m",
+          "description": "Pixel resolution in metres",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "file_size_mb",
+          "dtype": "FLOAT",
+          "friendly_name": "File Size",
+          "data_unit": "MB",
+          "description": "File size in megabytes",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "nodata_value",
+          "dtype": "FLOAT",
+          "friendly_name": "NoData Value",
+          "description": "NoData sentinel value",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "x_min_native",
+          "dtype": "FLOAT",
+          "friendly_name": "X Min (native)",
+          "data_unit": "m",
+          "description": "West edge in native CRS units",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "y_min_native",
+          "dtype": "FLOAT",
+          "friendly_name": "Y Min (native)",
+          "data_unit": "m",
+          "description": "South edge in native CRS units",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "x_max_native",
+          "dtype": "FLOAT",
+          "friendly_name": "X Max (native)",
+          "data_unit": "m",
+          "description": "East edge in native CRS units",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "y_max_native",
+          "dtype": "FLOAT",
+          "friendly_name": "Y Max (native)",
+          "data_unit": "m",
+          "description": "North edge in native CRS units",
+          "is_key": false,
+          "is_required": false
+        }
+      ]
+    },
+    {
+      "layer_id": "HYDRODERIVATIVES",
+      "layer_name": "Hydrology Derivatives",
+      "path": "hydrology/hydro_derivatives.gpkg",
+      "layer_type": "Geopackage",
+      "description": "Hydrology derivatives GeoPackage containing two sub-layers: (1) network_intersected — one feature per stream reach (columns listed below); (2) subwatersheds — one polygon per subwatershed with a single WSNO field (integer, joins to LINKNO in network_intersected).",
+      "summary": "Stream network reaches and subwatershed polygons derived from the DEM.",
+      "theme": "Hydrology",
+      "xml_metadata": {},
+      "columns": [
+        {
+          "name": "LINKNO",
+          "dtype": "INTEGER",
+          "friendly_name": "Reach ID",
+          "description": "Unique reach identifier (TauDEM streamnet)",
+          "is_key": true,
+          "is_required": true
+        },
+        {
+          "name": "DSLINKNO",
+          "dtype": "INTEGER",
+          "friendly_name": "Downstream Reach ID",
+          "description": "LINKNO of the immediately downstream reach; -1 = outlet",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "USLINKNO1",
+          "dtype": "INTEGER",
+          "friendly_name": "Upstream Reach 1",
+          "description": "LINKNO of the first upstream reach; -1 = headwater",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "USLINKNO2",
+          "dtype": "INTEGER",
+          "friendly_name": "Upstream Reach 2",
+          "description": "LINKNO of the second upstream reach; -1 = none",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "DSNODEID",
+          "dtype": "INTEGER",
+          "friendly_name": "Downstream Node ID",
+          "description": "TauDEM internal node ID (not populated in practice)",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "strmOrder",
+          "dtype": "INTEGER",
+          "friendly_name": "Strahler Order",
+          "description": "Strahler stream order",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "Length",
+          "dtype": "FLOAT",
+          "friendly_name": "Channel Length",
+          "data_unit": "m",
+          "description": "Channel path length along D8 grid",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "Magnitude",
+          "dtype": "INTEGER",
+          "friendly_name": "Magnitude",
+          "data_unit": "reaches",
+          "description": "Number of upstream headwater reaches",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "USContArea",
+          "dtype": "FLOAT",
+          "friendly_name": "Upstream Contributing Area",
+          "data_unit": "cells",
+          "description": "D8 contributing area at the upstream end of the reach",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "DSContArea",
+          "dtype": "FLOAT",
+          "friendly_name": "Downstream Contributing Area",
+          "data_unit": "cells",
+          "description": "D8 contributing area at the downstream end of the reach",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "strmDrop",
+          "dtype": "FLOAT",
+          "friendly_name": "Stream Drop",
+          "data_unit": "m",
+          "description": "Elevation drop from upstream to downstream end",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "Slope",
+          "dtype": "FLOAT",
+          "friendly_name": "Slope",
+          "data_unit": "m/m",
+          "description": "Average channel gradient (strmDrop / Length)",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "StraightL",
+          "dtype": "FLOAT",
+          "friendly_name": "Straight-Line Length",
+          "data_unit": "m",
+          "description": "Straight-line distance between reach endpoints",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "WSNO",
+          "dtype": "INTEGER",
+          "friendly_name": "Subwatershed ID",
+          "description": "Subwatershed number; matches subwatersheds layer and raster",
+          "is_key": false,
+          "is_required": true
+        },
+        {
+          "name": "DOUTEND",
+          "dtype": "FLOAT",
+          "friendly_name": "Distance to Outlet (end)",
+          "data_unit": "m",
+          "description": "Distance along flow path from downstream end to outlet",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "DOUTSTART",
+          "dtype": "FLOAT",
+          "friendly_name": "Distance to Outlet (start)",
+          "data_unit": "m",
+          "description": "Distance along flow path from upstream end to outlet",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "DOUTMID",
+          "dtype": "FLOAT",
+          "friendly_name": "Distance to Outlet (mid)",
+          "data_unit": "m",
+          "description": "Distance along flow path from reach midpoint to outlet",
+          "is_key": false,
+          "is_required": false
+        },
+        {
+          "name": "level_path",
+          "dtype": "FLOAT",
+          "friendly_name": "Level Path",
+          "description": "Unique level-path ID assigned by walking the network from headwaters to outlet (Step 7)",
+          "is_key": false,
+          "is_required": false
+        }
+      ]
+    },
+    {
+      "layer_id": "BREACH_DIFF_POINTS",
+      "layer_name": "Breach Difference Points",
+      "path": "hydrology/breach_diff_points.gpkg",
+      "layer_type": "Geopackage",
+      "description": "Debug layer: point feature at every pixel where the original DEM elevation exceeds the breach-conditioned DEM by ≥ 0.001 m (1 mm). Only produced when --debug is set.",
+      "summary": "Debug points where DEM breaching altered the elevation by ≥ 1 mm.",
+      "theme": "Hydrology",
+      "xml_metadata": {},
+      "columns": [
+        {
+          "name": "diff_m",
+          "dtype": "FLOAT",
+          "friendly_name": "Elevation Difference",
+          "data_unit": "m",
+          "description": "Magnitude of elevation change (original DEM minus breach DEM) at this pixel",
+          "is_key": false,
+          "is_required": true
+        }
+      ]
+    },
+    {
+      "layer_id": "LANDFIRE_EVT",
+      "layer_name": "Existing Vegetation Type",
+      "path": "vegetation/existing_veg.tif",
+      "layer_type": "Raster",
+      "description": "LandFire Existing Vegetation Type (EVT) raster clipped to the project extent.",
+      "summary": "LANDFIRE EVT land-cover classification clipped to the project extent.",
+      "theme": "Vegetation",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "ROADS",
+      "layer_name": "Roads",
+      "path": "transportation/roads.gpkg",
+      "layer_type": "Geopackage",
+      "description": "Road centrelines fetched from AWS S3 Tables via Athena and clipped to the project extent.",
+      "summary": "Road centrelines clipped to the project extent.",
+      "theme": "Transportation",
+      "xml_metadata": {}
+    },
+    {
+      "layer_id": "RAIL",
+      "layer_name": "Rail",
+      "path": "transportation/rail.gpkg",
+      "layer_type": "Geopackage",
+      "description": "Railway centrelines fetched from AWS S3 Tables via Athena and clipped to the project extent.",
+      "summary": "Railway centrelines clipped to the project extent.",
+      "theme": "Transportation",
+      "xml_metadata": {}
+    }
+  ]
+}

@@ -2,42 +2,44 @@
   "$schema": "../config.schema.json",
   "profile_name": "US Contiguous States (CONUS)",
   "description": "Standard RS Context Neo configuration for the contiguous United States and Alaska. Uses USGS 3DEP 1 m DEM tiles via The National Map tile API, with optional transportation layers (roads and rail) from AWS S3 Tables via Athena. Set the required environment variables in your .env file before running.",
-  "download_dir": "{env:DOWNLOAD_DIR}",
-  "scratch_dir": "{env:SCRATCH_DIR}",
-
-  "dem": {
-    "source": "tnm",
-    "aoi": "{env:AOI_GEOJSON_PATH}",
-    "resolution": 1.0,
-    "tnm_options": {
-      "download_workers": 4,
-      "buffer_deg": 0.01
-    }
-  },
-
-  "hydrology": {
-    "threshold": 50000,
-    "breach_dist": 100,
-    "cores": null
+  "parameters": {
+    "download_dir": "{env:DOWNLOAD_DIR}",
+    "scratch_dir": "{env:SCRATCH_DIR}",
+    "hydrology_threshold": 50000,
+    "hydrology_breach_dist": 100,
+    "taudem_cpu_cores": null
   },
 
   "layers": [
     {
-      "id": "TRANSPORTATION",
-      "label": "Transportation",
+      "layer_id": "DEM",
+      "label": "Digital Elevation Model",
+      "type": "dem",
+      "source": "tnm",
+      "aoi": "{env:AOI_GEOJSON_PATH}",
+      "resolution": 1.0,
+      "tnm_options": {
+        "download_workers": 4,
+        "buffer_deg": 0.01
+      }
+    },
+    {
+      "layer_id": "ROADS",
+      "label": "Roads",
       "type": "s3tables",
-      "output_path": "transportation/transportation.gpkg",
+      "output_path": "transportation/roads.gpkg",
+      "layer_name": "roads",
       "athena_output": "{env:ATHENA_OUTPUT}",
-      "sublayers": [
-        {
-          "layer_name": "roads",
-          "s3tables_path": "{env:ROADS_S3TABLES_PATH}"
-        },
-        {
-          "layer_name": "rail",
-          "s3tables_path": "{env:RAIL_S3TABLES_PATH}"
-        }
-      ]
+      "s3tables_path": "{env:ROADS_S3TABLES_PATH}"
+    },
+    {
+      "layer_id": "RAIL",
+      "label": "Railway",
+      "type": "s3tables",
+      "output_path": "transportation/rail.gpkg",
+      "layer_name": "rail",
+      "athena_output": "{env:ATHENA_OUTPUT}",
+      "s3tables_path": "{env:RAIL_S3TABLES_PATH}"
     }
   ],
 

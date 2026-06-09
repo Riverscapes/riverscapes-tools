@@ -17,8 +17,6 @@ from rsxml.util import safe_makedirs
 
 from rscontextneo.src.utils.athena_to_gpkg import athena_to_gpkg
 
-# Relative path (from output_folder) for the transportation GeoPackage.
-TRANSPORTATION_GPKG_RELPATH = "transportation/transportation.gpkg"
 
 
 def parse_s3tables_arg(arg: str) -> tuple[str, str, str]:
@@ -55,33 +53,32 @@ def parse_s3tables_arg(arg: str) -> tuple[str, str, str]:
 
 def fetch_transportation(
     output_folder: str,
-    rail_arg: Optional[str],
-    roads_arg: Optional[str],
+    layer_name: str,
+    s3tables_path: str,
+    output_path: str,
     athena_output: str,
     log: Logger,
     aoi_geojson: Optional[str] = None,
 ) -> None:
-    """Fetch rail and/or roads layers from Athena S3 Tables into a GeoPackage.
+    """Fetch a single transportation layer from Athena S3 Tables into a GeoPackage.
 
-    Creates (or updates) ``transportation/transportation.gpkg`` inside
-    *output_folder*.  Layers are named ``'rail'`` and ``'roads'``
-    respectively.
-
-    The function is a no-op when both *rail_arg* and *roads_arg* are ``None``.
+    Writes the layer into *output_path* (an absolute path to a GeoPackage).
+    The layer is named *layer_name* inside the GeoPackage.
 
     Parameters
     ----------
     output_folder : str
-        Root of the RS Context Neo project output folder.
-    rail_arg : str or None
-        S3 Tables path for the rail layer, e.g.
-        ``'s3tablescatalog/riverscapes-data/demo/transportation_rail'``.
-        Pass ``None`` to skip.
-    roads_arg : str or None
-        S3 Tables path for the roads layer.  Pass ``None`` to skip.
+        Root of the RS Context Neo project output folder (used only for
+        creating parent directories).
+    layer_name : str
+        OGR layer name inside the output GeoPackage (e.g. ``'roads'`` or
+        ``'rail'``).
+    s3tables_path : str
+        S3 Tables path in format ``'<catalog>/<namespace>/<table>'``.
+    output_path : str
+        Absolute path to the output GeoPackage file.
     athena_output : str
-        S3 URI where Athena should write query result files, e.g.
-        ``'s3://riverscapes-data/athena-results/'``.
+        S3 URI where Athena should write query result files.
     log :
         Caller-supplied rsxml ``Logger`` (or any object with ``.info()`` /
         ``.warning()`` methods).
@@ -91,15 +88,10 @@ def fetch_transportation(
         to only return features that intersect the AOI bounding geometry.
         Pass ``None`` (default) to fetch all rows.
     """
-    if rail_arg is None and roads_arg is None:
-        log.info("  No transportation args provided — skipping transportation fetch")
-        return
-
     # Import boto3 lazily so that missing boto3 doesn't break non-transportation runs.
     import boto3  # pylint: disable=import-outside-toplevel
 
-    gpkg_path = os.path.join(output_folder, TRANSPORTATION_GPKG_RELPATH)
-    safe_makedirs(os.path.dirname(gpkg_path))
+    safe_makedirs(os.path.dirname(output_path))
 
     athena_client = boto3.client("athena")
 
@@ -109,15 +101,9 @@ def fetch_transportation(
         from shapely.geometry import shape  # pylint: disable=import-outside-toplevel
         from shapely.ops import unary_union  # pylint: disable=import-outside-toplevel
 
-        # Hard-fail for file / parse errors: FileNotFoundError, OSError, and
-        # JSONDecodeError all propagate to the caller unchanged so the problem
-        # is surfaced immediately rather than silently fetching all rows.
         with open(aoi_geojson, "r", encoding="utf-8") as fh:
             geojson_data = json.load(fh)
 
-        # Soft-fail only for shapely / geometry-processing failures.  Edge-case
-        # geometry errors (e.g. degenerate polygons) are tolerated by degrading
-        # to an un-filtered query and emitting a warning.
         try:
             geom_type = geojson_data.get("type", "")
             if geom_type == "FeatureCollection":
@@ -129,7 +115,6 @@ def fetch_transportation(
             elif geom_type == "Feature":
                 geometries = [shape(geojson_data["geometry"])]
             else:
-                # Bare geometry (Polygon, MultiPolygon, etc.)
                 geometries = [shape(geojson_data)]
 
             if geometries:
@@ -141,26 +126,19 @@ def fetch_transportation(
             log.warning(f"  Failed to derive AOI WKT from GeoJSON — spatial filter skipped: {exc}")
             aoi_wkt = None
 
-    layers: list[tuple[str, str]] = []
-    if roads_arg is not None:
-        layers.append(("roads", roads_arg))
-    if rail_arg is not None:
-        layers.append(("rail", rail_arg))
-
-    for layer_name, arg in layers:
-        catalog, namespace, table_name = parse_s3tables_arg(arg)
-        log.info(
-            f"  Fetching transportation layer '{layer_name}' "
-            f"from {catalog}/{namespace}/{table_name}"
-        )
-        athena_to_gpkg(
-            athena_client=athena_client,
-            database=namespace,
-            table_name=table_name,
-            gpkg_path=gpkg_path,
-            s3_output_location=athena_output,
-            layer_name=layer_name,
-            catalog=catalog,
-            aoi_wkt=aoi_wkt,
-        )
-        log.info(f"  Transportation layer '{layer_name}' written to {gpkg_path}")
+    catalog, namespace, table_name = parse_s3tables_arg(s3tables_path)
+    log.info(
+        f"  Fetching transportation layer '{layer_name}' "
+        f"from {catalog}/{namespace}/{table_name}"
+    )
+    athena_to_gpkg(
+        athena_client=athena_client,
+        database=namespace,
+        table_name=table_name,
+        gpkg_path=output_path,
+        s3_output_location=athena_output,
+        layer_name=layer_name,
+        catalog=catalog,
+        aoi_wkt=aoi_wkt,
+    )
+    log.info(f"  Transportation layer '{layer_name}' written to {output_path}")

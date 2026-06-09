@@ -175,8 +175,8 @@ def rs_context_neo(
                     dem_path,
                     config.dem.filepath,
                     creationOptions=[
-                        "COMPRESS=LZW",
-                        "PREDICTOR=2",
+                        "COMPRESS=DEFLATE",
+                        "PREDICTOR=3",
                         "TILED=YES",
                         "BIGTIFF=IF_SAFER",
                     ],
@@ -343,21 +343,14 @@ def _fetch_layer(
             fetch_transportation,
         )
 
-        rail_path = next(
-            (s.s3tables_path for s in layer_cfg.sublayers if s.layer_name == "rail"),
-            None,
-        )
-        roads_path = next(
-            (s.s3tables_path for s in layer_cfg.sublayers if s.layer_name == "roads"),
-            None,
-        )
-        log.info(f"  [{layer_cfg.type}] {layer_cfg.id} → {layer_cfg.output_path}")
+        log.info(f"  [{layer_cfg.type}] {layer_cfg.layer_id} → {layer_cfg.output_path}")
         fetch_transportation(
-            output_folder,
-            rail_path,
-            roads_path,
-            layer_cfg.athena_output,
-            log,
+            output_folder=output_folder,
+            layer_name=layer_cfg.layer_name,
+            s3tables_path=layer_cfg.s3tables_path,
+            output_path=os.path.join(output_folder, layer_cfg.output_path),
+            athena_output=layer_cfg.athena_output,
+            log=log,
             aoi_geojson=bounds_geojson,
         )
 
@@ -366,27 +359,27 @@ def _fetch_layer(
             fetch_raster_layer,
         )
 
-        log.info(f"  [raster] {layer_cfg.id} \u2192 {layer_cfg.output_path}")
+        log.info(f"  [raster] {layer_cfg.layer_id} \u2192 {layer_cfg.output_path}")
         fetch_raster_layer(layer_cfg, output_folder, bounds_geojson, log, force=force)
 
     elif isinstance(layer_cfg, CogClipLayerConfig):
         log.warning(
-            f"  Layer type 'cog_clip' not yet implemented — skipping '{layer_cfg.id}'"
+            f"  Layer type 'cog_clip' not yet implemented — skipping '{layer_cfg.layer_id}'"
         )
 
     elif isinstance(layer_cfg, WfsLayerConfig):
         log.warning(
-            f"  Layer type 'wfs' not yet implemented — skipping '{layer_cfg.id}'"
+            f"  Layer type 'wfs' not yet implemented — skipping '{layer_cfg.layer_id}'"
         )
 
     elif isinstance(layer_cfg, WcsRasterLayerConfig):
         log.warning(
-            f"  Layer type 'wcs_raster' not yet implemented — skipping '{layer_cfg.id}'"
+            f"  Layer type 'wcs_raster' not yet implemented — skipping '{layer_cfg.layer_id}'"
         )
 
     else:
         log.warning(
-            f"  Unknown layer type — skipping '{getattr(layer_cfg, 'id', '?')}'"
+            f"  Unknown layer type — skipping '{getattr(layer_cfg, 'layer_id', '?')}'"
         )
 
 

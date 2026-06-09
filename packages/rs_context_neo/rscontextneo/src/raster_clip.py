@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import os
 
-import boto3
 from osgeo import gdal, osr
 from rsxml import Logger
 from rsxml.util import safe_makedirs
@@ -64,7 +63,7 @@ def fetch_raster_layer(
     # ── 2. Skip if output exists and force is False ────────────────────────────
     if os.path.isfile(abs_output) and not force:
         log.info(
-            f"  [raster] {layer_cfg.id}: output already exists at "
+            f"  [raster] {layer_cfg.layer_id}: output already exists at "
             f"{os.path.basename(abs_output)} — skipping (use force=True to re-clip)"
         )
         return abs_output
@@ -95,7 +94,7 @@ def fetch_raster_layer(
         try:
             if os.path.samefile(gdal_src, abs_output):
                 log.info(
-                    f"  [{layer_cfg.id}] Source and output are the same file — "
+                    f"  [{layer_cfg.layer_id}] Source and output are the same file — "
                     f"skipping clip (already in project folder): {abs_output}"
                 )
                 return abs_output
@@ -262,6 +261,7 @@ def _s3_to_vsicurl(s3_url: str, expiration: int = 3600) -> str:
     if not bucket or not key:
         raise ValueError(f"Could not parse bucket/key from S3 URL: {s3_url!r}")
 
+    import boto3  # pylint: disable=import-outside-toplevel
     s3_client = boto3.client("s3")
     presigned_url = s3_client.generate_presigned_url(
         "get_object",

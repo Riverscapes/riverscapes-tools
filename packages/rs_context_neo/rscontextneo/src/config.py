@@ -110,22 +110,15 @@ class HydrologyConfig:
 
 
 @dataclass
-class S3TablesSubLayer:
-    """One sublayer (table) within an S3 Tables layer."""
-
-    layer_name: str
-    s3tables_path: str
-
-
-@dataclass
 class S3TablesLayerConfig:
-    """Fetches vector sublayers from AWS Athena S3 Tables."""
+    """Fetches a single vector layer from AWS Athena S3 Tables."""
 
-    id: str
+    layer_id: str
     label: str
     output_path: str
+    layer_name: str
     athena_output: str
-    sublayers: list  # list[S3TablesSubLayer]
+    s3tables_path: str
     type: str = "s3tables"
 
 
@@ -133,7 +126,7 @@ class S3TablesLayerConfig:
 class CogClipLayerConfig:
     """Clips a Cloud-Optimized GeoTIFF (or any GDAL-readable raster) to the AOI."""
 
-    id: str
+    layer_id: str
     label: str
     output_path: str
     url: str
@@ -146,7 +139,7 @@ class CogClipLayerConfig:
 class WfsLayerConfig:
     """Fetches vector features from an OGC WFS endpoint."""
 
-    id: str
+    layer_id: str
     label: str
     output_path: str
     url: str
@@ -160,7 +153,7 @@ class WfsLayerConfig:
 class WcsRasterLayerConfig:
     """Fetches a raster coverage from an OGC WCS endpoint."""
 
-    id: str
+    layer_id: str
     label: str
     output_path: str
     url: str
@@ -174,7 +167,7 @@ class WcsRasterLayerConfig:
 class RasterLayerConfig:
     """Clips a raster (local file or S3 COG) to the project extent."""
 
-    id: str
+    layer_id: str
     label: str
     input: str        # source: relative path, absolute path, or s3:// URI
     output_path: str  # resolved output path relative to project folder
@@ -205,7 +198,7 @@ class RSContextNeoConfig:
 
     dem: DemConfig
     hydrology: HydrologyConfig
-    layers: list  # list[LayerConfig]
+    layers: list[LayerConfig]
     metadata: dict = field(default_factory=dict)
     profile_name: str = ""
     description: str = ""
@@ -430,17 +423,31 @@ def _validate(doc: dict, config_path: Path) -> None:
 
 
 def _parse_config(raw: dict) -> RSContextNeoConfig:
-    dem = _parse_dem(raw["dem"])
-    # Top-level download_dir / scratch_dir are the canonical location in the
-    # config JSON.  Propagate them into DemConfig when the dem-level ones are absent.
+    params = raw.get("parameters", {})
+
+    # Find the DEM layer entry in the layers array
+    dem_raw_list = [lyr for lyr in raw.get("layers", []) if lyr.get("type") == "dem"]
+    if len(dem_raw_list) == 0:
+        raise ConfigValidationError(
+            "No DEM layer found in config 'layers' array. "
+            "Add an entry with \"type\": \"dem\" and \"layer_id\": \"DEM\"."
+        )
+    if len(dem_raw_list) > 1:
+        raise ConfigValidationError(
+            f"Found {len(dem_raw_list)} layers with type 'dem' \u2014 exactly one is required."
+        )
+    dem = _parse_dem(dem_raw_list[0])
+    # Propagate from parameters block
     if dem.download_dir is None:
-        dem.download_dir = raw.get("download_dir")
+        dem.download_dir = params.get("download_dir")
     if dem.scratch_dir is None:
-        dem.scratch_dir = raw.get("scratch_dir")
+        dem.scratch_dir = params.get("scratch_dir")
     return RSContextNeoConfig(
         dem=dem,
-        hydrology=_parse_hydrology(raw.get("hydrology", {})),
-        layers=[_parse_layer(lyr) for lyr in raw.get("layers", [])],
+        hydrology=_parse_hydrology(params),
+        # Exclude the DEM layer from the regular layers list — it's handled
+        # separately above and stored in RSContextNeoConfig.dem.
+        layers=[_parse_layer(lyr) for lyr in raw.get("layers", []) if lyr.get("type") != "dem"],
         metadata=raw.get("metadata", {}),
         profile_name=raw.get("profile_name", ""),
         description=raw.get("description", ""),
@@ -449,6 +456,9 @@ def _parse_config(raw: dict) -> RSContextNeoConfig:
 
 def _parse_dem(raw: dict) -> DemConfig:
     source = raw["source"]
+
+    tnm_opts: TnmOptions = TnmOptions()
+    wcs_opts: Optional[WcsOptions] = None
 
     # ── Validate conditional structure based on source type ───────────────────
     if source in ("tnm", "wcs"):
@@ -467,9 +477,7 @@ def _parse_dem(raw: dict) -> DemConfig:
             download_workers=tnm_raw.get("download_workers", 4),
             buffer_deg=tnm_raw.get("buffer_deg", 0.01),
         )
-
         wcs_raw = raw.get("wcs_options")
-        wcs_opts: Optional[WcsOptions] = None
         if wcs_raw is not None:
             wcs_opts = WcsOptions(
                 url=wcs_raw["url"],
@@ -484,18 +492,17 @@ def _parse_dem(raw: dict) -> DemConfig:
             )
 
     elif source == "file":
-        if "filepath" not in raw or not os.path.isfile(raw["filepath"]):
+        if "filepath" not in raw or not raw["filepath"]:
             raise ConfigValidationError(
-                "dem.source is 'file' but 'filepath' is missing or invalid. "
-                'Provide: {"source": "file", "filepath": "..."}'
+                "dem.source is 'file' but 'filepath' is missing or empty. "
+                'Provide: {"source": "file", "filepath": "/path/to/dem.tif"}'
             )
         tnm_raw = raw.get("tnm_options") or {}
         tnm_opts = TnmOptions(
             download_workers=tnm_raw.get("download_workers", 4),
             buffer_deg=tnm_raw.get("buffer_deg", 0.01),
         )
-        wcs_raw = raw.get("wcs_options")
-        wcs_opts: Optional[WcsOptions] = None
+        # wcs_opts stays None (set above the if block)
     else:
         raise ConfigValidationError(
             f"dem.source must be one of 'tnm', 'wcs', or 'file'. Got: '{source}'"
@@ -504,8 +511,8 @@ def _parse_dem(raw: dict) -> DemConfig:
     return DemConfig(
         source=source,
         resolution=raw.get("resolution", 1.0),
-        download_dir=raw.get("download_dir"),
-        scratch_dir=raw.get("scratch_dir"),
+        download_dir=None,   # populated by _parse_config from parameters block
+        scratch_dir=None,    # populated by _parse_config from parameters block
         aoi=raw.get("aoi"),
         tnm_options=tnm_opts,
         wcs_options=wcs_opts,
@@ -515,34 +522,34 @@ def _parse_dem(raw: dict) -> DemConfig:
 
 def _parse_hydrology(raw: dict) -> HydrologyConfig:
     return HydrologyConfig(
-        threshold=raw.get("threshold", 50_000),
-        breach_dist=raw.get("breach_dist", 100),
-        cores=raw.get("cores"),
+        threshold=raw.get("hydrology_threshold", 50_000),
+        breach_dist=raw.get("hydrology_breach_dist", 100),
+        cores=raw.get("taudem_cpu_cores"),
     )
 
 
 def _parse_layer(raw: dict) -> LayerConfig:
     ltype = raw["type"]
 
+    if ltype == "dem":
+        raise ValueError(
+            "Layer type 'dem' must not be passed to _parse_layer — "
+            "it is extracted separately in _parse_config."
+        )
+
     if ltype == "s3tables":
-        sublayers = [
-            S3TablesSubLayer(
-                layer_name=s["layer_name"],
-                s3tables_path=s["s3tables_path"],
-            )
-            for s in raw["sublayers"]
-        ]
         return S3TablesLayerConfig(
-            id=raw["id"],
+            layer_id=raw["layer_id"],
             label=raw["label"],
             output_path=raw["output_path"],
+            layer_name=raw["layer_name"],
             athena_output=raw["athena_output"],
-            sublayers=sublayers,
+            s3tables_path=raw["s3tables_path"],
         )
 
     if ltype == "cog_clip":
         return CogClipLayerConfig(
-            id=raw["id"],
+            layer_id=raw["layer_id"],
             label=raw["label"],
             output_path=raw["output_path"],
             url=raw["url"],
@@ -552,7 +559,7 @@ def _parse_layer(raw: dict) -> LayerConfig:
 
     if ltype == "wfs":
         return WfsLayerConfig(
-            id=raw["id"],
+            layer_id=raw["layer_id"],
             label=raw["label"],
             output_path=raw["output_path"],
             url=raw["url"],
@@ -563,7 +570,7 @@ def _parse_layer(raw: dict) -> LayerConfig:
 
     if ltype == "wcs_raster":
         return WcsRasterLayerConfig(
-            id=raw["id"],
+            layer_id=raw["layer_id"],
             label=raw["label"],
             output_path=raw["output_path"],
             url=raw["url"],
@@ -579,11 +586,11 @@ def _parse_layer(raw: dict) -> LayerConfig:
             if raw_input.startswith("s3://") or os.path.isabs(raw_input):
                 # Derive from basename
                 basename = os.path.basename(raw_input.rstrip("/"))
-                output_path = f"{raw['id'].lower()}/{basename}"
+                output_path = f"{raw['layer_id'].lower()}/{basename}"
             else:
                 output_path = raw_input
         return RasterLayerConfig(
-            id=raw["id"],
+            layer_id=raw["layer_id"],
             label=raw["label"],
             input=raw_input,
             output_path=output_path,

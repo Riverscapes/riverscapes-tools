@@ -63,5 +63,12 @@
     },
     "python.defaultInterpreterPath": "${workspaceFolder:🏠 Git Root}/.venv/bin/python",
     "python.testing.autoTestDiscoverOnSaveEnabled": false,
+    "json.schemas": [
+      {
+        "url": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+        "fileMatch": ["**/layer_definitions.json"]
+      }
+    ],
+    "json.schemaDownload.enable": true
   }
 }

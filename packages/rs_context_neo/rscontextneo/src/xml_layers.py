@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import os
 from datetime import datetime
 
@@ -23,218 +24,110 @@ from rsxml.util import pretty_duration
 
 from rscontextneo.__version__ import __version__
 from rscontextneo.src.config import AppConfig, RasterLayerConfig, S3TablesLayerConfig
-from rscontextneo.src.fetch_dem import (
-    SLOPE_RELPATH,
-    TILE_FOOTPRINTS_RELPATH,
-)
-from rscontextneo.src.utils.breach_diff import (
-    BREACH_DIFF_GPKG_RELPATH,
-    BREACH_DIFF_LAYER_NAME,
-)
 from rscontextneo.src.utils.geom import load_geojson_geometry
 
 initGDALOGRErrors()
 
+# ── JSON layer definitions ─────────────────────────────────────────────────────
+_JSON_PATH = os.path.join(os.path.dirname(__file__), "layer_definitions.json")
+
+# Sub-layer structure for Geopackage datasets.  The JSON captures metadata but
+# not the internal layer list (lyr_name / display name pairs), so those are
+# declared here as a single source of truth.
+_GPKG_SUB_LAYERS: dict[str, list[GeopackageLayer]] = {
+    "TILE_FOOTPRINTS": [
+        GeopackageLayer(
+            lyr_name="tile_footprints",
+            name="DEM Tile Footprints",
+            ds_type=GeoPackageDatasetTypes.VECTOR,
+        ),
+        GeopackageLayer(
+            lyr_name="data_footprints",
+            name="DEM Data Footprints",
+            ds_type=GeoPackageDatasetTypes.VECTOR,
+        ),
+    ],
+    "HYDRODERIVATIVES": [
+        GeopackageLayer(
+            lyr_name="network_intersected",
+            name="Stream Network Reaches",
+            ds_type=GeoPackageDatasetTypes.VECTOR,
+        ),
+        GeopackageLayer(
+            lyr_name="subwatersheds",
+            name="Subwatersheds",
+            ds_type=GeoPackageDatasetTypes.VECTOR,
+        ),
+    ],
+    "BREACH_DIFF_POINTS": [
+        GeopackageLayer(
+            lyr_name="breach_diff_points",
+            name="Breach Difference Points",
+            ds_type=GeoPackageDatasetTypes.VECTOR,
+        ),
+    ],
+}
+
+
+def _build_meta_data(layer: dict) -> MetaData | None:
+    """Build a MetaData object from a layer's ``xml_metadata`` dict."""
+    items = [Meta(k, v) for k, v in layer.get("xml_metadata", {}).items()]
+    return MetaData(items) if items else None
+
+
+def _load_layer_types() -> dict[str, Dataset | Geopackage]:
+    """
+    Parse ``layer_definitions.json`` and return a ``LayerTypes`` registry
+    keyed by ``layer_id``.
+
+    Non-Geopackage layers become :class:`Dataset` instances; Geopackage layers
+    become :class:`Geopackage` instances whose sub-layers are sourced from
+    :data:`_GPKG_SUB_LAYERS`.
+    """
+    with open(_JSON_PATH, encoding="utf-8") as fh:
+        data = json.load(fh)
+
+    result: dict[str, Dataset | Geopackage] = {}
+    for layer in data["layers"]:
+        layer_id: str = layer["layer_id"]
+        name: str = layer["layer_name"]
+        path: str = layer["path"]
+        layer_type: str = layer["layer_type"]
+        description: str | None = layer.get("description")
+        summary: str | None = layer.get("summary")
+        citation: str | None = layer.get("citation")
+        meta_data = _build_meta_data(layer)
+
+        if layer_type == "Geopackage":
+            result[layer_id] = Geopackage(
+                xml_id=layer_id,
+                name=name,
+                path=path,
+                layers=_GPKG_SUB_LAYERS.get(layer_id, []),
+                description=description,
+                summary=summary,
+                citation=citation,
+                meta_data=meta_data,
+            )
+        else:
+            result[layer_id] = Dataset(
+                xml_id=layer_id,
+                name=name,
+                path=path,
+                ds_type=layer_type,
+                description=description,
+                summary=summary,
+                citation=citation,
+                meta_data=meta_data,
+            )
+
+    return result
+
+
 # ── Layer registry ─────────────────────────────────────────────────────────────
 # All paths are relative to the project output_folder root.
 # Keys are referenced by name when adding datasets to the realization.
-LayerTypes: dict[str, Dataset | Geopackage] = {
-    # ── Inputs ──────────────────────────────────────────────────────────────
-    "DEM": Dataset(
-        xml_id="DEM",
-        name="DEM",
-        path="topography/dem.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description", "1-metre 3DEP DEM downloaded from The National Map"
-                ),
-            ]
-        ),
-    ),
-    "HILLSHADE": Dataset(
-        xml_id="HILLSHADE",
-        name="DEM Hillshade",
-        path="topography/dem_hillshade.tif",
-        ds_type="Raster",
-    ),
-    "TILE_FOOTPRINTS": Geopackage(
-        xml_id="TILE_FOOTPRINTS",
-        name="DEM Tile Footprints",
-        path=TILE_FOOTPRINTS_RELPATH,
-        layers=[
-            GeopackageLayer(
-                lyr_name="tile_footprints",
-                name="DEM Tile Footprints",
-                ds_type=GeoPackageDatasetTypes.VECTOR,
-            ),
-        ],
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "Polygon footprint of every 3DEP tile downloaded for this project. "
-                    "Attributes record each tile's original filename, native CRS (original_epsg / "
-                    "original_crs_name), whether it required reprojection to be included in the "
-                    "mosaic (is_reprojected = 1), the final mosaic CRS (final_epsg / final_crs_name), "
-                    "pixel dimensions, resolution, file size, and nodata value.",
-                ),
-            ]
-        ),
-    ),
-    # ── Intermediates ────────────────────────────────────────────────────────
-    "DEM_FILLED": Dataset(
-        xml_id="DEM_FILLED",
-        name="Pit-filled DEM",
-        path="hydrology/dem_filled.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "DEM with topographic sinks filled (TauDEM pitremove)",
-                ),
-            ]
-        ),
-    ),
-    "DEM_BREACH": Dataset(
-        xml_id="DEM_BREACH",
-        name="Breach-conditioned DEM",
-        path="hydrology/dem_breach.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "DEM hydrologically conditioned via least-cost depression breaching (WhiteboxTools BreachDepressionsLeastCost)",
-                ),
-            ]
-        ),
-    ),
-    "D8_FLOW": Dataset(
-        xml_id="D8_FLOW",
-        name="D8 Flow Direction",
-        path="hydrology/d8_flow.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "D8 flow direction raster (1-8 encoding, TauDEM d8flowdir)",
-                ),
-            ]
-        ),
-    ),
-    "SLOPE": Dataset(
-        xml_id="SLOPE",
-        name="Slope",
-        path=SLOPE_RELPATH,
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "Topographic slope in degrees (gdal.DEMProcessing Horn method, calculated from the raw DEM)",
-                ),
-            ]
-        ),
-    ),
-    "D8_CONTRIB_AREA": Dataset(
-        xml_id="D8_CONTRIB_AREA",
-        name="D8 Contributing Area",
-        path="hydrology/d8_contributing_area.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "D8 flow accumulation raster — cell values are upstream cell counts (TauDEM aread8). Multiply by (cell size in metres)² to convert to m².",
-                ),
-            ]
-        ),
-    ),
-    # ── Outputs ──────────────────────────────────────────────────────────────
-    "STREAM_RASTER": Dataset(
-        xml_id="STREAM_RASTER",
-        name="Stream Raster",
-        path="hydrology/stream_raster.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "Binary stream mask: 1 where upstream contributing area ≥ StreamThreshold cells, 0 elsewhere (TauDEM threshold)",
-                ),
-            ]
-        ),
-    ),
-    "STREAM_ORDER": Dataset(
-        xml_id="STREAM_ORDER",
-        name="Stream Order",
-        path="hydrology/stream_order.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta("Description", "Strahler stream-order raster (TauDEM streamnet)"),
-            ]
-        ),
-    ),
-    "HYDRODERIVATIVES": Geopackage(
-        xml_id="HYDRODERIVATIVES",
-        name="Hydrology Derivatives",
-        path="hydrology/hydro_derivatives.gpkg",
-        layers=[
-            GeopackageLayer(
-                lyr_name="network_intersected",
-                name="Stream Network Reaches",
-                ds_type=GeoPackageDatasetTypes.VECTOR,
-            ),
-            GeopackageLayer(
-                lyr_name="subwatersheds",
-                name="Subwatersheds",
-                ds_type=GeoPackageDatasetTypes.VECTOR,
-            ),
-        ],
-    ),
-    "SUBWATERSHEDS": Dataset(
-        xml_id="SUBWATERSHEDS",
-        name="Subwatersheds",
-        path="hydrology/subwatersheds.tif",
-        ds_type="Raster",
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "Subwatershed raster — one unique value per stream reach (TauDEM streamnet)",
-                ),
-            ]
-        ),
-    ),
-    "BREACH_DIFF_POINTS": Geopackage(
-        xml_id="BREACH_DIFF_POINTS",
-        name="Breach Difference Points",
-        path=BREACH_DIFF_GPKG_RELPATH,
-        layers=[
-            GeopackageLayer(
-                lyr_name=BREACH_DIFF_LAYER_NAME,
-                name="Breach Difference Points",
-                ds_type=GeoPackageDatasetTypes.VECTOR,
-            ),
-        ],
-        meta_data=MetaData(
-            [
-                Meta(
-                    "Description",
-                    "Debug layer: point feature at every pixel where the original DEM "
-                    "elevation exceeds the breach-conditioned DEM by \u2265 1 m. "
-                    "The diff_m attribute records the magnitude of the elevation change. "
-                    "Only produced when --debug is set.",
-                ),
-            ]
-        ),
-    ),
-}
+LayerTypes: dict[str, Dataset | Geopackage] = _load_layer_types()
 
 
 def build_project_bounds(
@@ -324,6 +217,108 @@ def _dataset_exists(output_folder: str, dataset: Dataset | Geopackage) -> bool:
     return True
 
 
+def _build_merged_layer_types(
+    config_layers: list,
+    output_folder: str,
+    log: Logger,
+) -> dict[str, "Dataset | Geopackage"]:
+    """
+    Return a per-run copy of the LayerTypes registry with overrides applied
+    from config layer entries where layer_ids match.
+
+    Merge mapping (config field -> definition field):
+      label        -> name  (display name)
+      output_path  -> path
+      description  -> description
+
+    For RasterLayerConfig: extra Meta items (source_url, data_product_version,
+    docs_url, CellSizeX, CellSizeY) are attached as meta_data on the Dataset.
+
+    For S3TablesLayerConfig: sub-layers are derived from layer_cfg.layer_name.
+
+    The module-level LayerTypes dict is NEVER mutated.
+    """
+    merged: dict[str, Dataset | Geopackage] = dict(LayerTypes)  # shallow copy
+
+    for lyr in config_layers:
+        lid: str = getattr(lyr, "layer_id", None)
+        if lid not in LayerTypes:
+            continue  # no definition entry -> keep inline construction path
+
+        existing = LayerTypes[lid]
+
+        # -- Resolve field overrides --------------------------------------------
+        name = getattr(lyr, "label", None) or existing.name
+        path = getattr(lyr, "output_path", None) or existing.path
+
+        raw_desc = getattr(lyr, "description", None)
+        description = raw_desc if raw_desc is not None else existing.description
+
+        summary = existing.summary
+        citation = existing.citation
+
+        # -- Build meta_data for RasterLayerConfig ------------------------------
+        meta_data = existing.meta_data  # None for all current definitions
+        if isinstance(lyr, RasterLayerConfig):
+            meta_items: list[Meta] = []
+            if lyr.source_url:
+                meta_items.append(Meta("SourceUrl", lyr.source_url, "url"))
+            if lyr.data_product_version:
+                meta_items.append(Meta("DataProductVersion", lyr.data_product_version))
+            if lyr.docs_url:
+                meta_items.append(Meta("DocsUrl", lyr.docs_url, "url"))
+            abs_path = os.path.join(output_folder, path)
+            if os.path.isfile(abs_path):
+                try:
+                    from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
+                        get_raster_cell_size,
+                    )
+                    cx, cy = get_raster_cell_size(abs_path)
+                    meta_items.append(Meta("CellSizeX", str(cx)))
+                    meta_items.append(Meta("CellSizeY", str(cy)))
+                except Exception as exc:  # pylint: disable=broad-except
+                    log.warning(f"  Could not read cell size for {lid}: {exc}")
+            if meta_items:
+                meta_data = MetaData(meta_items)
+
+        # -- Reconstruct object (never mutate existing) -------------------------
+        if isinstance(existing, Geopackage):
+            # For S3Tables layers: derive sub-layers from config layer_name
+            if isinstance(lyr, S3TablesLayerConfig):
+                sub_layers = [
+                    GeopackageLayer(
+                        lyr_name=lyr.layer_name,
+                        name=lyr.layer_name.capitalize(),
+                        ds_type=GeoPackageDatasetTypes.VECTOR,
+                    )
+                ]
+            else:
+                sub_layers = existing.layers
+            merged[lid] = Geopackage(
+                xml_id=lid,
+                name=name,
+                path=path,
+                layers=sub_layers,
+                description=description,
+                summary=summary,
+                citation=citation,
+                meta_data=meta_data,
+            )
+        else:
+            merged[lid] = Dataset(
+                xml_id=lid,
+                name=name,
+                path=path,
+                ds_type=existing.ds_type,
+                description=description,
+                summary=summary,
+                citation=citation,
+                meta_data=meta_data,
+            )
+
+    return merged
+
+
 def write_project_xml(
     output_folder: str,
     descriptor: str,
@@ -366,6 +361,7 @@ def write_project_xml(
     log.info("Writing project XML")
 
     cfg = AppConfig.get()
+    merged_layer_types = _build_merged_layer_types(cfg.layers, output_folder, log)
     threshold = cfg.hydrology.threshold
     output_res = cfg.dem.resolution
     breach_dist = cfg.hydrology.breach_dist
@@ -412,57 +408,52 @@ def write_project_xml(
     # belong to a different DEM source (e.g. TILE_FOOTPRINTS with --dem_source wcs).
     log.info("  Registering project layers")
     candidate_datasets: list[Dataset | Geopackage] = [
-        LayerTypes["DEM"],
-        LayerTypes["HILLSHADE"],
-        LayerTypes["SLOPE"],
-        LayerTypes["DEM_FILLED"],
-        LayerTypes["DEM_BREACH"],
-        LayerTypes["D8_FLOW"],
-        LayerTypes["D8_CONTRIB_AREA"],
-        LayerTypes["STREAM_RASTER"],
-        LayerTypes["STREAM_ORDER"],
-        LayerTypes["HYDRODERIVATIVES"],
-        LayerTypes["SUBWATERSHEDS"],
+        merged_layer_types["DEM"],
+        merged_layer_types["HILLSHADE"],
+        merged_layer_types["SLOPE"],
+        merged_layer_types["DEM_FILLED"],
+        merged_layer_types["DEM_BREACH"],
+        merged_layer_types["D8_FLOW"],
+        merged_layer_types["D8_CONTRIB_AREA"],
+        merged_layer_types["STREAM_RASTER"],
+        merged_layer_types["STREAM_ORDER"],
+        merged_layer_types["HYDRODERIVATIVES"],
+        merged_layer_types["SUBWATERSHEDS"],
     ]
     if aoi is not None and dem_source == "tnm":
-        candidate_datasets.append(LayerTypes["TILE_FOOTPRINTS"])
+        candidate_datasets.append(merged_layer_types["TILE_FOOTPRINTS"])
     if debug:
-        candidate_datasets.append(LayerTypes["BREACH_DIFF_POINTS"])
+        candidate_datasets.append(merged_layer_types["BREACH_DIFF_POINTS"])
 
-    # Register optional layers declared in the config
+    # Register optional layers declared in the config.
+    # When a config layer_id has a matching entry in layer_definitions.json,
+    # _build_merged_layer_types() has already produced a merged Dataset/Geopackage
+    # in merged_layer_types.  Use that entry directly.
+    # Fall back to inline construction only when there is no definition entry.
     for layer_cfg in cfg.layers:
-        if isinstance(layer_cfg, S3TablesLayerConfig):
-            transport_layers = [
-                GeopackageLayer(
-                    lyr_name=sl.layer_name,
-                    name=sl.layer_name.capitalize(),
-                    ds_type=GeoPackageDatasetTypes.VECTOR,
-                )
-                for sl in layer_cfg.sublayers
-            ]
+        lid = layer_cfg.layer_id
+        if lid in merged_layer_types:
+            candidate_datasets.append(merged_layer_types[lid])
+        elif isinstance(layer_cfg, S3TablesLayerConfig):
             transport_ds = Geopackage(
-                xml_id=layer_cfg.id,
+                xml_id=lid,
                 name=layer_cfg.label,
                 path=layer_cfg.output_path,
-                layers=transport_layers,
-                meta_data=MetaData(
-                    [
-                        Meta(
-                            "Description",
-                            "Transportation features sourced from AWS S3 Tables via Athena.",
-                        ),
-                    ]
-                ),
+                layers=[
+                    GeopackageLayer(
+                        lyr_name=layer_cfg.layer_name,
+                        name=layer_cfg.layer_name.capitalize(),
+                        ds_type=GeoPackageDatasetTypes.VECTOR,
+                    )
+                ],
+                description="Transportation features sourced from AWS S3 Tables via Athena.",
             )
             candidate_datasets.append(transport_ds)
-
         elif isinstance(layer_cfg, RasterLayerConfig):
             from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
                 get_raster_cell_size,
             )
-
             abs_path = os.path.join(output_folder, layer_cfg.output_path)
-            # Build metadata list
             meta_items: list[Meta] = []
             if layer_cfg.source_url:
                 meta_items.append(Meta("SourceUrl", layer_cfg.source_url, "url"))
@@ -472,7 +463,6 @@ def write_project_xml(
                 )
             if layer_cfg.docs_url:
                 meta_items.append(Meta("DocsUrl", layer_cfg.docs_url, "url"))
-            # CellSize from actual output raster (if it exists)
             if os.path.isfile(abs_path):
                 try:
                     cx, cy = get_raster_cell_size(abs_path)
@@ -480,10 +470,10 @@ def write_project_xml(
                     meta_items.append(Meta("CellSizeY", str(cy)))
                 except Exception as exc:  # pylint: disable=broad-except
                     log.warning(
-                        f"  Could not read cell size for {layer_cfg.id}: {exc}"
+                        f"  Could not read cell size for {lid}: {exc}"
                     )
             raster_ds = Dataset(
-                xml_id=layer_cfg.id,
+                xml_id=lid,
                 name=layer_cfg.label,
                 path=layer_cfg.output_path,
                 ds_type="Raster",
