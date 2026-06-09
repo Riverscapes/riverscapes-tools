@@ -18,7 +18,7 @@ command-line stays thin:
 
 ```bash
 rs_context_neo \
-  --config config/us_conus.json \
+  --config config/us_conus_aoi.json \
   --aoi    my_watershed.geojson \
   --output /results/my_run
 ```

@@ -170,11 +170,32 @@ class WcsRasterLayerConfig:
     type: str = "wcs_raster"
 
 
+@dataclass
+class RasterLayerConfig:
+    """Clips a raster (local file or S3 COG) to the project extent."""
+
+    id: str
+    label: str
+    input: str        # source: relative path, absolute path, or s3:// URI
+    output_path: str  # resolved output path relative to project folder
+    band: int = 1
+    nodata: Optional[float] = None
+    description: Optional[str] = None
+    source_url: Optional[str] = None
+    data_product_version: Optional[str] = None
+    docs_url: Optional[str] = None
+    type: str = "raster"
+
+
 # Union type for all layer configs — used for type hints elsewhere.
 # Using typing.Union so this works on Python 3.9 (the | operator between
 # types at module-level is only valid at runtime on Python ≥ 3.10).
 LayerConfig = Union[
-    S3TablesLayerConfig, CogClipLayerConfig, WfsLayerConfig, WcsRasterLayerConfig
+    S3TablesLayerConfig,
+    CogClipLayerConfig,
+    WfsLayerConfig,
+    WcsRasterLayerConfig,
+    RasterLayerConfig,
 ]
 
 
@@ -551,7 +572,30 @@ def _parse_layer(raw: dict) -> LayerConfig:
             version=raw.get("version", "1.0.0"),
         )
 
+    if ltype == "raster":
+        raw_input = raw["input"]
+        output_path = raw.get("output_path")
+        if output_path is None:
+            if raw_input.startswith("s3://") or os.path.isabs(raw_input):
+                # Derive from basename
+                basename = os.path.basename(raw_input.rstrip("/"))
+                output_path = f"{raw['id'].lower()}/{basename}"
+            else:
+                output_path = raw_input
+        return RasterLayerConfig(
+            id=raw["id"],
+            label=raw["label"],
+            input=raw_input,
+            output_path=output_path,
+            band=raw.get("band", 1),
+            nodata=raw.get("nodata"),
+            description=raw.get("description"),
+            source_url=raw.get("source_url"),
+            data_product_version=raw.get("data_product_version"),
+            docs_url=raw.get("docs_url"),
+        )
+
     raise ValueError(
         f"Unknown layer type '{ltype}'. "
-        f"Valid types: s3tables, cog_clip, wfs, wcs_raster."
+        f"Valid types: s3tables, cog_clip, wfs, wcs_raster, raster."
     )

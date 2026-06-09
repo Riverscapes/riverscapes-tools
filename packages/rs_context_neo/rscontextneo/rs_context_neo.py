@@ -27,6 +27,7 @@ from rscontextneo.src.config import (
     AppConfig,
     CogClipLayerConfig,
     LayerConfig,
+    RasterLayerConfig,
     RSContextNeoConfig,
     S3TablesLayerConfig,
     WcsRasterLayerConfig,
@@ -237,7 +238,9 @@ def rs_context_neo(
         log.info(f"Step 3: Fetching {len(config.layers)} optional layer(s)")
         step_timer = Timer()
         for layer_cfg in config.layers:
-            _fetch_layer(layer_cfg, output_folder, bounds_geojson, log)
+            _fetch_layer(
+                layer_cfg, output_folder, bounds_geojson, log, force=force_download
+            )
         log.info(f"  Step 3 complete in {pretty_duration(step_timer.ellapsed())}")
 
     # ── Step 4: Write project XML ──────────────────────────────────────────────
@@ -332,6 +335,7 @@ def _fetch_layer(
     output_folder: str,
     bounds_geojson: str,
     log: Logger,
+    force: bool = False,
 ) -> None:
     """Dispatch a single optional layer to its handler based on layer type."""
     if isinstance(layer_cfg, S3TablesLayerConfig):
@@ -356,6 +360,14 @@ def _fetch_layer(
             log,
             aoi_geojson=bounds_geojson,
         )
+
+    elif isinstance(layer_cfg, RasterLayerConfig):
+        from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
+            fetch_raster_layer,
+        )
+
+        log.info(f"  [raster] {layer_cfg.id} \u2192 {layer_cfg.output_path}")
+        fetch_raster_layer(layer_cfg, output_folder, bounds_geojson, log, force=force)
 
     elif isinstance(layer_cfg, CogClipLayerConfig):
         log.warning(
@@ -388,7 +400,7 @@ def main():
             "layers) lives in the --config profile file. Only run-specific values\n"
             "are given here.\n\n"
             "Example:\n"
-            "  rs_context_neo --config config/us_conus.json \\\n"
+            "  rs_context_neo --config config/us_conus_aoi.json \\\n"
             "                 --output /results/my_run\n"
             "  # AOI path is set in the config file"
         ),
@@ -399,7 +411,7 @@ def main():
         "-c",
         help=(
             "Path to a regional profile JSON file "
-            "(e.g. config/us_conus.json or config/global_wcs.json). "
+            "(e.g. config/us_conus_aoi.json or config/global_wcs.json). "
             "Defines the DEM source, hydrology parameters, and optional data layers."
         ),
         type=str,

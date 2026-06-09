@@ -322,6 +322,32 @@
             }
           },
           {
+            "$comment": "raster — clips a raster (local or S3 COG) to the project extent",
+            "type": "object",
+            "title": "Raster Layer",
+            "required": ["id", "label", "type", "input"],
+            "additionalProperties": false,
+            "properties": {
+              "id":    { "type": "string" },
+              "label": { "type": "string" },
+              "type": { "type": "string", "const": "raster" },
+              "input": {
+                "type": "string",
+                "description": "Source raster: relative project path, absolute local path, or s3://bucket/key URI. Supports {env:VAR} substitution."
+              },
+              "output_path": {
+                "type": "string",
+                "description": "Output path relative to project output folder. Defaults to 'input' if input is relative, or derived from the input URI basename otherwise."
+              },
+              "band":   { "type": "integer", "minimum": 1, "default": 1 },
+              "nodata": { "anyOf": [{"type": "number"}, {"type": "null"}], "default": null },
+              "description":           { "type": "string" },
+              "source_url":            { "type": "string" },
+              "data_product_version":  { "type": "string" },
+              "docs_url":              { "type": "string" }
+            }
+          },
+          {
             "$comment": "wcs_raster — fetches a raster from an OGC WCS endpoint",
             "type": "object",
             "title": "WCS Raster Layer",

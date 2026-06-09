@@ -25,7 +25,7 @@ elif [ -n "$USER_ID" ] && [ -n "$ORG_ID" ]; then
 fi
 
 # Optional: CONFIG defaults to the CONUS profile if not provided
-CONFIG="${CONFIG:-/usr/local/src/riverscapes-tools/packages/rs_context_neo/config/us_conus.json}"
+CONFIG="${CONFIG:-/usr/local/src/riverscapes-tools/packages/rs_context_neo/config/us_conus_aoi.json}"
 
 cat<<EOF
       ██████╗ ███████╗     ██████╗ ██████╗ ███╗   ██╗████████╗███████╗██╗  ██╗████████╗    ███╗   ██╗███████╗ ██████╗ 

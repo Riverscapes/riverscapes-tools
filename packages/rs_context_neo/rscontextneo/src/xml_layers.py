@@ -22,7 +22,7 @@ from rsxml.project_xml import (
 from rsxml.util import pretty_duration
 
 from rscontextneo.__version__ import __version__
-from rscontextneo.src.config import AppConfig, S3TablesLayerConfig
+from rscontextneo.src.config import AppConfig, RasterLayerConfig, S3TablesLayerConfig
 from rscontextneo.src.fetch_dem import (
     SLOPE_RELPATH,
     TILE_FOOTPRINTS_RELPATH,
@@ -455,6 +455,42 @@ def write_project_xml(
                 ),
             )
             candidate_datasets.append(transport_ds)
+
+        elif isinstance(layer_cfg, RasterLayerConfig):
+            from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
+                get_raster_cell_size,
+            )
+
+            abs_path = os.path.join(output_folder, layer_cfg.output_path)
+            # Build metadata list
+            meta_items: list[Meta] = []
+            if layer_cfg.source_url:
+                meta_items.append(Meta("SourceUrl", layer_cfg.source_url, "url"))
+            if layer_cfg.data_product_version:
+                meta_items.append(
+                    Meta("DataProductVersion", layer_cfg.data_product_version)
+                )
+            if layer_cfg.docs_url:
+                meta_items.append(Meta("DocsUrl", layer_cfg.docs_url, "url"))
+            # CellSize from actual output raster (if it exists)
+            if os.path.isfile(abs_path):
+                try:
+                    cx, cy = get_raster_cell_size(abs_path)
+                    meta_items.append(Meta("CellSizeX", str(cx)))
+                    meta_items.append(Meta("CellSizeY", str(cy)))
+                except Exception as exc:  # pylint: disable=broad-except
+                    log.warning(
+                        f"  Could not read cell size for {layer_cfg.id}: {exc}"
+                    )
+            raster_ds = Dataset(
+                xml_id=layer_cfg.id,
+                name=layer_cfg.label,
+                path=layer_cfg.output_path,
+                ds_type="Raster",
+                meta_data=MetaData(meta_items) if meta_items else None,
+                description=layer_cfg.description,
+            )
+            candidate_datasets.append(raster_ds)
 
     realization_datasets = []
     for ds in candidate_datasets:

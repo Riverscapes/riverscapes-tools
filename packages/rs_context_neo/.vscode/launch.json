@@ -16,7 +16,7 @@
   ],
   "configurations": [
     {
-      "name": "RS Context Neo (--aoi, US CONUS)",
+      "name": "RS Context Neo (us_conus_aoi)",
       "type": "debugpy",
       "request": "launch",
       "module": "rscontextneo.rs_context_neo",
@@ -27,14 +27,14 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       },
       "args": [
-        "--config", "${workspaceFolder}/config/us_conus.json",
+        "--config", "${workspaceFolder}/config/us_conus_aoi.json",
         "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
         "--verbose",
         "--debug"
       ]
     },
     {
-      "name": "RS Context Neo (--dem, US CONUS)",
+      "name": "RS Context Neo (us_conus_dem)",
       "type": "debugpy",
       "request": "launch",
       "module": "rscontextneo.rs_context_neo",
