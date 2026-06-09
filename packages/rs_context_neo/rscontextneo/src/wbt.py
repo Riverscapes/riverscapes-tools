@@ -32,6 +32,7 @@ def breach_depressions_least_cost(
     breach_dist: int,
     force: bool,
     log: Logger,
+    debug: bool = False,
 ) -> None:
     """
     Hydrologically condition the DEM via least-cost depression
@@ -73,7 +74,7 @@ def breach_depressions_least_cost(
     log.info(f"Breach depressions least-cost (WhiteboxTools, dist={breach_dist} cells)")
 
     wbt = whitebox.WhiteboxTools()
-    wbt.set_verbose_mode(False)
+    wbt.set_verbose_mode(True if debug else False)
 
     err = wbt.breach_depressions_least_cost(
         dem=dem_path,

@@ -28,9 +28,9 @@ def skip_if_exists(path: str, force: bool, step_name: str, log: Logger) -> bool:
     return False
 
 
-def compress_inplace(path: str, log: Logger) -> None:
+def compress_inplace(path: str, log: Logger, type="DEFLATE") -> None:
     """
-    Re-compress a GeoTIFF in-place using DEFLATE.
+    Re-compress a GeoTIFF in-place using LZW.
 
     Writes to a sibling ``.tmp.tif`` file then atomically replaces the
     original so that a failed compression never leaves a corrupt file.
@@ -41,6 +41,8 @@ def compress_inplace(path: str, log: Logger) -> None:
         Absolute path to the GeoTIFF to compress.
     log : Logger
         Caller-supplied logger.
+    type : str
+        Compression type, e.g. "DEFLATE" or "LZW".
     """
     tmp = path + ".tmp.tif"
     try:
@@ -48,8 +50,7 @@ def compress_inplace(path: str, log: Logger) -> None:
             tmp,
             path,
             creationOptions=[
-                "COMPRESS=DEFLATE",
-                "PREDICTOR=2",
+                f"COMPRESS={type}",
                 "TILED=YES",
                 "BIGTIFF=IF_SAFER",
             ],
@@ -64,9 +65,7 @@ def compress_inplace(path: str, log: Logger) -> None:
     except Exception:
         if os.path.isfile(tmp):
             os.remove(tmp)
-        result = None  # flush / dereference
-        os.replace(tmp, path)
-        log.info(f"  compressed → {os.path.basename(path)}")
+        raise
 
 
 def cast_to_float32_inplace(path: str, log: Logger) -> None:

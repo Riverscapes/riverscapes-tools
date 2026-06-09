@@ -9,29 +9,24 @@
 # -------------------------------------------------------------------------------
 import argparse
 import os
-from subprocess import run
 import sys
-import uuid
-import traceback
-import datetime
 import time
-from typing import List, Dict
+import traceback
+from typing import Dict, List
+
+from rscommons import GeopackageLayer, ModelConfig, RSLayer, RSProject, initGDALOGRErrors
 
 # LEave OSGEO import alone. It is necessary even if it looks unused
-from osgeo import gdal
 from rscommons.classes.rs_project import RSMeta, RSMetaTypes
-
-from rsxml.util import safe_makedirs, parse_metadata, safe_remove_dir
-from rscommons import RSProject, RSLayer, ModelConfig, initGDALOGRErrors
-from rsxml import Logger, dotenv
-from rscommons import GeopackageLayer
-from rscommons.vector_ops import buffer_by_field, copy_feature_class, merge_feature_classes
 from rscommons.hand import create_hand_raster, hand_rasterize, run_subprocess
 from rscommons.raster_warp import raster_warp
 from rscommons.vbet_network import vbet_network
+from rscommons.vector_ops import buffer_by_field, copy_feature_class
+from rsxml import Logger, dotenv
+from rsxml.util import parse_metadata, safe_makedirs, safe_remove_dir
 
-from hand.hand_report import HANDReport
 from hand.__version__ import __version__
+from hand.hand_report import HANDReport
 
 initGDALOGRErrors()
 
@@ -263,6 +258,11 @@ def main():
         traceback.print_exc(file=sys.stdout)
         sys.exit(1)
 
+    sys.exit(0)
+
+
+if __name__ == '__main__':
+    main()
     sys.exit(0)
 
 

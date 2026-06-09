@@ -28,7 +28,6 @@
       },
       "args": [
         "--config", "${workspaceFolder}/config/us_conus.json",
-        "--aoi", "${input:AOI}",
         "--output", "{env:DATA_ROOT}/rs_context_neo/aoi",
         "--verbose",
         "--debug"
@@ -46,8 +45,7 @@
         "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
       },
       "args": [
-        "--config", "${workspaceFolder}/config/us_conus.json",
-        "--dem", "${input:DEM}",
+        "--config", "${workspaceFolder}/config/us_conus_dem.json",
         "--output", "{env:DATA_ROOT}/rs_context_neo/dem",
         "--verbose",
         "--debug"

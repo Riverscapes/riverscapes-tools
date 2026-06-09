@@ -43,7 +43,7 @@ from typing import Any, Optional, Union
 # ── Schema path ───────────────────────────────────────────────────────────────
 # Resolved relative to this file: rscontextneo/src/config.py
 #   → ../../config/schema.json  (i.e. packages/rs_context_neo/config/schema.json)
-_SCHEMA_PATH: Path = Path(__file__).parent.parent.parent / "config" / "schema.json"
+_SCHEMA_PATH: Path = Path(__file__).parent.parent.parent / "config.schema.json"
 
 # Matches {env:VAR_NAME} tokens anywhere in a string value.
 _ENV_TOKEN_RE = re.compile(r"\{env:([^}]+)\}")
@@ -94,6 +94,7 @@ class DemConfig:
     resolution: float = 1.0
     download_dir: Optional[str] = None
     scratch_dir: Optional[str] = None
+    aoi: Optional[str] = None
     tnm_options: Optional[TnmOptions] = field(default_factory=lambda: TnmOptions())
     wcs_options: Optional[WcsOptions] = None
     filepath: Optional[str] = None  # Required when source is "file"
@@ -408,8 +409,15 @@ def _validate(doc: dict, config_path: Path) -> None:
 
 
 def _parse_config(raw: dict) -> RSContextNeoConfig:
+    dem = _parse_dem(raw["dem"])
+    # Top-level download_dir / scratch_dir are the canonical location in the
+    # config JSON.  Propagate them into DemConfig when the dem-level ones are absent.
+    if dem.download_dir is None:
+        dem.download_dir = raw.get("download_dir")
+    if dem.scratch_dir is None:
+        dem.scratch_dir = raw.get("scratch_dir")
     return RSContextNeoConfig(
-        dem=_parse_dem(raw["dem"]),
+        dem=dem,
         hydrology=_parse_hydrology(raw.get("hydrology", {})),
         layers=[_parse_layer(lyr) for lyr in raw.get("layers", [])],
         metadata=raw.get("metadata", {}),
@@ -426,7 +434,7 @@ def _parse_dem(raw: dict) -> DemConfig:
         if "aoi" not in raw:
             raise ConfigValidationError(
                 f"dem.source is '{source}' but 'aoi' is missing. "
-                f'When using \'tnm\' or \'wcs\', provide: {{"source": "{source}", "aoi": "...", "resolution": ..., {"tnm_options" | "wcs_options"}: ...}}'
+                f'When using \'tnm\' or \'wcs\', provide: {{"source": "{source}", "aoi": "...", "resolution": ..., "tnm_options"/"wcs_options": ...}}'
             )
         if "resolution" not in raw:
             raise ConfigValidationError(
@@ -477,6 +485,7 @@ def _parse_dem(raw: dict) -> DemConfig:
         resolution=raw.get("resolution", 1.0),
         download_dir=raw.get("download_dir"),
         scratch_dir=raw.get("scratch_dir"),
+        aoi=raw.get("aoi"),
         tnm_options=tnm_opts,
         wcs_options=wcs_opts,
         filepath=raw.get("filepath"),

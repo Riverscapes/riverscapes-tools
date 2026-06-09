@@ -44,6 +44,7 @@ dependencies = [
     "geopandas>=1.1.1",
     "whitebox==2.3.6",
     "boto3>=1.42.68",
+    "jsonschema>=4.26.0",
 ]
 
 [project.optional-dependencies]

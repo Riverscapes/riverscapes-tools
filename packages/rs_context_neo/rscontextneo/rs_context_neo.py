@@ -17,6 +17,7 @@ import sys
 import time
 import traceback
 
+from osgeo import gdal
 from rscommons import Timer, initGDALOGRErrors
 from rsxml import Logger, dotenv
 from rsxml.util import parse_metadata, pretty_duration, safe_makedirs
@@ -25,6 +26,7 @@ from rscontextneo.__version__ import __version__
 from rscontextneo.src.config import (
     AppConfig,
     CogClipLayerConfig,
+    LayerConfig,
     RSContextNeoConfig,
     S3TablesLayerConfig,
     WcsRasterLayerConfig,
@@ -32,6 +34,7 @@ from rscontextneo.src.config import (
     load_config,
 )
 from rscontextneo.src.fetch_dem import (
+    DEM_RELPATH,
     HILLSHADE_RELPATH,
     SLOPE_RELPATH,
     fetch_dem_from_3dep,
@@ -61,8 +64,6 @@ def rs_context_neo(
     config: RSContextNeoConfig,
     meta: dict[str, str],
     *,
-    aoi: str | None = None,
-    dem: str | None = None,
     force_download: bool = False,
     debug: bool = False,
     download_dir: str | None = None,
@@ -73,7 +74,7 @@ def rs_context_neo(
 
     All data-source configuration (DEM backend, hydrology parameters, optional
     layers) is read from *config*.  Per-run values are passed as keyword
-    arguments.  Exactly one of *aoi* or *dem* must be provided.
+    arguments.
 
     Parameters
     ----------
@@ -83,22 +84,19 @@ def rs_context_neo(
         Validated regional profile loaded from a JSON config file.
     meta : dict[str, str]
         Extra metadata key=value pairs merged into the project XML.
-    aoi : str or None
-        Path to a GeoJSON defining the area of interest.
-    dem : str or None
-        Path to an already-downloaded DEM raster file (skips DEM acquisition).
     force_download : bool
         Re-download all source data and re-run every step even if cached.
     debug : bool
         Retain intermediate files and emit extra diagnostic output.
-    dem_download_dir : str or None
-        Override the DEM download directory (takes precedence over the
-        config file and the ``DEM_DOWNLOAD_DIR`` environment variable).
-        Falls back to ``DEM_DOWNLOAD_DIR`` env var if not provided.
-    dem_scratch_dir : str or None
-        Override the DEM scratch directory (takes precedence over the
-        config file and the ``DEM_SCRATCH_DIR`` environment variable).
-        Falls back to ``DEM_SCRATCH_DIR`` env var if not provided.
+    download_dir : str or None
+        Override the DEM download directory.  Resolution order: this argument
+        → ``DOWNLOAD_DIR`` environment variable → ``dem.download_dir`` in the
+        config file.  Required when ``dem.source`` is not ``'file'``.
+    scratch_dir : str or None
+        Override the DEM scratch directory.  Resolution order: this argument
+        → ``SCRATCH_DIR`` environment variable → ``dem.scratch_dir`` in the
+        config file.  Defaults to a ``scratch/`` sub-folder of the resolved
+        download directory when not set.
     """
     log = Logger("RS Context Neo")
     start_time = time.time()
@@ -113,38 +111,38 @@ def rs_context_neo(
     if config.hydrology.cores is not None:
         log.info(f"TauDEM cores:      {config.hydrology.cores}")
 
-    if sum(v is not None for v in (aoi, dem)) != 1:
-        raise ValueError("Exactly one of aoi or dem must be provided.")
-
-    if dem is not None and not os.path.isfile(dem):
-        raise FileNotFoundError(f"User-supplied DEM not found: {dem}")
+    _effective_dl = (
+        download_dir or os.environ.get("DOWNLOAD_DIR") or config.dem.download_dir
+    )
+    _effective_scratch = (
+        scratch_dir or os.environ.get("SCRATCH_DIR") or config.dem.scratch_dir
+    )
+    if config.dem.source != "file":
+        if _effective_dl is None:
+            raise ValueError(
+                "A DEM download directory must be provided. "
+                "Use --download-dir on the command line, set the DOWNLOAD_DIR environment variable, "
+                "or add 'download_dir' to the config file."
+            )
 
     safe_makedirs(output_folder)
 
-    _effective_dl = (
-        download_dir if download_dir is not None else os.environ.get("DEM_DOWNLOAD_DIR")
-    )
-    _effective_scratch = (
-        scratch_dir if scratch_dir is not None else os.environ.get("DEM_SCRATCH_DIR")
-    )
-    if (_effective_dl is None) or (_effective_scratch is None):
-        raise ValueError(
-            "DEM download and scratch directories must be set via command-line arguments or environment variables. "
-            "Use --download-dir and --scratch-dir on the command line, or set the DEM_DOWNLOAD_DIR and DEM_SCRATCH_DIR environment variables."
-        )
-
-    # Populate the singleton only once all input validation has passed and
-    # the output directory exists — so the global state is never mutated for
-    # a run that is about to fail.
+    # Mutate the dem config in-place so AppConfig carries the resolved paths,
+    # then populate the singleton.  Both happen only after all input validation
+    # has passed and the output directory has been created.
+    if config.dem.source != "file":
+        config.dem.download_dir = _effective_dl
+        if _effective_scratch is not None:
+            config.dem.scratch_dir = _effective_scratch
     AppConfig.set(config)
 
     # ── Step 1: Acquire bounds GeoJSON and DEM ─────────────────────────────────
     log.info("Step 1: Acquiring project bounds and DEM")
     step_timer = Timer()
-    if aoi is not None:
-        log.info(f"  Input source: Custom AOI GeoJSON — {aoi}")
+    if config.dem.source != "file":
+        log.info(f"  Input source: Custom AOI GeoJSON — {config.dem.aoi}")
         descriptor = "Custom AOI"
-        bounds_geojson = validate_copy_aoi(aoi, output_folder)
+        bounds_geojson = validate_copy_aoi(config.dem.aoi, output_folder)
         dem_path, _hillshade_path, _slope_path = _fetch_dem(
             bounds_geojson,
             output_folder,
@@ -152,10 +150,45 @@ def rs_context_neo(
             debug=debug,
         )
     else:
-        log.info(f"  Input source: User-supplied DEM — {dem}")
+        log.info(f"  Input source: User-supplied DEM — {config.dem.filepath}")
         descriptor = "User-supplied DEM"
-        bounds_geojson = dem_to_geojson(dem, output_folder)
-        dem_path = dem
+        bounds_geojson = dem_to_geojson(config.dem.filepath, output_folder)
+        # Copy the user-supplied DEM into the topography output directory so that
+        # the project structure mirrors the AOI workflow (where _fetch_dem places
+        # the assembled DEM at topography/dem.tif).  Downstream steps (hydrology,
+        # project XML) all expect the DEM to live inside the output folder.
+        dem_path = os.path.join(output_folder, DEM_RELPATH)
+        safe_makedirs(os.path.dirname(dem_path))
+        if force_download or not os.path.isfile(dem_path):
+            # Guard against SameFileError when the user's filepath already points to
+            # the project-internal copy (e.g. re-using a previous run's output folder).
+            if os.path.isfile(dem_path) and os.path.samefile(
+                config.dem.filepath, dem_path
+            ):
+                log.info(
+                    f"  DEM source and destination are the same file — skipping copy: {dem_path}"
+                )
+            else:
+                log.info(f"  Copying DEM to project topography directory: {dem_path}")
+                result = gdal.Translate(
+                    dem_path,
+                    config.dem.filepath,
+                    creationOptions=[
+                        "COMPRESS=LZW",
+                        "PREDICTOR=2",
+                        "TILED=YES",
+                        "BIGTIFF=IF_SAFER",
+                    ],
+                )
+                if result is None:
+                    raise RuntimeError(
+                        f"gdal.Translate returned None copying DEM: {gdal.GetLastErrorMsg()}"
+                    )
+                result = None  # flush / dereference
+        else:
+            log.info(
+                f"  DEM already present in project topography directory: {dem_path}"
+            )
         generate_hillshade(
             dem_path,
             os.path.join(output_folder, HILLSHADE_RELPATH),
@@ -184,6 +217,7 @@ def rs_context_neo(
         breach_dist=config.hydrology.breach_dist,
         cores=config.hydrology.cores,
         force=force_download,
+        debug=debug,
     )
     log.info(f"  Step 2 complete in {pretty_duration(step_timer.ellapsed())}")
 
@@ -215,8 +249,8 @@ def rs_context_neo(
             descriptor=descriptor,
             bounds_geojson=bounds_geojson,
             meta=meta,
-            aoi=aoi,
-            dem=dem,
+            aoi=config.dem.aoi if config.dem.source != "file" else None,
+            dem=config.dem.filepath if config.dem.source == "file" else None,
             elapsed_time=elapsed_time,
             log=log,
             debug=debug,
@@ -247,12 +281,9 @@ def _fetch_dem(
     cfg = AppConfig.get()
     dem_cfg = cfg.dem
 
-    if dem_cfg.download_dir is None:
-        raise ValueError(
-            "dem.download_dir must be set in the config when using --aoi. "
-            "Use --dem-download-dir on the command line, the DEM_DOWNLOAD_DIR "
-            "environment variable, or an {env:VAR} token in the config file."
-        )
+    assert dem_cfg.download_dir is not None, (
+        "_fetch_dem called with download_dir=None; caller must resolve this before AppConfig.set()"
+    )
 
     effective_scratch = dem_cfg.scratch_dir or os.path.join(
         dem_cfg.download_dir, "scratch"
@@ -297,7 +328,7 @@ def _fetch_dem(
 
 
 def _fetch_layer(
-    layer_cfg,
+    layer_cfg: LayerConfig,
     output_folder: str,
     bounds_geojson: str,
     log: Logger,
@@ -358,8 +389,8 @@ def main():
             "are given here.\n\n"
             "Example:\n"
             "  rs_context_neo --config config/us_conus.json \\\n"
-            "                 --aoi watershed.geojson \\\n"
-            "                 --output /results/my_run"
+            "                 --output /results/my_run\n"
+            "  # AOI path is set in the config file"
         ),
     )
 
@@ -429,39 +460,42 @@ def main():
     config = load_config(args.config, env_path=_env_path)
     log.info(f"Config profile: {config.profile_name or args.config}")
     log.info(f"Output folder:  {args.output}")
-    if args.aoi:
-        log.info(f"AOI:            {args.aoi}")
-    if args.dem:
-        log.info(f"DEM:            {args.dem}")
 
     meta = parse_metadata(args.meta) if args.meta else {}
     main_timer = time.time()
 
     try:
-        rs_context_neo_args = (
-            args.output,
-            config,
-            meta,
-            args.force,
-            args.debug,
-            args.download_dir
-            if args.download_dir is not None
-            else os.environ.get("DOWNLOAD_DIR"),
-            args.scratch_dir
-            if args.scratch_dir is not None
-            else os.environ.get("SCRATCH_DIR"),
-        )
-        # Run the main function, optionally with memory profiling if --debug is set. The ThreadRun wrapper will execute the function in a separate thread and monitor its memory usage, logging the maximum memory used to a file.
+        # Run the main function, optionally with memory profiling if --debug is set.
+        # The ThreadRun wrapper executes the function in a separate thread and monitors
+        # memory usage, logging the maximum to a file.
         if args.debug:
-            from rscommons.debug import ThreadRun
+            from rscommons.debug import (
+                ThreadRun,  # pylint: disable=import-outside-toplevel
+            )
 
             memfile = os.path.join(args.output, "rs_context_neo_memusage.log")
-            retcode, max_obj = ThreadRun(rs_context_neo, memfile, *rs_context_neo_args)
+            retcode, max_obj = ThreadRun(
+                rs_context_neo,
+                memfile,
+                args.output,
+                config,
+                meta,
+                force_download=args.force,
+                debug=args.debug,
+                download_dir=args.download_dir,
+                scratch_dir=args.scratch_dir,
+            )
             log.debug(f"Return code: {retcode}, [Max process usage] {max_obj}")
-
-        # If not debugging, just run the function normally.
         else:
-            rs_context_neo(*rs_context_neo_args)
+            rs_context_neo(
+                args.output,
+                config,
+                meta,
+                force_download=args.force,
+                debug=args.debug,
+                download_dir=args.download_dir,
+                scratch_dir=args.scratch_dir,
+            )
     except Exception as e:
         log.error(e)
         traceback.print_exc()

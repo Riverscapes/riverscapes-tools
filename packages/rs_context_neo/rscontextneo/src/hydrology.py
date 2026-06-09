@@ -132,6 +132,7 @@ def run_d8_hydrology(
     cores: int | None = None,
     mpi_args: List[str] | None = None,
     force: bool = False,
+    debug: bool = False,
 ) -> Dict[str, str]:
     """
     Run the full D8 hydrology processing chain on a DEM.
@@ -227,7 +228,7 @@ def run_d8_hydrology(
         "Step 1a of 7: Breach depressions (WhiteboxTools BreachDepressionsLeastCost)"
     )
     breach_depressions_least_cost(
-        dem_path, paths["dem_breach"], breach_dist, force, log
+        dem_path, paths["dem_breach"], breach_dist, force, log, debug
     )
 
     # ── Step 1b: Pit removal (TauDEM) ─────────────────────────────────────────

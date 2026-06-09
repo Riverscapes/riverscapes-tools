@@ -7,7 +7,7 @@
 
   "dem": {
     "source": "file",
-    "filepath": "{env:DEM_FILEPATH}"
+    "filepath": "{env:CUSTOM_DEM_PATH}"
   },
 
   "hydrology": {
