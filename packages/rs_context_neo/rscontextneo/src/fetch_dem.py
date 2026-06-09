@@ -31,7 +31,8 @@ from rscommons.national_map import get_1m_dem_urls
 from rscommons.raster_warp import raster_vrt_stitch
 from rsxml import Logger
 from rsxml.util import safe_makedirs, safe_remove_file
-from shapely.geometry import Polygon, box as shapely_box
+from shapely.geometry import Polygon
+from shapely.geometry import box as shapely_box
 from shapely.ops import transform as shapely_transform
 from shapely.ops import unary_union
 
@@ -816,7 +817,9 @@ def _write_tile_footprints_gpkg(
         for tile_path in dem_rasters:
             tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
             if tile_ds is None:
-                log.warning(f"  Could not open {os.path.basename(tile_path)} - skipping footprint")
+                log.warning(
+                    f"  Could not open {os.path.basename(tile_path)} - skipping footprint"
+                )
                 n_skipped += 1
                 continue
 
@@ -833,14 +836,23 @@ def _write_tile_footprints_gpkg(
 
             epsg_code_str = src_srs.GetAuthorityCode(None)
             src_epsg = int(epsg_code_str) if epsg_code_str else None
-            src_crs_name = src_srs.GetName() or (f"EPSG:{src_epsg}" if src_epsg else "Unknown")
+            src_crs_name = src_srs.GetName() or (
+                f"EPSG:{src_epsg}" if src_epsg else "Unknown"
+            )
 
-            x_min = gt[0];  y_max = gt[3]
-            x_max = gt[0] + width * gt[1];  y_min = gt[3] + height * gt[5]
+            x_min = gt[0]
+            y_max = gt[3]
+            x_max = gt[0] + width * gt[1]
+            y_min = gt[3] + height * gt[5]
 
             # Transform the four bounding-box corners to WGS84.
             ct = osr.CoordinateTransformation(src_srs, wgs84_srs)
-            corners_native = [(x_min, y_min), (x_min, y_max), (x_max, y_max), (x_max, y_min)]
+            corners_native = [
+                (x_min, y_min),
+                (x_min, y_max),
+                (x_max, y_max),
+                (x_max, y_min),
+            ]
             corners_wgs84 = [ct.TransformPoint(x, y)[:2] for x, y in corners_native]
             geom = Polygon(corners_wgs84)  # Shapely closes the ring automatically
 
@@ -849,7 +861,9 @@ def _write_tile_footprints_gpkg(
                 "source_path": tile_path,
                 "original_epsg": src_epsg or 0,
                 "original_crs_name": src_crs_name,
-                "is_reprojected": 0 if (src_epsg is None or src_epsg == final_epsg) else 1,
+                "is_reprojected": 0
+                if (src_epsg is None or src_epsg == final_epsg)
+                else 1,
                 "final_epsg": final_epsg,
                 "final_crs_name": final_crs_name,
                 "width_px": width,
@@ -886,7 +900,9 @@ def _write_tile_footprints_gpkg(
         for tile_path in dem_rasters:
             tile_ds = gdal.Open(tile_path, gdal.GA_ReadOnly)
             if tile_ds is None:
-                log.warning(f"  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping")
+                log.warning(
+                    f"  [data_footprints] Could not open {os.path.basename(tile_path)} - skipping"
+                )
                 n_data_skipped += 1
                 continue
 
@@ -903,10 +919,14 @@ def _write_tile_footprints_gpkg(
 
             epsg_d_str = src_srs_d.GetAuthorityCode(None)
             src_epsg_d = int(epsg_d_str) if epsg_d_str else None
-            src_crs_d = src_srs_d.GetName() or (f"EPSG:{src_epsg_d}" if src_epsg_d else "Unknown")
+            src_crs_d = src_srs_d.GetName() or (
+                f"EPSG:{src_epsg_d}" if src_epsg_d else "Unknown"
+            )
 
-            x_min_d = gt_d[0];  y_max_d = gt_d[3]
-            x_max_d = gt_d[0] + width_d * gt_d[1];  y_min_d = gt_d[3] + height_d * gt_d[5]
+            x_min_d = gt_d[0]
+            y_max_d = gt_d[3]
+            x_max_d = gt_d[0] + width_d * gt_d[1]
+            y_min_d = gt_d[3] + height_d * gt_d[5]
 
             arr = band_d.ReadAsArray()
             tile_ds = None  # release file handle
@@ -970,16 +990,22 @@ def _write_tile_footprints_gpkg(
 
             ogr_geom = ogr.CreateGeometryFromWkt(union_geom.wkt)
             if ogr_geom is None:
-                log.warning(f"  [data_footprints] CreateGeometryFromWkt returned None for {os.path.basename(tile_path)} - skipping")
+                log.warning(
+                    f"  [data_footprints] CreateGeometryFromWkt returned None for {os.path.basename(tile_path)} - skipping"
+                )
                 n_data_skipped += 1
                 continue
             if ogr_geom.Transform(ct_d) != 0:
-                log.warning(f"  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping")
+                log.warning(
+                    f"  [data_footprints] Reprojection failed for {os.path.basename(tile_path)} - skipping"
+                )
                 n_data_skipped += 1
                 continue
             ogr_geom = ogr.ForceTo(ogr_geom, ogr.wkbMultiPolygon)
             if ogr_geom is None:
-                log.warning(f"  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping")
+                log.warning(
+                    f"  [data_footprints] ForceTo(wkbMultiPolygon) returned None for {os.path.basename(tile_path)} - skipping"
+                )
                 n_data_skipped += 1
                 continue
 
@@ -988,7 +1014,9 @@ def _write_tile_footprints_gpkg(
                 "source_path": tile_path,
                 "original_epsg": src_epsg_d or 0,
                 "original_crs_name": src_crs_d,
-                "is_reprojected": 0 if (src_epsg_d is None or src_epsg_d == final_epsg) else 1,
+                "is_reprojected": 0
+                if (src_epsg_d is None or src_epsg_d == final_epsg)
+                else 1,
                 "final_epsg": final_epsg,
                 "final_crs_name": final_crs_name,
                 "width_px": width_d,
@@ -1015,10 +1043,6 @@ def _write_tile_footprints_gpkg(
     )
 
 
-
-
-
-
 def should_resample(
     dem_rasters: list[str], output_res: float, threshold: float = _RESAMPLE_THRESHOLD
 ) -> bool:
@@ -1027,6 +1051,14 @@ def should_resample(
     more than *threshold* (relative, default 10%).
 
     Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
+
+    .. deprecated::
+        This function is not called anywhere inside ``rs_context_neo``.
+        Resolution inspection and the resample decision were merged into
+        :func:`_inspect_tiles` (a single-pass approach that opens each tile
+        only once).  This function is retained here for reference and to
+        keep parity with the original ``rscontext_3dep`` implementation it
+        was adapted from.
     """
     log = Logger("Resolution Check")
     resolutions = []
@@ -1059,4 +1091,3 @@ def should_resample(
 
     log.info("Source resolution close enough to target - resampling not required.")
     return False
-

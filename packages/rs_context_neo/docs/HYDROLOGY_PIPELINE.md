@@ -1,12 +1,12 @@
 # `hydrology.py` — D8 Hydrology Pipeline
 
-**Location:** `rscontextneo/src/hydrology.py` (entry point), with step implementations in `taudem.py`, `wbt.py`, and `hydro_utils.py`
+**Location:** `rscontextneo/src/hydrology.py` (entry point), with step implementations in `taudem.py`, `wbt.py`, `level_path.py`, and `utils/rasters.py`
 
 ---
 
 ## Overview
 
-The D8 hydrology pipeline takes a bare-earth DEM and derives a topologically correct stream network, Strahler stream-order raster, and subwatershed polygons through a six-step processing chain.  All hydrological routing is based on the **D8 (deterministic eight-direction)** flow model, where each raster cell drains to exactly one of its eight neighbours — the one in the direction of steepest descent.
+The D8 hydrology pipeline takes a bare-earth DEM and derives a topologically correct stream network, Strahler stream-order raster, and subwatershed polygons through a **seven-step** processing chain.  All hydrological routing is based on the **D8 (deterministic eight-direction)** flow model, where each raster cell drains to exactly one of its eight neighbours — the one in the direction of steepest descent.
 
 The outputs power downstream Riverscapes tools (BRAT, RME, etc.) and can be queried directly in any GIS.  Every step is idempotent: if its output file already exists and `force=False` the step is silently skipped, so re-running the pipeline after a crash or parameter change is cheap.
 
@@ -185,6 +185,24 @@ JOIN   network_intersected n ON s.WSNO = n.LINKNO
 
 ---
 
+### Step 7 — Level Path Calculation
+
+**What it does:** Traverses the stream network from headwaters downstream and assigns a unique integer `level_path` identifier to each reach.  Reaches that share a level path form a single continuous flow line from a headwater to an outlet (or to the point where a longer tributary takes over).  The main stem gets the lowest value; tributary paths are assigned in descending order of their total flow-path length.
+
+The algorithm:
+1. Finds all headwater reaches (`USLINKNO1 = -1`).
+2. Computes cumulative flow-path length from each headwater to the network outlet.
+3. Processes headwaters longest-first so the main stem is stamped before shorter tributaries try to merge into it.
+4. Walks downstream from each headwater, writing the level-path value into any reach whose `level_path` column is still `NULL`.
+
+**Reads:** `network_intersected` layer in `hydrology/hydro_derivatives.gpkg` (specifically `LINKNO`, `DSLINKNO`, `USLINKNO1`, `Length` columns)
+
+**Writes:** `level_path` column in `network_intersected` (updated in-place)
+
+**Tool:** `rscontextneo.src.level_path.calc_level_paths`
+
+---
+
 ## Output File Reference
 
 All paths are relative to the project `output_folder`.
@@ -199,7 +217,7 @@ All paths are relative to the project `output_folder`.
 | `hydrology/stream_raster.tif` | GeoTIFF (Int16) | Binary stream mask: 1 = stream, 0 = non-stream (Step 4) |
 | `hydrology/stream_order.tif` | GeoTIFF (Int16) | Strahler stream-order raster (Step 5) |
 | `hydrology/subwatersheds.tif` | GeoTIFF (Int32) | Subwatershed integer raster — one value per reach (Step 5) |
-| `hydrology/hydro_derivatives.gpkg` | GeoPackage | Vector stream network (`network_intersected`) and subwatershed polygons (`subwatersheds`) — layers added by Steps 5 and 6 respectively |
+| `hydrology/hydro_derivatives.gpkg` | GeoPackage | Vector stream network (`network_intersected`) and subwatershed polygons (`subwatersheds`) — layers added by Steps 5, 6, and 7. `network_intersected` also carries the `level_path` column populated by Step 7. |
 | `hydrology/stream_tree.dat` | Text | TauDEM internal network topology file (Step 5) |
 | `hydrology/stream_coord.dat` | Text | TauDEM internal coordinate file (Step 5) |
 
@@ -217,15 +235,15 @@ Every step checks whether its output file already exists before running.  The sk
 
 For the vector layers in `hydro_derivatives.gpkg`, the check is layer-level: the step is skipped if the GeoPackage exists **and** the target layer name is present in it.
 
-**Partial re-runs:** Because each step is individually idempotent, you can delete a single intermediate and re-run to regenerate it (and all downstream outputs) without re-running earlier steps.  For example, to re-run with a different `--threshold`:
+**Partial re-runs:** Because each step is individually idempotent, you can delete a single intermediate and re-run to regenerate it (and all downstream outputs) without re-running earlier steps.  For example, to re-run with a different threshold (set in the config profile's `hydrology_threshold` parameter):
 
 1. Delete `hydrology/stream_raster.tif` (Step 4 output)
 2. Delete `hydrology/stream_order.tif`, `hydrology/subwatersheds.tif`, `hydrology/stream_tree.dat`, `hydrology/stream_coord.dat` (Step 5 outputs)
 3. Remove the `network_intersected` layer from `hydrology/hydro_derivatives.gpkg` (Step 5 vector output)
 4. Remove the `subwatersheds` layer from `hydrology/hydro_derivatives.gpkg` (Step 6 vector output)
-5. Re-run with the new `--threshold` value
+5. Re-run with the updated config profile
 
-Steps 1a–3 will be skipped automatically because their outputs are unchanged.
+Step 7 (level paths) will also re-run automatically whenever `network_intersected` is recreated, because the `level_path` column will be absent.
 
 Alternatively, pass `--force` to unconditionally re-run the entire pipeline from scratch.
 

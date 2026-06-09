@@ -308,6 +308,13 @@ def get_best_crs(raster_paths: list[str]) -> int | None:
     valid EPSG code can be read from any raster.
 
     Adapted from rscontext_3dep/rscontext_3dep/dem_builder.py.
+
+    .. note::
+        Not called within ``rs_context_neo`` — CRS selection was merged into
+        :func:`~rscontextneo.src.fetch_dem._inspect_tiles`, which performs a
+        single pass over all tiles rather than opening each file twice.
+        Retained here for reference alongside the other ``dem_builder.py``
+        helpers it was adapted from.
     """
     log = Logger("get_best_crs")
 

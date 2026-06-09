@@ -12,11 +12,12 @@ The two-step hydrological conditioning strategy — WhiteboxTools `BreachDepress
 
 | Input | Flag | Description |
 |-------|------|-------------|
-| Area of interest | `--aoi` | GeoJSON polygon defining the watershed boundary (WGS84). Mutually exclusive with `--dem`. |
-| Pre-downloaded DEM | `--dem` | Path to an existing GeoTIFF DEM raster. Mutually exclusive with `--aoi`. |
+| Config profile | `--config` / `-c` | Path to a regional profile JSON file (e.g. `config/us_conus.json`). Specifies the DEM source, AOI or file path, hydrology parameters, and optional data layers. |
 | Output folder | `--output` / `-o` | Root directory for all project outputs. Created if it does not exist. |
-| Download cache | `--download_dir` | Persistent cache for raw 3DEP tile ZIPs. Required when using `--aoi`. |
-| Scratch folder | `--scratch_dir` | Temporary folder for unzipped tiles. Defaults to `<download_dir>/scratch`. |
+| Download cache | `--download-dir` | Override the DEM download directory (takes precedence over the config file and `DOWNLOAD_DIR` env var). |
+| Scratch folder | `--scratch-dir` | Override the DEM scratch directory (takes precedence over the config file and `SCRATCH_DIR` env var). Defaults to a `scratch/` subfolder of the download directory. |
+
+The AOI (or pre-existing DEM path), DEM source, hydrology parameters, and any optional layers are all configured in the profile JSON file referenced by `--config`. See [`config/README.md`](config/README.md) for profile authoring guidance.
 
 ### Outputs
 
@@ -35,7 +36,7 @@ All paths are relative to `--output`.
 | `hydrology/stream_raster.tif` | GeoTIFF | Binary stream mask (contributing area ≥ threshold) |
 | `hydrology/stream_order.tif` | GeoTIFF | Strahler stream-order raster |
 | `hydrology/subwatersheds.tif` | GeoTIFF | Subwatershed raster (one value per reach) |
-| `hydrology/hydro_derivatives.gpkg` | GeoPackage | Vector stream network (`network_intersected`) and subwatershed polygons (`subwatersheds`) |
+| `hydrology/hydro_derivatives.gpkg` | GeoPackage | Vector stream network (`network_intersected`, includes `level_path` field) and subwatershed polygons (`subwatersheds`) |
 | `project.rs.xml` | XML | Riverscapes project manifest |
 
 ---
@@ -44,45 +45,61 @@ All paths are relative to `--output`.
 
 ### From a GeoJSON area of interest (downloads 3DEP tiles)
 
+Set the `aoi` path and `download_dir` in your config profile (or in `rscontextneo/.env`), then run:
+
 ```bash
 rs_context_neo \
-  --aoi     /path/to/watershed.geojson \
-  --output  /path/to/output_folder \
-  --download_dir /path/to/tile_cache
+  --config /path/to/config/us_conus.json \
+  --output /path/to/output_folder
 ```
 
 ### From a pre-downloaded DEM
 
+Set `dem.source` to `"file"` and `dem.filepath` in your config profile, then run:
+
 ```bash
 rs_context_neo \
-  --dem    /path/to/existing_dem.tif \
+  --config /path/to/config/my_file_dem.json \
   --output /path/to/output_folder
 ```
 
-### With custom parameters
+### Overriding the download cache directory at runtime
 
 ```bash
 rs_context_neo \
-  --aoi          /path/to/watershed.geojson \
-  --output       /path/to/output_folder \
-  --download_dir /path/to/tile_cache \
-  --threshold    100000 \
-  --breach_dist  150 \
-  --output_res   1.0 \
-  --cores        8
+  --config     /path/to/config/us_conus.json \
+  --output     /path/to/output_folder \
+  --download-dir /path/to/tile_cache
+```
+
+### All command-line flags
+
+```bash
+rs_context_neo \
+  --config     /path/to/profile.json \
+  --output     /path/to/output_folder \
+  --download-dir /path/to/tile_cache   \ # optional: overrides config / DOWNLOAD_DIR
+  --scratch-dir  /tmp/dem_scratch      \ # optional: overrides config / SCRATCH_DIR
+  --meta         "key1=val1,key2=val2" \ # optional: extra project XML metadata
+  --force                              \ # re-download and re-run all steps
+  --debug                              \ # keep intermediates, enable memory logging
+  --verbose                              # extra console output
 ```
 
 ---
 
 ## Key Parameters
 
-| Parameter | Default | Description |
+All science parameters live in the config profile JSON file (see [`config/README.md`](config/README.md)). The table below shows the most commonly tuned values and where to find them.
+
+| Config key (`parameters.*`) | Default | Description |
 |-----------|---------|-------------|
-| `--threshold` | `50000` | Minimum upstream cell count for stream classification. Higher → sparser network; lower → denser. At 1 m resolution, 50 000 cells ≈ 0.05 km². See [`docs/STREAM_THRESHOLD.md`](docs/STREAM_THRESHOLD.md). |
-| `--breach_dist` | `100` | Maximum search distance in cells for the WhiteboxTools least-cost breach path. At 1 m resolution this is metres. Increase for areas with major highway or rail infrastructure. |
-| `--output_res` | `1.0` | Target DEM resolution in metres (1–10). Source 3DEP tiles are 1 m; values > 1 trigger bilinear resampling during mosaicing. |
-| `--cores` | env / `2` | Number of MPI ranks for TauDEM steps. Reads `TAUDEM_CORES` environment variable; falls back to 2. |
-| `--force` | `False` | Re-download tiles and re-run all processing steps even if outputs already exist. |
+| `hydrology_threshold` | `50000` | Minimum upstream cell count for stream classification. Higher → sparser network; lower → denser. At 1 m resolution, 50 000 cells ≈ 0.05 km². See [`docs/STREAM_THRESHOLD.md`](docs/STREAM_THRESHOLD.md). |
+| `hydrology_breach_dist` | `100` | Maximum search distance in cells for the WhiteboxTools least-cost breach path. At 1 m resolution this is metres. Increase for areas with major highway or rail infrastructure. |
+| `dem.resolution` (in the `dem` layer) | `1.0` | Target DEM resolution in metres (1–10). Source 3DEP tiles are 1 m; values > 1 trigger bilinear resampling during mosaicing. |
+| `taudem_cpu_cores` | env / `2` | Number of MPI ranks for TauDEM steps. Also reads the `TAUDEM_CORES` environment variable; falls back to 2. |
+
+The `--force` command-line flag re-downloads all source data and re-runs every processing step even if outputs already exist.
 
 ---
 
@@ -90,9 +107,9 @@ rs_context_neo \
 
 The tool runs three high-level steps:
 
-**Step 1 — Acquire DEM.** If `--aoi` is provided, the tool queries The National Map REST API for all 3DEP 1-metre tiles that intersect the AOI, downloads them in parallel, resolves any UTM-zone CRS conflicts, mosaics and clips them to the AOI boundary, and derives hillshade and slope. If `--dem` is provided, this step is skipped entirely. See [`docs/FETCH_DEM.md`](docs/FETCH_DEM.md) for a detailed walkthrough.
+**Step 1 — Acquire DEM.** If the config profile specifies an AOI, the tool queries The National Map REST API for all 3DEP 1-metre tiles that intersect the AOI, downloads them in parallel, resolves any UTM-zone CRS conflicts, mosaics and clips them to the AOI boundary, and derives hillshade and slope. If the profile specifies a pre-existing DEM file, this step is skipped. See [`docs/FETCH_DEM.md`](docs/FETCH_DEM.md) for a detailed walkthrough.
 
-**Step 2 — D8 Hydrology.** The downloaded (or user-supplied) DEM is passed through a six-step D8 routing chain: breach conditioning (WhiteboxTools), pit removal (TauDEM), flow directions, flow accumulation, stream thresholding, and stream network / subwatershed extraction. See [`docs/HYDROLOGY_PIPELINE.md`](docs/HYDROLOGY_PIPELINE.md) for a step-by-step explanation, including the rationale for breach-before-pitremove conditioning.
+**Step 2 — D8 Hydrology.** The downloaded (or user-supplied) DEM is passed through a seven-step D8 routing chain: breach conditioning (WhiteboxTools), pit removal (TauDEM), flow directions, flow accumulation, stream thresholding, stream network / subwatershed extraction, and level-path assignment. See [`docs/HYDROLOGY_PIPELINE.md`](docs/HYDROLOGY_PIPELINE.md) for a step-by-step explanation, including the rationale for breach-before-pitremove conditioning.
 
 **Step 3 — Project XML.** A `project.rs.xml` manifest is written that registers all outputs with the Riverscapes framework, enabling direct visualisation in Riverscapes Viewer and ingestion by downstream models.
 
@@ -106,5 +123,5 @@ All steps are **idempotent**: outputs that already exist are skipped unless `--f
 |----------|----------|
 | [`docs/FETCH_DEM.md`](docs/FETCH_DEM.md) | Stage-by-stage walkthrough of 3DEP tile download, CRS conflict resolution, mosaicing, and hillshade/slope derivation |
 | [`docs/HYDROLOGY_PIPELINE.md`](docs/HYDROLOGY_PIPELINE.md) | Step-by-step D8 hydrology pipeline, breach-before-pitremove rationale, tunable parameters, output file reference, idempotency behaviour |
-| [`docs/STREAM_THRESHOLD.md`](docs/STREAM_THRESHOLD.md) | How to choose and tune the `--threshold` parameter; post-compute filtering with `USContArea` |
+| [`docs/STREAM_THRESHOLD.md`](docs/STREAM_THRESHOLD.md) | How to choose and tune the `threshold` config parameter; post-compute filtering with `USContArea` |
 | [`docs/STREAM_NETWORK_FIELDS.md`](docs/STREAM_NETWORK_FIELDS.md) | Full field reference for the `network_intersected` and `subwatersheds` layers in `hydro_derivatives.gpkg` |

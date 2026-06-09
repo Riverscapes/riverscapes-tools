@@ -1,3 +1,19 @@
+"""
+Riverscapes project XML writer for RS Context Neo.
+
+Builds and writes the ``project.rs.xml`` manifest that registers all
+topography and hydrology outputs with the Riverscapes framework, enabling
+visualisation in the Riverscapes Viewer and ingestion by downstream models
+such as BRAT and RME.
+
+Layer metadata (names, paths, descriptions, citations) is read from
+``layer_definitions.json`` so that adding a new output layer only requires
+an entry in that file — no code change is needed here.
+
+Author:     Matt Reimer
+Date:       2026-05-27
+"""
+
 from __future__ import annotations
 
 import json
@@ -219,46 +235,45 @@ def _dataset_exists(output_folder: str, dataset: Dataset | Geopackage) -> bool:
 
 def _build_merged_layer_types(
     config_layers: list,
-    output_folder: str,
-    log: Logger,
 ) -> dict[str, "Dataset | Geopackage"]:
     """
-    Return a per-run copy of the LayerTypes registry with overrides applied
-    from config layer entries where layer_ids match.
+    Return a per-run copy of the LayerTypes registry with config overrides
+    applied for any entry whose ``layer_id`` matches a definition.
 
-    Merge mapping (config field -> definition field):
-      label        -> name  (display name)
-      output_path  -> path
-      description  -> description
+    Merge mapping (config field → definition field):
+      ``label``       → display name
+      ``output_path`` → path
+      ``description`` → description
 
-    For RasterLayerConfig: extra Meta items (source_url, data_product_version,
-    docs_url, CellSizeX, CellSizeY) are attached as meta_data on the Dataset.
+    Provenance metadata (source_url, data_product_version, docs_url) is
+    carried on ``RasterLayerConfig`` objects and attached as ``MetaData``
+    here.  Cell-size metadata requires disk I/O and is added separately
+    inside ``write_project_xml`` after the output raster exists on disk.
 
-    For S3TablesLayerConfig: sub-layers are derived from layer_cfg.layer_name.
+    For ``S3TablesLayerConfig``: the single internal GPKG layer is derived
+    from ``layer_cfg.layer_name``.
 
-    The module-level LayerTypes dict is NEVER mutated.
+    The module-level ``LayerTypes`` dict is **never** mutated.
     """
     merged: dict[str, Dataset | Geopackage] = dict(LayerTypes)  # shallow copy
 
     for lyr in config_layers:
         lid: str = getattr(lyr, "layer_id", None)
         if lid not in LayerTypes:
-            continue  # no definition entry -> keep inline construction path
+            continue  # no definition entry — handled downstream
 
         existing = LayerTypes[lid]
 
-        # -- Resolve field overrides --------------------------------------------
+        # -- Resolve field overrides -------------------------------------------
         name = getattr(lyr, "label", None) or existing.name
         path = getattr(lyr, "output_path", None) or existing.path
-
         raw_desc = getattr(lyr, "description", None)
         description = raw_desc if raw_desc is not None else existing.description
-
         summary = existing.summary
         citation = existing.citation
 
-        # -- Build meta_data for RasterLayerConfig ------------------------------
-        meta_data = existing.meta_data  # None for all current definitions
+        # -- Provenance metadata for raster input layers -----------------------
+        meta_data = existing.meta_data
         if isinstance(lyr, RasterLayerConfig):
             meta_items: list[Meta] = []
             if lyr.source_url:
@@ -267,23 +282,12 @@ def _build_merged_layer_types(
                 meta_items.append(Meta("DataProductVersion", lyr.data_product_version))
             if lyr.docs_url:
                 meta_items.append(Meta("DocsUrl", lyr.docs_url, "url"))
-            abs_path = os.path.join(output_folder, path)
-            if os.path.isfile(abs_path):
-                try:
-                    from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
-                        get_raster_cell_size,
-                    )
-                    cx, cy = get_raster_cell_size(abs_path)
-                    meta_items.append(Meta("CellSizeX", str(cx)))
-                    meta_items.append(Meta("CellSizeY", str(cy)))
-                except Exception as exc:  # pylint: disable=broad-except
-                    log.warning(f"  Could not read cell size for {lid}: {exc}")
             if meta_items:
                 meta_data = MetaData(meta_items)
 
-        # -- Reconstruct object (never mutate existing) -------------------------
+        # -- Reconstruct object (never mutate existing) ------------------------
         if isinstance(existing, Geopackage):
-            # For S3Tables layers: derive sub-layers from config layer_name
+            # S3Tables layers carry a single internal layer named by layer_name.
             if isinstance(lyr, S3TablesLayerConfig):
                 sub_layers = [
                     GeopackageLayer(
@@ -361,7 +365,7 @@ def write_project_xml(
     log.info("Writing project XML")
 
     cfg = AppConfig.get()
-    merged_layer_types = _build_merged_layer_types(cfg.layers, output_folder, log)
+    merged_layer_types = _build_merged_layer_types(cfg.layers)
     threshold = cfg.hydrology.threshold
     output_res = cfg.dem.resolution
     breach_dist = cfg.hydrology.breach_dist
@@ -403,84 +407,69 @@ def write_project_xml(
     project_meta.add_meta("Processing Time", pretty_duration(elapsed_time))
 
     # ── Realization datasets ───────────────────────────────────────────────────
-    # Filter to only layers whose files (and GPKG layers) actually exist on
-    # disk.  This prevents FILE_MAP errors for outputs that were skipped or
-    # belong to a different DEM source (e.g. TILE_FOOTPRINTS with --dem_source wcs).
+    # Build candidate list dynamically from layer_definitions.json order so that
+    # adding a new output layer to the definitions file is sufficient — no code
+    # change required here.
+    #
+    # Layers are partitioned into three groups:
+    #   1. Core outputs  — every layer in layer_definitions.json that is NOT a
+    #                      conditional or a config-fetched input layer.
+    #   2. Conditionals  — layers only produced under specific run conditions.
+    #   3. Config inputs — layers declared in the config file (LANDFIRE_EVT,
+    #                      ROADS, RAIL, …); added in config-file order.
     log.info("  Registering project layers")
+
+    # IDs handled conditionally or via the config-input loop — skip in group 1.
+    _conditional_ids = {"TILE_FOOTPRINTS", "BREACH_DIFF_POINTS"}
+    _config_input_ids = {lyr.layer_id for lyr in cfg.layers}
+
+    # Group 1 — core outputs (definition order, skipping conditional/input ids)
     candidate_datasets: list[Dataset | Geopackage] = [
-        merged_layer_types["DEM"],
-        merged_layer_types["HILLSHADE"],
-        merged_layer_types["SLOPE"],
-        merged_layer_types["DEM_FILLED"],
-        merged_layer_types["DEM_BREACH"],
-        merged_layer_types["D8_FLOW"],
-        merged_layer_types["D8_CONTRIB_AREA"],
-        merged_layer_types["STREAM_RASTER"],
-        merged_layer_types["STREAM_ORDER"],
-        merged_layer_types["HYDRODERIVATIVES"],
-        merged_layer_types["SUBWATERSHEDS"],
+        ds
+        for lid, ds in merged_layer_types.items()
+        if lid not in _conditional_ids and lid not in _config_input_ids
     ]
+
+    # Group 2 — conditional outputs
     if aoi is not None and dem_source == "tnm":
         candidate_datasets.append(merged_layer_types["TILE_FOOTPRINTS"])
     if debug:
         candidate_datasets.append(merged_layer_types["BREACH_DIFF_POINTS"])
 
-    # Register optional layers declared in the config.
-    # When a config layer_id has a matching entry in layer_definitions.json,
-    # _build_merged_layer_types() has already produced a merged Dataset/Geopackage
-    # in merged_layer_types.  Use that entry directly.
-    # Fall back to inline construction only when there is no definition entry.
+    # Group 3 — config-declared input layers (in config-file order).
+    # _build_merged_layer_types() has already merged definition fields + provenance
+    # metadata.  Here we also attach cell-size metadata for raster layers (requires
+    # disk I/O, so it's done here rather than in the pure registry builder).
     for layer_cfg in cfg.layers:
         lid = layer_cfg.layer_id
-        if lid in merged_layer_types:
-            candidate_datasets.append(merged_layer_types[lid])
-        elif isinstance(layer_cfg, S3TablesLayerConfig):
-            transport_ds = Geopackage(
-                xml_id=lid,
-                name=layer_cfg.label,
-                path=layer_cfg.output_path,
-                layers=[
-                    GeopackageLayer(
-                        lyr_name=layer_cfg.layer_name,
-                        name=layer_cfg.layer_name.capitalize(),
-                        ds_type=GeoPackageDatasetTypes.VECTOR,
-                    )
-                ],
-                description="Transportation features sourced from AWS S3 Tables via Athena.",
+        if lid not in merged_layer_types:
+            # Config layer has no layer_definitions.json entry — it cannot be
+            # registered in the project XML without a definition.
+            log.warning(
+                f"  Skipping config layer '{lid}' — no entry in layer_definitions.json. "
+                f"Add a definition entry to register this layer in the project XML."
             )
-            candidate_datasets.append(transport_ds)
-        elif isinstance(layer_cfg, RasterLayerConfig):
-            from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
-                get_raster_cell_size,
-            )
-            abs_path = os.path.join(output_folder, layer_cfg.output_path)
-            meta_items: list[Meta] = []
-            if layer_cfg.source_url:
-                meta_items.append(Meta("SourceUrl", layer_cfg.source_url, "url"))
-            if layer_cfg.data_product_version:
-                meta_items.append(
-                    Meta("DataProductVersion", layer_cfg.data_product_version)
-                )
-            if layer_cfg.docs_url:
-                meta_items.append(Meta("DocsUrl", layer_cfg.docs_url, "url"))
+            continue
+
+        ds = merged_layer_types[lid]
+
+        # Attach cell-size metadata for raster output layers.
+        if isinstance(layer_cfg, RasterLayerConfig) and isinstance(ds, Dataset):
+            abs_path = os.path.join(output_folder, ds.path)
             if os.path.isfile(abs_path):
                 try:
-                    cx, cy = get_raster_cell_size(abs_path)
-                    meta_items.append(Meta("CellSizeX", str(cx)))
-                    meta_items.append(Meta("CellSizeY", str(cy)))
-                except Exception as exc:  # pylint: disable=broad-except
-                    log.warning(
-                        f"  Could not read cell size for {lid}: {exc}"
+                    from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
+                        get_raster_cell_size,
                     )
-            raster_ds = Dataset(
-                xml_id=lid,
-                name=layer_cfg.label,
-                path=layer_cfg.output_path,
-                ds_type="Raster",
-                meta_data=MetaData(meta_items) if meta_items else None,
-                description=layer_cfg.description,
-            )
-            candidate_datasets.append(raster_ds)
+                    cx, cy = get_raster_cell_size(abs_path)
+                    # _build_merged_layer_types produces a fresh MetaData for raster
+                    # layers, so add_meta is safe here (no duplicate-name risk).
+                    ds.meta_data.add_meta("CellSizeX", str(cx))
+                    ds.meta_data.add_meta("CellSizeY", str(cy))
+                except Exception as exc:  # pylint: disable=broad-except
+                    log.warning(f"  Could not read cell size for {lid}: {exc}")
+
+        candidate_datasets.append(ds)
 
     realization_datasets = []
     for ds in candidate_datasets:

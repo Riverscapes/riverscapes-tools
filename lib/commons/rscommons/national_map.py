@@ -14,7 +14,6 @@ from rscommons.national_map_api import TNM
 from rscommons.shapefile import get_geometry_union
 from rscommons.vector_ops import get_geometry_unary_union
 
-
 us_states = {
     "AL": {"statefp": "01", "state_name": "Alabama"},
     "AK": {"statefp": "02", "state_name": "Alaska"},
@@ -72,7 +71,9 @@ us_states = {
 }
 
 
-def download_shapefile_collection(url, download_folder, unzip_folder, force_download=False):
+def download_shapefile_collection(
+    url, download_folder, unzip_folder, force_download=False
+):
     """
     Download the one and only item from TNM and unzip it.
     :param url: URL of the TNM catalog item
@@ -83,38 +84,42 @@ def download_shapefile_collection(url, download_folder, unzip_folder, force_down
     :return: Dictionary of all ShapeFiles contained in the NHD zip file.
     """
 
-    log = Logger('Download Shapefile Collection')
+    log = Logger("Download Shapefile Collection")
 
     # download and unzip the archive. Note: leftover files are a possibility
     # so we allow one retry because unzip can clean things up
-    final_unzip_folder = download_unzip(url, download_folder, unzip_folder, force_download)
+    final_unzip_folder = download_unzip(
+        url, download_folder, unzip_folder, force_download
+    )
 
     # Build a dictionary of all the ShapeFiles within the archive.
     # Keys will be the name of the ShapeFile without extension (e.g. WBDHU8)
     shapefiles = {}
     for root, _subFolder, files in os.walk(final_unzip_folder):
         for item in files:
-            if item.endswith('.shp'):
-                shapefiles[os.path.splitext(os.path.basename(item))[0]] = os.path.join(root, item)
+            if item.endswith(".shp"):
+                shapefiles[os.path.splitext(os.path.basename(item))[0]] = os.path.join(
+                    root, item
+                )
 
-    log.info(f'{len(shapefiles)} shapefiles identified.')
+    log.info(f"{len(shapefiles)} shapefiles identified.")
     return shapefiles
 
 
 def _get_metadata(item: dict):
-    """extract and log other metadata from the TNM API return item 
+    """extract and log other metadata from the TNM API return item
 
     Args:
         item (dict): a single TNM API return item
     """
-    log = Logger('Download')
+    log = Logger("Download")
     # other keys are moreInfo, sourceId, sourceName, publicationDate, format, etc.
     # A simple CRS/EPSG/projection is not one of them. That info can be found embedded in the product metadata (xml)
-    for key_name in ['title', 'metaUrl']:
+    for key_name in ["title", "metaUrl"]:
         if item.get(key_name):
-            log.info(f'{key_name}:\t{item[key_name]}')
+            log.info(f"{key_name}:\t{item[key_name]}")
         else:
-            log.info(f'{key_name} not found')
+            log.info(f"{key_name} not found")
 
 
 def _get_urls(params: dict[str, str]):
@@ -125,12 +130,12 @@ def _get_urls(params: dict[str, str]):
     :return: List of HTTPS download URLs for items on S3
     """
 
-    log = Logger('Download')
-    log.info(f'TNM query: {params}')
+    log = Logger("Download")
+    log.info(f"TNM query: {params}")
 
     items = TNM.get_items(params)
 
-    log.info('{} item(s) identified.'.format(items['total']))
+    log.info("{} item(s) identified.".format(items["total"]))
 
     urls = []
     for item in items["items"]:
@@ -154,7 +159,7 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
     region = str(region)
 
     # Not ideal to change region to statefp here, but couldn't find a better way
-    if region_type == 'state':
+    if region_type == "state":
         # state name is used later to filter excess urls
         state_name = us_states[region]["state_name"]
         region = us_states[region]["statefp"]
@@ -170,23 +175,29 @@ def _get_shapefile_urls(dataset, file_format, region_type, region):
     url = _get_urls(params)
 
     # filter the list to only include files ending in GDB.zip
-    if file_format == 'FileGDB':
-        url = [val for val in url if val.endswith('GDB.zip')]
+    if file_format == "FileGDB":
+        url = [val for val in url if val.endswith("GDB.zip")]
     if len(url) == 0:
-        raise Exception('Failed to identify National Map item for {} "{}"'.format(region_type, region))
+        raise Exception(
+            'Failed to identify National Map item for {} "{}"'.format(
+                region_type, region
+            )
+        )
 
     # TODO maybe address this section running almost every time. TNM API HUC uses bounding boxes so always multiple
     if len(url) > 1:
         # Keyword search for the tag in the URL
         if "huc" in region_type:
             tag = f"H_{region}"
-        elif region_type == 'state':
+        elif region_type == "state":
             tag = "_".join(state_name.split())
 
         url = [val for val in url if tag in val]
 
         if len(url) == 0:
-            raise Exception('Failed to identify National Map item with tag "{}"'.format(tag))
+            raise Exception(
+                'Failed to identify National Map item with tag "{}"'.format(tag)
+            )
 
         return url[0]
     else:
@@ -221,8 +232,10 @@ def get_1m_dem_urls(vector_path: str, buffer_dist) -> list[str]:
     :param buffer_dist: Distance in DEGREES to buffer the polygons
     :return: List of HTTPS download URLs for DEMs sorted oldest-first by publication date
     """
-    log = Logger('The National Map')
-    log.info(f'Processing input path {vector_path} to use as parameter for National Map query')
+    log = Logger("The National Map")
+    log.info(
+        f"Processing input path {vector_path} to use as parameter for National Map query"
+    )
     polygon = get_geometry_unary_union(vector_path)
 
     buffered = polygon
@@ -243,38 +256,40 @@ def get_1m_dem_urls(vector_path: str, buffer_dist) -> list[str]:
         "prodFormats": "GeoTIFF",
     }
 
-    log.info(f'TNM API Query params: {params}')
+    log.info(f"TNM API Query params: {params}")
 
     # Fetch the full item metadata (not just URLs) so we can sort by publication date.
     # _get_urls discards date metadata, so we call TNM.get_items directly here.
     items_response = TNM.get_items(params)
-    total = items_response.get('total', 0)
-    log.info(f'{total} item(s) identified on The National Map')
+    total = items_response.get("total", 0)
+    log.info(f"{total} item(s) identified on The National Map")
 
     if total < 1:
-        log.error('TNM API Query returned no results.')
-        raise Exception('No DEM rasters identified on The National Map')
+        log.error("TNM API Query returned no results.")
+        raise Exception("No DEM rasters identified on The National Map")
 
     # Sort items oldest-first by publicationDate so newer gap-fill tiles come last
     # in the returned URL list.  Missing dates sort to the front (treated as oldest).
     sorted_items = sorted(
-        items_response.get('items', []),
-        key=lambda item: item.get('publicationDate') or '1900-01-01'
+        items_response.get("items", []),
+        key=lambda item: item.get("publicationDate") or "1900-01-01",
     )
 
     urls = []
     for item in sorted_items:
-        item_urls = list(item.get('urls', {}).values())
+        item_urls = list(item.get("urls", {}).values())
         urls.extend(item_urls)
         _get_metadata(item)
-        if item.get('publicationDate'):
-            log.info(f'  publicationDate: {item["publicationDate"]}  title: {item.get("title", "")[:70]}')
+        if item.get("publicationDate"):
+            log.info(
+                f"  publicationDate: {item['publicationDate']}  title: {item.get('title', '')[:70]}"
+            )
 
     if len(urls) < 1:
-        log.error('TNM API Query returned items but no downloadable URLs.')
-        raise Exception('No DEM rasters identified on The National Map')
+        log.error("TNM API Query returned items but no downloadable URLs.")
+        raise Exception("No DEM rasters identified on The National Map")
 
-    log.info(f'{len(urls)} URL(s) queued oldest-first by publication date')
+    log.info(f"{len(urls)} URL(s) queued oldest-first by publication date")
     return urls
 
 
@@ -326,11 +341,15 @@ def get_dem_urls(vector_path, buffer_dist):
         urls = _get_urls(params)
 
     if len(urls) < 1:
-        log = Logger('The National Map')
-        log.error('TNM API Query: {}'.format(params))
-        raise Exception('No DEM rasters identified on The National Map')
+        log = Logger("The National Map")
+        log.error("TNM API Query: {}".format(params))
+        raise Exception("No DEM rasters identified on The National Map")
 
-    with open(os.path.join(os.path.dirname(os.path.realpath(__file__)), 'ned_urls.csv'), 'rt', encoding='utf-8') as f:
+    with open(
+        os.path.join(os.path.dirname(os.path.realpath(__file__)), "ned_urls.csv"),
+        "rt",
+        encoding="utf-8",
+    ) as f:
         reader = csv.reader(f)
         data = [item[0] for item in list(reader)]
 
@@ -338,7 +357,7 @@ def get_dem_urls(vector_path, buffer_dist):
     lat_long_used = []
     for url in urls:
         # Find Lat Long sequence in url
-        lat_long = url.split('/')[8]
+        lat_long = url.split("/")[8]
         if lat_long in lat_long_used:
             # Only one url per lat/long
             continue
@@ -349,9 +368,9 @@ def get_dem_urls(vector_path, buffer_dist):
             # Find corresponding urls for lat long
             candidate_urls = [val for val in data if lat_long in val]
             if len(candidate_urls) == 0:
-                log = Logger('The National Map')
-                log.error(f'Unable to find valid download url for: {url}')
-                raise Exception(f'Unable to find valid download url for: {url}')
+                log = Logger("The National Map")
+                log.error(f"Unable to find valid download url for: {url}")
+                raise Exception(f"Unable to find valid download url for: {url}")
             # Append the newest dem
             clean_urls.append(candidate_urls[-1])
         lat_long_used.append(lat_long)
@@ -363,11 +382,18 @@ def get_dem_urls(vector_path, buffer_dist):
 def get_nhd_url(huc8):
     """
     Get the download URL for the specified HUC 8 original NHD
+
+    .. note::
+        This function does not appear to be called anywhere in the codebase.
+        It is retained for reference alongside :func:`get_nhdhr_url`.
+
     :param huc8: HUC 8 code as either integer or string
     :return: List with a single download HTTPS URL for the HUC item
     """
     # return _get_shapefile_urls(nhd_parent, 'Shapefile', 'HU8_{}'.format(huc8))
-    return _get_shapefile_urls('National Hydrography Dataset (NHD) Best Resolution', 'Shapefile', 'huc8', huc8)
+    return _get_shapefile_urls(
+        "National Hydrography Dataset (NHD) Best Resolution", "Shapefile", "huc8", huc8
+    )
 
 
 # NOTE This is also used in BRAT
@@ -377,7 +403,12 @@ def get_nhdhr_url(huc4):
     :param huc4: HUC 4 code as either integer or string
     :return: List with a single download HTTPS URL for the HUC item
     """
-    return _get_shapefile_urls('National Hydrography Dataset Plus High Resolution (NHDPlus HR)', 'FileGDB', 'huc4', huc4)
+    return _get_shapefile_urls(
+        "National Hydrography Dataset Plus High Resolution (NHDPlus HR)",
+        "FileGDB",
+        "huc4",
+        huc4,
+    )
 
 
 def get_ntd_urls(states):
@@ -392,6 +423,8 @@ def get_ntd_urls(states):
             # TODO determine if need state name as key or if abbreviation works
             # it is used for folder names in rscontext but maybe okay as long as it's consistent
             key = us_states[state]["state_name"]
-            urls[key] = _get_shapefile_urls("National Transportation Dataset (NTD)", 'Shapefile', 'state', state)
+            urls[key] = _get_shapefile_urls(
+                "National Transportation Dataset (NTD)", "Shapefile", "state", state
+            )
 
     return urls

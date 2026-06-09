@@ -1,3 +1,14 @@
+"""
+GeoPackage and SQLite utilities for RS Context Neo.
+
+Provides helpers for creating indexes, managing GeoPackage rtree triggers
+around bulk UPDATE operations, and converting GeoJSON files to GeoPackage
+format.
+
+Author:     Matt Reimer
+Date:       2026-05-25
+"""
+
 import os
 import sqlite3
 from typing import List, Union

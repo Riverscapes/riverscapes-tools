@@ -13,19 +13,19 @@ This directory contains:
 ## How it works
 
 A **profile** is a JSON file that tells the tool *what layers to produce* and
-*where the data comes from*. Everything region-specific lives here. The
-command-line stays thin:
+*where the data comes from*. Everything region-specific lives here — including
+the AOI path or DEM file path, DEM source, hydrology parameters, and optional
+layers. The command-line stays thin:
 
 ```bash
 rs_context_neo \
-  --config config/us_conus_aoi.json \
-  --aoi    my_watershed.geojson \
+  --config config/us_conus.json \
   --output /results/my_run
 ```
 
-Per-run flags (`--aoi / --dem`, `--output`, `--force`, `--debug`) tell the
-tool *where* to write and *what boundary* to use. The profile tells it *how*
-to acquire each layer.
+Per-run flags (`--output`, `--force`, `--debug`, `--download-dir`,
+`--scratch-dir`) tell the tool *where* to write results and whether to
+override cached downloads. The profile tells it *how* and *what* to acquire.
 
 ---
 
@@ -54,7 +54,7 @@ print('Profile OK:', cfg.profile_name)
 
 | `type` | What it does | Required fields |
 |---|---|---|
-| `s3tables` | Fetches one or more vector layers from AWS S3 Tables via Athena | `athena_output`, `sublayers[].layer_name`, `sublayers[].s3tables_path` |
+| `s3tables` | Fetches a vector layer from AWS S3 Tables via Athena | `layer_name`, `s3tables_path`, `athena_output` |
 | `cog_clip` | Clips a Cloud-Optimized GeoTIFF to the AOI (Landfire, NLCD, precipitation, …) | `url` |
 | `wfs` | Downloads features from any OGC WFS endpoint | `url`, `typename`, `layer_name` |
 | `wcs_raster` | Downloads a raster coverage from any OGC WCS endpoint | `url`, `coverage`, `layer_name` |

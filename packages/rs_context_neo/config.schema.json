@@ -72,7 +72,7 @@
             "required": ["layer_id", "label", "type", "source"],
             "additionalProperties": false,
             "properties": {
-              "layer_id": { "type": "string", "description": "Must be 'DEM'." },
+              "layer_id": { "type": "string", "const": "DEM", "description": "Must be 'DEM'." },
               "label":    { "type": "string" },
               "type":     { "type": "string", "const": "dem" },
               "source": {
