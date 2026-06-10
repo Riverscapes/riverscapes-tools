@@ -11,7 +11,9 @@
       "description": "1-metre 3DEP DEM downloaded from The National Map (or user-supplied file)",
       "summary": "Raw digital elevation model for the project extent.",
       "theme": "Topography",
-      "xml_metadata": {}
+      "xml_metadata": {
+        "key1": "value1"
+      }
     },
     {
       "layer_id": "HILLSHADE",
@@ -450,18 +452,18 @@
     },
     {
       "layer_id": "ROADS",
-      "layer_name": "Roads",
-      "path": "transportation/roads.gpkg",
+      "layer_name": "Transportation",
+      "path": "transportation/transportation.gpkg",
       "layer_type": "Geopackage",
-      "description": "Road centrelines fetched from AWS S3 Tables via Athena and clipped to the project extent.",
-      "summary": "Road centrelines clipped to the project extent.",
+      "description": "Road and railway centrelines fetched from AWS S3 Tables via Athena and clipped to the project extent.",
+      "summary": "Road and railway centrelines clipped to the project extent.",
       "theme": "Transportation",
       "xml_metadata": {}
     },
     {
       "layer_id": "RAIL",
       "layer_name": "Rail",
-      "path": "transportation/rail.gpkg",
+      "path": "transportation/transportation.gpkg",
       "layer_type": "Geopackage",
       "description": "Railway centrelines fetched from AWS S3 Tables via Athena and clipped to the project extent.",
       "summary": "Railway centrelines clipped to the project extent.",

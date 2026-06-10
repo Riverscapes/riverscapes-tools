@@ -45,7 +45,7 @@ from rscontextneo.src.utils.geom import load_geojson_geometry
 initGDALOGRErrors()
 
 # ── JSON layer definitions ─────────────────────────────────────────────────────
-_JSON_PATH = os.path.join(os.path.dirname(__file__), "layer_definitions.json")
+_JSON_PATH = os.path.join(os.path.dirname(__file__), "..", "layer_definitions.json")
 
 # Sub-layer structure for Geopackage datasets.  The JSON captures metadata but
 # not the internal layer list (lyr_name / display name pairs), so those are
@@ -323,6 +323,64 @@ def _build_merged_layer_types(
     return merged
 
 
+def _merge_shared_path_geopackages(
+    datasets: list[Dataset | Geopackage],
+) -> list[Dataset | Geopackage]:
+    """Collapse Geopackage entries that share the same ``path`` into one element.
+
+    When two or more :class:`Geopackage` objects point at the same file (e.g.
+    ROADS and RAIL both reference ``transportation/transportation.gpkg``), the
+    project XML would otherwise emit a duplicate ``<Geopackage>`` element for
+    that file.  This function merges them: the first encountered entry supplies
+    the ``xml_id``, ``name``, and other metadata; subsequent entries with the
+    same path contribute only their sub-layers (deduplicated by ``lyr_name``).
+
+    Non-Geopackage datasets and Geopackages with unique paths are returned
+    unchanged.
+    """
+    result: list[Dataset | Geopackage] = []
+    # Maps normalised path → index of its entry in *result*.
+    path_index: dict[str, int] = {}
+
+    for ds in datasets:
+        if not isinstance(ds, Geopackage):
+            result.append(ds)
+            continue
+
+        norm_path = os.path.normpath(ds.path)
+        if norm_path not in path_index:
+            # First time we see this path — store a copy with a mutable layer list.
+            # Derive xml_id and name from the filename stem so that when multiple
+            # entries share a path both reflect the file, not just the first entry
+            # (e.g. roads + rail in transportation.gpkg → id="TRANSPORTATION",
+            # name="Transportation").
+            stem = os.path.splitext(os.path.basename(ds.path))[0]
+            xml_id = stem.upper()
+            name = stem.replace("_", " ").title()
+            merged_gpkg = Geopackage(
+                xml_id=xml_id,
+                name=name,
+                path=ds.path,
+                layers=list(ds.layers),
+                description=ds.description,
+                summary=ds.summary,
+                citation=ds.citation,
+                meta_data=ds.meta_data,
+            )
+            path_index[norm_path] = len(result)
+            result.append(merged_gpkg)
+        else:
+            # Same path — fold any new sub-layers into the existing entry.
+            existing_gpkg = result[path_index[norm_path]]
+            existing_lyr_names = {lyr.lyr_name for lyr in existing_gpkg.layers}
+            for lyr in ds.layers:
+                if lyr.lyr_name not in existing_lyr_names:
+                    existing_gpkg.layers.append(lyr)
+                    existing_lyr_names.add(lyr.lyr_name)
+
+    return result
+
+
 def write_project_xml(
     output_folder: str,
     descriptor: str,
@@ -461,6 +519,7 @@ def write_project_xml(
                     from rscontextneo.src.raster_clip import (  # pylint: disable=import-outside-toplevel
                         get_raster_cell_size,
                     )
+
                     cx, cy = get_raster_cell_size(abs_path)
                     # _build_merged_layer_types produces a fresh MetaData for raster
                     # layers, so add_meta is safe here (no duplicate-name risk).
@@ -480,6 +539,10 @@ def write_project_xml(
                 f"  Skipping dataset '{ds.xml_id}' — not found on disk: "
                 f"{os.path.join(output_folder, ds.path)}"
             )
+
+    # Collapse any Geopackage entries that share the same path into one element
+    # with combined sub-layers (e.g. ROADS + RAIL → one transportation.gpkg).
+    realization_datasets = _merge_shared_path_geopackages(realization_datasets)
 
     # ── Project bounds ─────────────────────────────────────────────────────────
     bounds = build_project_bounds(bounds_geojson, output_folder, log)

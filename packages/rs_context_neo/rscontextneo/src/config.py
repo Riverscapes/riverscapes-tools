@@ -117,7 +117,6 @@ class S3TablesLayerConfig:
     label: str
     output_path: str
     layer_name: str
-    athena_output: str
     s3tables_path: str
     type: str = "s3tables"
 
@@ -202,6 +201,7 @@ class RSContextNeoConfig:
     metadata: dict = field(default_factory=dict)
     profile_name: str = ""
     description: str = ""
+    athena_output: Optional[str] = None
 
 
 # ── Borg singleton ───────────────────────────────────────────────────────────
@@ -451,6 +451,7 @@ def _parse_config(raw: dict) -> RSContextNeoConfig:
         metadata=raw.get("metadata", {}),
         profile_name=raw.get("profile_name", ""),
         description=raw.get("description", ""),
+        athena_output=params.get("athena_output"),
     )
 
 
@@ -543,7 +544,6 @@ def _parse_layer(raw: dict) -> LayerConfig:
             label=raw["label"],
             output_path=raw["output_path"],
             layer_name=raw["layer_name"],
-            athena_output=raw["athena_output"],
             s3tables_path=raw["s3tables_path"],
         )
 

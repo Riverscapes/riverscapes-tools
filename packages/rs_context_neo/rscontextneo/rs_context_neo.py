@@ -13,6 +13,7 @@ Date:       2026-05-20
 
 import argparse
 import os
+from typing import Optional
 import sys
 import time
 import traceback
@@ -239,7 +240,7 @@ def rs_context_neo(
         step_timer = Timer()
         for layer_cfg in config.layers:
             _fetch_layer(
-                layer_cfg, output_folder, bounds_geojson, log, force=force_download
+                layer_cfg, output_folder, bounds_geojson, log, force=force_download, debug=debug, athena_output=config.athena_output
             )
         log.info(f"  Step 3 complete in {pretty_duration(step_timer.ellapsed())}")
 
@@ -336,6 +337,8 @@ def _fetch_layer(
     bounds_geojson: str,
     log: Logger,
     force: bool = False,
+    debug: bool = False,
+    athena_output: Optional[str] = None,
 ) -> None:
     """Dispatch a single optional layer to its handler based on layer type."""
     if isinstance(layer_cfg, S3TablesLayerConfig):
@@ -349,9 +352,10 @@ def _fetch_layer(
             layer_name=layer_cfg.layer_name,
             s3tables_path=layer_cfg.s3tables_path,
             output_path=os.path.join(output_folder, layer_cfg.output_path),
-            athena_output=layer_cfg.athena_output,
+            athena_output=athena_output,
             log=log,
             aoi_geojson=bounds_geojson,
+            debug=debug,
         )
 
     elif isinstance(layer_cfg, RasterLayerConfig):

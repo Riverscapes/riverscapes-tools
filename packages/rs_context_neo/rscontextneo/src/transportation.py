@@ -59,6 +59,7 @@ def fetch_transportation(
     athena_output: str,
     log: Logger,
     aoi_geojson: Optional[str] = None,
+    debug: bool = False,
 ) -> None:
     """Fetch a single transportation layer from Athena S3 Tables into a GeoPackage.
 
@@ -87,6 +88,10 @@ def fetch_transportation(
         the area of interest.  When provided, the Athena queries are filtered
         to only return features that intersect the AOI bounding geometry.
         Pass ``None`` (default) to fetch all rows.
+    debug : bool
+        When ``True``, log the complete un-truncated Athena SQL so it can be
+        copied and pasted directly into the Athena console.  Defaults to
+        ``False``.
     """
     # Import boto3 lazily so that missing boto3 doesn't break non-transportation runs.
     import boto3  # pylint: disable=import-outside-toplevel
@@ -140,5 +145,6 @@ def fetch_transportation(
         layer_name=layer_name,
         catalog=catalog,
         aoi_wkt=aoi_wkt,
+        debug=debug,
     )
     log.info(f"  Transportation layer '{layer_name}' written to {output_path}")

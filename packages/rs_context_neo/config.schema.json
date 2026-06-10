@@ -50,6 +50,10 @@
           "default": 100,
           "description": "WhiteboxTools breach depression maximum distance (in cells)."
         },
+        "athena_output": {
+          "type": "string",
+          "description": "S3 path for Athena query results. Supports {env:VAR} substitution."
+        },        
         "taudem_cpu_cores": {
           "anyOf": [
             { "type": "integer", "minimum": 1 },
@@ -131,7 +135,7 @@
             "$comment": "s3tables — fetches a single vector layer from AWS S3 Tables via Athena",
             "type": "object",
             "title": "S3Tables Layer",
-            "required": ["layer_id", "label", "type", "output_path", "layer_name", "athena_output", "s3tables_path"],
+            "required": ["layer_id", "label", "type", "output_path", "layer_name", "s3tables_path"],
             "additionalProperties": false,
             "properties": {
               "layer_id": {
@@ -150,10 +154,6 @@
               "layer_name": {
                 "type": "string",
                 "description": "OGR layer name inside the output GeoPackage (e.g. 'roads' or 'rail')."
-              },
-              "athena_output": {
-                "type": "string",
-                "description": "S3 path for Athena query results. Supports {env:VAR} substitution."
               },
               "s3tables_path": {
                 "type": "string",

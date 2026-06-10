@@ -7,7 +7,8 @@
     "scratch_dir": "{env:SCRATCH_DIR}",
     "hydrology_threshold": 50000,
     "hydrology_breach_dist": 100,
-    "taudem_cpu_cores": 2
+    "taudem_cpu_cores": 2,
+    "athena_output": "{env:ATHENA_OUTPUT}"
   },
 
   "layers": [
@@ -33,18 +34,16 @@
       "layer_id": "ROADS",
       "label": "Roads",
       "type": "s3tables",
-      "output_path": "transportation/roads.gpkg",
+      "output_path": "transportation/transportation.gpkg",
       "layer_name": "roads",
-      "athena_output": "{env:ATHENA_OUTPUT}",
       "s3tables_path": "{env:ROADS_S3TABLES_PATH}"
     },
     {
       "layer_id": "RAIL",
       "label": "Railway",
       "type": "s3tables",
-      "output_path": "transportation/rail.gpkg",
+      "output_path": "transportation/transportation.gpkg",
       "layer_name": "rail",
-      "athena_output": "{env:ATHENA_OUTPUT}",
       "s3tables_path": "{env:RAIL_S3TABLES_PATH}"
     }
   ],

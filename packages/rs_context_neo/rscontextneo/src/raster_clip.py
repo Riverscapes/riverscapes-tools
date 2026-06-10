@@ -13,12 +13,11 @@ from __future__ import annotations
 
 import os
 
-from osgeo import gdal, osr
+from osgeo import gdal
 from rsxml import Logger
 from rsxml.util import safe_makedirs
 
 from rscontextneo.src.config import RasterLayerConfig
-from rscontextneo.src.utils.geom import load_geojson_geometry
 
 
 def fetch_raster_layer(
@@ -147,80 +146,47 @@ def fetch_raster_layer(
             f"GDAL error: {gdal_msg}"
         )
 
-    # ── 8. Get raster CRS ─────────────────────────────────────────────────────
-    src_srs = osr.SpatialReference()
-    src_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
+    # ── 8. Validate source CRS ────────────────────────────────────────────────
     if not ds.GetProjection():
         ds = None
         _restore_s3_config(_s3_prev)
         raise RuntimeError(
-            f"Source raster '{gdal_src}' has no embedded CRS — cannot reproject bounds for clipping."
-        )
-    err = src_srs.ImportFromWkt(ds.GetProjection())
-    if err != 0:  # OGRERR_NONE == 0
-        bad_wkt = ds.GetProjection()
-        ds = None
-        _restore_s3_config(_s3_prev)
-        raise RuntimeError(
-            f"Source raster '{gdal_src}' has an unreadable CRS. "
-            f"WKT: {bad_wkt!r}"
+            f"Source raster '{gdal_src}' has no embedded CRS — cannot clip with cutline."
         )
 
-    # ── 9. Load project bounds and reproject bbox to raster CRS ───────────────
-    project_geom = load_geojson_geometry(bounds_geojson)
-    minx, miny, maxx, maxy = project_geom.bounds  # WGS84 (lng, lat)
-
-    wgs84_srs = osr.SpatialReference()
-    wgs84_srs.SetAxisMappingStrategy(osr.OAMS_TRADITIONAL_GIS_ORDER)
-    wgs84_srs.ImportFromEPSG(4326)
-
-    transform = osr.CoordinateTransformation(wgs84_srs, src_srs)
-
-    # Transform the four corners of the bounding box
-    corners = [
-        transform.TransformPoint(minx, miny),
-        transform.TransformPoint(minx, maxy),
-        transform.TransformPoint(maxx, miny),
-        transform.TransformPoint(maxx, maxy),
-    ]
-    xs = [c[0] for c in corners]
-    ys = [c[1] for c in corners]
-
-    ulx = min(xs)
-    lrx = max(xs)
-    lry = min(ys)
-    uly = max(ys)
-
-    # ── 10. Clip with gdal.Translate ──────────────────────────────────────────
-    # S3 HTTP options (_s3_prev) remain active through this block — COG pixel
-    # data is fetched lazily during Translate, not during Open.
+    # ── 9. Clip with gdal.Warp using the AOI polygon as a cutline ─────────────
+    # cropToCutline=True crops to the polygon's bounding box AND masks every
+    # pixel outside the polygon shape to nodata.  GDAL automatically reprojects
+    # the WGS84 GeoJSON cutline to the raster's native CRS, so no manual
+    # coordinate transformation is needed here.
+    # S3 HTTP options remain active through this block — COG pixel data is
+    # fetched lazily during Warp, not during Open.
     translate_succeeded = False
     result = None
     try:
-        # projWin is already expressed in the raster's native CRS (transformed in
-        # step 9), so we deliberately omit projWinSRS and outputSRS to prevent
-        # GDAL from silently reprojecting the output.
-        translate_options = gdal.TranslateOptions(
-            projWin=[ulx, uly, lrx, lry],
-            bandList=[layer_cfg.band],
-            noData=layer_cfg.nodata,
-            creationOptions=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BIGTIFF=IF_SAFER"],
+        warp_options = gdal.WarpOptions(
             format="GTiff",
+            cutlineDSName=bounds_geojson,
+            cropToCutline=True,
+            dstNodata=layer_cfg.nodata,
+            srcBands=[layer_cfg.band],
+            dstBands=[1],
+            creationOptions=["COMPRESS=LZW", "PREDICTOR=2", "TILED=YES", "BIGTIFF=IF_SAFER"],
         )
-        result = gdal.Translate(abs_output, ds, options=translate_options)
+        result = gdal.Warp(abs_output, ds, options=warp_options)
 
-        # ── 11. Check result ───────────────────────────────────────────────────
+        # ── 10. Check result ───────────────────────────────────────────────────
         if result is None:
             raise RuntimeError(
-                f"gdal.Translate returned None for '{abs_output}'. "
+                f"gdal.Warp returned None for '{abs_output}'. "
                 f"GDAL error: {gdal.GetLastErrorMsg()}"
             )
         translate_succeeded = True
     finally:
-        # ── 12. Flush / close ──────────────────────────────────────────────────
+        # ── 11. Flush / close ──────────────────────────────────────────────────
         result = None  # dereference to flush GDAL write buffer
         ds = None      # dereference to close source dataset
-        # Remove partial output if translate failed
+        # Remove partial output if warp failed
         if not translate_succeeded and os.path.isfile(abs_output):
             os.remove(abs_output)
         # Restore S3 GDAL config options after all GDAL operations are complete
