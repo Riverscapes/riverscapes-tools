@@ -43,15 +43,22 @@ class RunInputs:
 
 
 def step_1(cfg: RunInputs, dist_dir):
-    """vector prep (error checks) and output to 4326"""
-    prepped_gdf = vector_prep(cfg.input_vector_path, None, cfg.tolerance, cfg.epsg)
+    """vector prep (error checks) and output to 4326.
+
+    vector_prep() now writes the output GeoPackage internally; step_1 just
+    constructs the output path, delegates to vector_prep(), and returns the
+    stats dict alongside the output path.
+    """
     source_category_stub = 'usgov_sources' if cfg.source_category == 'usgov' else f'raw_{cfg.source_category}'
 
     output_dir = dist_dir / source_category_stub / cfg.layer_id / cfg.snapshot_id
     output_dir.mkdir(parents=True, exist_ok=True)
     output_file = output_dir / f"{cfg.layer_id}.gpkg"
-    output_gdf(prepped_gdf, output_file, cfg.input_layer_name)
-    return prepped_gdf, output_file
+    stats = vector_prep(
+        cfg.input_vector_path, cfg.input_layer_name, cfg.tolerance, cfg.epsg,
+        output_path=str(output_file),
+    )
+    return stats, output_file
 
 def step_2(gdf, cfg: RunInputs, output_file: Path):
     """Add ST_ALLOT_PAST_NAME, ST_ALLOT_PAST_MULTI, and deterministic RS_ROW_ID from GlobalID."""

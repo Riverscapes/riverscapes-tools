@@ -44,15 +44,33 @@
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
             },
-            // Add NATIONAL_PROJECT, INPUTS_FOLDER, DOWNLOAD_FOLDER to your .env file
             "args": [
-                "/Users/philipbailey/GISData/blm/land_management_areas/BLM_Natl_Land_Use_Plans_Approved_2022_-1702520180236777929.gpkg",
-                "/Users/philipbailey/GISData/blm/land_management_areas/blm_land_management_clean.gpkg",
-                "--tolerance", "20",
-               //"--epsg", "5070",
-                //"--meta",
+                "${input:inputPath}",
+                "--output", "${input:outputPath}",
+                "--garbage", "${input:garbagePath}",
+                // "--tolerance", "20",
                 "--verbose"
             ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "inputPath",
+            "type": "promptString",
+            "description": "Input vector path (shapefile, gpkg, etc.)",
+            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads.gpkg"
         },
+        {
+            "id": "outputPath",
+            "type": "promptString",
+            "description": "Output GeoPackage path",
+            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads_cleaned_OUTPUT.gpkg"
+        },
+        {
+            "id": "garbagePath",
+            "type": "promptString",
+            "description": "Garbage GeoPackage path (for dropped/changed geometries)",
+            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads_garbage_GARBAGE.gpkg"
+        }
     ]
 }

@@ -3,408 +3,575 @@ Clean a vector layer by fixing invalid geometries and simplifying it. Ostensibly
 preparing vector layers for use in the Riverscapes Reporting platform both as a picklist
 layer, but also for storing in Athena for use in reports.
 
-The input is a single ShapeFile for GeoPackage vector layer. It can be in any projection,
+The input is a single ShapeFile or GeoPackage vector layer. It can be in any projection,
 and any fields.
 
 The output is always a GeoPackage layer with cleaned geometries, reprojected to EPSG:4326.
 
+Processing is done in a windowed/chunked fashion so that very large datasets can be handled
+without loading the entire file into memory:
+
+  Pass 1 – lightweight hash scan (pyogrio): iterates all features in chunks, builds sets of SHA1 hashes
+            for geometries / full rows that appear more than once (for cross-chunk dedup).
+            Geometries are reprojected to the target EPSG before hashing so that pass-1
+            hashes are computed in the same coordinate space as pass-2 (steps J & K).
+  Pass 2 – chunked processing: reads chunk_size features at a time, runs checks + clean,
+            then appends to the output GeoPackage incrementally.
+
 Philip Bailey
 27 Nov 2025
 """
+from __future__ import annotations
+
 import argparse
-import sys
+import hashlib
+import math
 import os
+import re
+import sys
 import traceback
 from pathlib import Path
-from typing import Dict, List, Tuple
+from typing import Dict, Optional, Set, Tuple
 
 import geopandas as gpd
-import pandas as pd
-from shapely.geometry.base import BaseGeometry
-from shapely import make_valid  # shapely >=1.8
-from rsxml import Logger, dotenv
+import pyogrio
+from pyproj import CRS as ProjCRS
+from pyproj import Transformer
+from shapely.ops import transform as shapely_transform
+from rsxml import Logger, ProgressBar, dotenv
 
-# This script always produces the output in GeoPackage format
-OUTPUT_DRIVER = "GPKG"
+from .lib.checks import run_checks
+from .lib.clean import clean_geometries
+from .lib.garbage import write_garbage_chunk
+from .lib.geometry_utils import _geom_type_str
+from .lib.output import output_gdf, output_gdf_chunk  # output_gdf re-exported for orchestrate scripts
+from .lib.report import print_report
+
+
+# ---------------------------------------------------------------------------
+# Pass-1 string-normalisation helper (must match step G in checks.py)
+# ---------------------------------------------------------------------------
+
+_non_print_re = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def _normalize_str_for_hash(val: object) -> object:
+    """Apply the same normalisation as step G (checks.py) so that pass-1
+    attribute hashes match the hashes produced after step G in pass 2.
+
+    Non-string values are returned unchanged.
+    """
+    if not isinstance(val, str):
+        return val
+    cleaned = _non_print_re.sub("", val.strip())
+    return None if cleaned == "" else cleaned
+
+
+# ---------------------------------------------------------------------------
+# Pass-1 helper
+# ---------------------------------------------------------------------------
+
+
+def _build_duplicate_hash_sets(
+    input_path: str,
+    layer_name: Optional[str],
+    epsg: Optional[int],
+) -> Tuple[int, Set[str], Set[str], Optional[str]]:
+    """Iterate all features with pyogrio and build sets of duplicate hashes.
+
+    Geometries are reprojected to *epsg* before hashing so that the WKB bytes
+    computed here are in the same coordinate space as the hashes computed in
+    pass 2 (checks J and K).  When *epsg* is None no reprojection is applied.
+
+    Attribute columns are sorted alphabetically before hashing to ensure
+    column order is canonical and matches the sorted order used in step K.
+
+    We intentionally do NOT store geometries — only hash strings — so that
+    memory usage is O(n_features) in hash strings, not in geometry objects.
+
+    Returns:
+        total_features: total feature count from pyogrio.read_info().
+        duplicate_geom_hashes: SHA1-of-WKB hashes that appear in 2+ features.
+        duplicate_row_hashes: SHA1-of-(WKB + repr(attrs)) hashes appearing 2+ times.
+        dominant_type: Most common non-GeometryCollection base geometry type,
+            or None if the dataset is empty.
+    """
+    geom_hash_counts: Dict[str, int] = {}
+    row_hash_counts: Dict[str, int] = {}
+    geom_type_counts: Dict[str, int] = {}
+
+    # Use pyogrio.read_info() for metadata (total features, CRS, field names).
+    layer_kwargs = {"layer": layer_name} if layer_name else {}
+    info = pyogrio.read_info(input_path, **layer_kwargs)
+    total_features = info["features"]
+    # attr_cols: sorted field names (no geometry) — canonical order for row hashing.
+    attr_cols = sorted(info["fields"])
+
+    # Build a geometry transformer when a target EPSG is specified.
+    transformer: Optional[Transformer] = None
+    if epsg is not None and info.get("crs") is not None:
+        try:
+            src_proj_crs = ProjCRS.from_user_input(info["crs"])
+            dst_proj_crs = ProjCRS.from_epsg(epsg)
+            transformer = Transformer.from_crs(src_proj_crs, dst_proj_crs, always_xy=True)
+        except Exception:
+            transformer = None
+
+    # Chunk size for pass 1 — large enough to amortise pyogrio overhead but
+    # small enough not to balloon memory.
+    _P1_CHUNK = 50_000
+
+    pbar = ProgressBar(total_features, text="Pass 1: hashing features")
+    features_hashed = 0
+    for offset in range(0, max(total_features, 1), _P1_CHUNK):
+        chunk = pyogrio.read_dataframe(
+            input_path,
+            skip_features=offset,
+            max_features=_P1_CHUNK,
+            **layer_kwargs,
+        )
+        for _, row in chunk.iterrows():
+            features_hashed += 1
+            pbar.update(features_hashed)
+            geom = row.geometry
+            if geom is None:
+                continue
+
+            # Count geometry types for dominant_type computation.
+            geom_type = geom.geom_type if geom is not None else ""
+            if geom_type:
+                geom_type_counts[geom_type] = geom_type_counts.get(geom_type, 0) + 1
+
+            try:
+                shp = geom
+                # Reproject to target CRS before hashing so WKB bytes match pass 2.
+                if transformer is not None:
+                    shp = shapely_transform(transformer.transform, shp)
+                # Strip Z so WKB bytes match pass-2 hashes (step A drops Z
+                # before steps J & K compute their hashes).
+                if shp.has_z:
+                    shp = shapely_transform(lambda x, y, *args: (x, y), shp)
+                wkb = shp.wkb
+            except Exception:
+                continue
+
+            # Geometry hash — SHA1 of reprojected, 2-D WKB bytes.
+            g_hash = hashlib.sha1(wkb).hexdigest()
+            geom_hash_counts[g_hash] = geom_hash_counts.get(g_hash, 0) + 1
+
+            # Row hash — geometry + normalised attribute values (sorted column
+            # order). Normalisation mirrors step G so hashes match pass 2.
+            attr_vals = tuple(
+                str(_normalize_str_for_hash(row[c] if c in row.index else None))
+                for c in attr_cols
+            )
+            r_hash = hashlib.sha1(wkb + repr(attr_vals).encode()).hexdigest()
+            row_hash_counts[r_hash] = row_hash_counts.get(r_hash, 0) + 1
+
+    pbar.finish()
+
+    # Keep only hashes that appear more than once — these are the candidates
+    # that need first-occurrence tracking during pass 2.
+    duplicate_geom_hashes: Set[str] = {
+        h for h, n in geom_hash_counts.items() if n > 1
+    }
+    duplicate_row_hashes: Set[str] = {
+        h for h, n in row_hash_counts.items() if n > 1
+    }
+
+    # Compute dominant geometry type (base type, excluding GeometryCollection).
+    non_coll_counts: Dict[str, int] = {}
+    for t, n in geom_type_counts.items():
+        if t != "GeometryCollection":
+            base = t.replace("Multi", "")
+            non_coll_counts[base] = non_coll_counts.get(base, 0) + n
+    dominant_type: Optional[str] = (
+        max(non_coll_counts, key=non_coll_counts.__getitem__) if non_coll_counts else None
+    )
+
+    return total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type
+
+
+# ---------------------------------------------------------------------------
+# Pass-2 helper
+# ---------------------------------------------------------------------------
+
+
+def _read_chunk(
+    input_path: str,
+    layer_name: Optional[str],
+    offset: int,
+    chunk_size: int,
+) -> gpd.GeoDataFrame:
+    """Read a slice of features starting at *offset* (0-indexed) using pyogrio."""
+    layer_kwargs = {"layer": layer_name} if layer_name else {}
+    return pyogrio.read_dataframe(
+        input_path,
+        skip_features=offset,
+        max_features=chunk_size,
+        **layer_kwargs,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Main pipeline
+# ---------------------------------------------------------------------------
 
 
 def vector_prep(
     input_dataset: Path | str,
-    layer_name: str | None,
+    layer_name: Optional[str],
     tolerance: float,
-    epsg: int | None,
-    garbage_path: str | None = None,
-) -> Tuple[gpd.GeoDataFrame, Dict]:
-    """ Vector Prep
+    epsg: Optional[int],
+    output_path: Optional[str] = None,
+    garbage_path: Optional[str] = None,
+    min_size: float = None,
+    chunk_size: int = 10_000,
+) -> Dict:
+    """Vector Prep: clean, validate, and optionally simplify a vector dataset.
+
+    Processing is chunked: features are read and processed in slices of
+    *chunk_size* so that arbitrarily large datasets can be handled with bounded
+    memory.  A two-pass strategy is used so that cross-chunk duplicate detection
+    (checks J and K) works correctly:
+
+      * Pass 1 scans every feature with pyogrio (in chunks) to discover which geometry/row
+        hashes appear more than once.  Geometries are reprojected to *epsg*
+        before hashing so the hash values match those produced during pass 2.
+      * Pass 2 processes features in chunks, passing the duplicate-hash sets to
+        run_checks() for accurate first-occurrence tracking.
 
     Args:
-        input_dataset (Path | str): _description_
-        layer_name (str | None): _description_
-        tolerance (float): _description_
-        epsg (int | None): _description_
-        garbage_path (str | None): Optional path to write dropped features as a GeoPackage.
-
-    Raises:
-        Exception: _description_
-        Exception: _description_
-        Exception: _description_
-        Exception: _description_
+        input_dataset: Path to the input vector file.
+        layer_name: Layer name for GeoPackage inputs.
+        tolerance: Simplification tolerance in metres (0 = skip).
+        epsg: EPSG code for the Cartesian CRS used during processing.
+        output_path: Optional path to write the cleaned GeoPackage.
+        garbage_path: Optional path to write dropped/changed features.
+        min_size: Minimum area (m²) for polygons or length (m) for lines.
+        chunk_size: Number of features to load at once during pass 2.
 
     Returns:
-        Tuple[gpd.GeoDataFrame, Dict]: cleaned GeoDataFrame and stats dict
+        stats dict (suitable for print_report).
     """
     log = Logger("Vector Prep")
-    input_dataset = Path(input_dataset)
-    if not input_dataset.exists():
+    input_dataset = str(Path(input_dataset).resolve())
+
+    if not os.path.exists(input_dataset):
         raise Exception(f"Input file does not exist: {input_dataset}")
 
-    log.info(f"Reading input dataset with GeoPandas: {input_dataset}")
-    try:
-        if layer_name:
-            gdf = gpd.read_file(input_dataset, layer=layer_name)
-        else:
-            log.debug("No layer name specified, geopandas will choose default/first layer")
-            gdf = gpd.read_file(input_dataset)  # geopandas will choose default/first layer
-    except Exception as e:
-        raise Exception(f"GeoPandas failed to read input dataset: {e}") from e
-
-    initial_count = len(gdf)
-    log.info(f"Loaded {initial_count} features. CRS: {gdf.crs}")
-
-    geom_types = gdf.geom_type.value_counts().to_dict()
-    log.info(f"Geometry type of input: {geom_types}")
-
-    # Drop features with null geometry right away (to reduce work)
-    # We'll also handle empty/invalid ones in our cleaning step
-    # Create a copy to preserve original until final write
-    gdf_proc = gdf.copy()
-    # Reset index so integer labels are unique and contiguous; avoids .loc
-    # returning unexpected extra rows when the source has duplicate index labels.
-    gdf_proc = gdf_proc.reset_index(drop=True)
-
-    # Reproject to specified Cartesian CRS for processing
-    if epsg:
-        log.info(f"Reprojecting to EPSG:{epsg} for processing...")
-        try:
-            gdf_proc = gdf_proc.to_crs(epsg=epsg)
-            log.info(f"Reprojection complete. New CRS: {gdf_proc.crs}")
-        except Exception as e:
-            raise Exception(f"Failed to reproject to EPSG:{epsg}: {e}") from e
-
-    # Clean geometries (fix invalids, simplify)
-    if tolerance and tolerance > 0:
-        log.info(f"Fixing invalid geometries and simplifying to {tolerance} m tolerance...")
-    else:
-        log.info("Fixing invalid geometries (no simplification)...")
-    cleaned_geom_series, stats, dropped_list = clean_geometries(gdf_proc.geometry, simplify_tolerance=tolerance)
-
     # ------------------------------------------------------------------
-    # Build garbage GeoDataFrame from the dropped_list BEFORE we overwrite
-    # the geometry column so we can read original geometry types.
+    # Delete any pre-existing output / garbage files so that re-runs
+    # always start clean rather than appending to stale data.
     # ------------------------------------------------------------------
-
-    dropped_by_reason: Dict[str, int] = {}
-    dropped_by_geom_type: Dict[str, int] = {}
-    garbage_gdf: gpd.GeoDataFrame | None = None
-
-    if dropped_list:
-        dropped_indices = [idx for idx, _ in dropped_list]
-        reason_by_idx: Dict = {idx: reason for idx, reason in dropped_list}
-
-        # Look up rows in gdf_proc (original geometries still intact here).
-        # Because we reset_index above, .loc is safe against duplicate labels.
-        garbage_rows = gdf_proc.loc[dropped_indices].copy()
-        garbage_rows["vp_drop_reason"] = [reason_by_idx[idx] for idx in dropped_indices]
-        garbage_rows["vp_original_geom_type"] = [
-            _geom_type_str(gdf_proc.loc[idx, "geometry"]) for idx in dropped_indices
-        ]
-        garbage_gdf = garbage_rows
-
-        # Accumulate stats
-        for idx, reason in dropped_list:
-            dropped_by_reason[reason] = dropped_by_reason.get(reason, 0) + 1
-            gt = _geom_type_str(gdf_proc.loc[idx, "geometry"])
-            dropped_by_geom_type[gt] = dropped_by_geom_type.get(gt, 0) + 1
-
-    # assign cleaned geometries back
-    gdf_proc["geometry"] = cleaned_geom_series
-
-    # Drop rows where geometry is None or empty after cleaning
-    before_drop = len(gdf_proc)
-    gdf_proc = gdf_proc[~gdf_proc["geometry"].isna()]
-    gdf_proc = gdf_proc[~gdf_proc["geometry"].is_empty]
-    after_drop = len(gdf_proc)
-    dropped = before_drop - after_drop
-
-    log.info(f"Input features:                   {stats['input_count']:,}")
-    log.info(f"Null/empty geometries found:      {stats['null_or_empty']:,}")
-    log.info(f"Invalid geometries fixed:         {stats['invalid_fixed']:,}")
-    log.info(f"Invalid geometries unfixed (dropped): {stats['invalid_unfixed']:,}")
-    log.info(f"Features simplified ({tolerance} m):  {stats['simplified_count']:,}")
-    log.info(f"Dropped features after cleaning:  {dropped:,}")
-    log.info(f"Remaining features:               {len(gdf_proc):,}")
-
-    # Enrich stats with new fields
-    stats["output_count"] = len(gdf_proc)
-    stats["dropped_by_reason"] = dropped_by_reason
-    stats["dropped_by_geom_type"] = dropped_by_geom_type
-
-    # ------------------------------------------------------------------
-    # Write garbage GeoPackage if requested
-    # ------------------------------------------------------------------
-    if garbage_path and garbage_gdf is not None and len(garbage_gdf) > 0:
-        log.info(f"Writing {len(garbage_gdf)} dropped features to garbage file: {garbage_path}")
-        try:
-            # Reproject garbage to EPSG:4326 for consistency
-            garbage_out = garbage_gdf.copy()
-            # Only reproject if there are non-null geometries
-            has_valid_geom = garbage_out["geometry"].notna().any()
-            if has_valid_geom:
-                try:
-                    garbage_out = garbage_out.to_crs(epsg=4326)
-                except Exception as reproject_err:
-                    log.warning(f"Could not reproject garbage to EPSG:4326: {reproject_err}")
-
+    for path_to_clean, label in ((output_path, "output"), (garbage_path, "garbage")):
+        if path_to_clean and os.path.exists(path_to_clean) and not os.path.isdir(path_to_clean):
             try:
-                garbage_out.to_file(garbage_path, driver="GPKG", layer="garbage")
-                log.info(f"Garbage file written: {garbage_path} ({len(garbage_out)} features)")
-            except Exception as write_err:
-                log.warning(f"GeoPackage write failed for garbage (trying CSV fallback): {write_err}")
-                csv_path = str(garbage_path).replace(".gpkg", "_garbage.csv")
-                df_fallback = pd.DataFrame(garbage_out.drop(columns="geometry", errors="ignore"))
-                df_fallback.to_csv(csv_path, index=False)
-                log.info(f"Garbage CSV fallback written: {csv_path} ({len(df_fallback)} rows)")
-        except Exception as e:
-            log.warning(f"Failed to write garbage file: {e}")
-    elif garbage_path and (garbage_gdf is None or len(garbage_gdf) == 0):
-        log.info("No dropped features — garbage file not written.")
+                os.remove(path_to_clean)
+                log.info(f"Removed existing {label} file: {path_to_clean}")
+            except Exception as rm_err:
+                log.warning(f"Could not remove existing {label} file: {rm_err}")
 
-    # If nothing remains
-    if len(gdf_proc) == 0:
-        raise Exception("No valid geometries remain after cleaning. Aborting write.")
+    # ------------------------------------------------------------------
+    # Pass 1: scan all features to find duplicate geometry / row hashes.
+    # Geometries are reprojected to *epsg* before hashing.
+    # ------------------------------------------------------------------
+    log.info(f"Pass 1: scanning all features for duplicate hashes: {input_dataset}")
+    total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type = (
+        _build_duplicate_hash_sets(input_dataset, layer_name, epsg)
+    )
+    log.info(
+        f"Pass 1 complete — {total_features:,} features scanned; "
+        f"{len(duplicate_geom_hashes):,} duplicate geometry hash(es), "
+        f"{len(duplicate_row_hashes):,} duplicate row hash(es)."
+    )
+    if dominant_type:
+        log.info(f"Pass 1 dominant geometry type: {dominant_type}")
 
-    # Loop over all string columns and ensure that empty strings are set to None (to avoid issues with some drivers)
-    for col in gdf_proc.select_dtypes(include=['object']).columns:
-        gdf_proc[col] = gdf_proc[col].apply(lambda x: x if x and str(x).strip() != "" else None)
+    # ------------------------------------------------------------------
+    # Pass 2: process features in chunks.
+    # ------------------------------------------------------------------
+    total_chunks = max(1, math.ceil(total_features / chunk_size))
 
-    # Make sure there is a column called FID (some drivers require it)
-    if "FID" not in gdf_proc.columns:
-        gdf_proc = gdf_proc.reset_index(drop=True)
-        gdf_proc["FID"] = gdf_proc.index.astype('int64')
+    # Mutable sets that grow across chunks — track first-seen occurrences
+    # so we know which duplicate features to keep vs. drop.
+    processed_geom_hashes: Set[str] = set()
+    processed_row_hashes: Set[str] = set()
 
-    return gdf_proc, stats
-
-
-def output_gdf(gdf: gpd.GeoDataFrame, output_dataset: str, layer_name: str | None):
-    """Save the gpd to file (geopackage layer) in EPSG 4326"""
-    # Reproject to EPSG for final output
-    log = Logger("Output GDF")
-
-    # If output exists and overwrite requested, remove it first (be careful with gpkg)
-    if os.path.exists(output_dataset):
-        try:
-            if os.path.isdir(output_dataset):
-                # shapefile's folder? be cautious
-                pass
-            os.remove(output_dataset)
-            log.info(f"Overwrote existing file: {output_dataset}")
-        except Exception:
-            # for gpkg, removal may be different; try to proceed and fiona may overwrite if allowed
-            log.debug("Could not remove existing file prior to write (continuing)...")
-
-    log.info("Reprojecting to EPSG 4326 for output")
-    gdf = gdf.to_crs(epsg=4326)
-
-    # Write output
-    log.info(f"Writing cleaned layer to {output_dataset} (driver={OUTPUT_DRIVER})...")
-    try:
-        # For GeoPackage, preserve layer name if provided or derive from filename
-        write_kwargs = {}
-        if OUTPUT_DRIVER == "GPKG":
-            # geopandas.to_file will write a layer named after filename (without ext) by default unless layer arg given
-            layername = layer_name if layer_name else os.path.splitext(os.path.basename(output_dataset))[0]
-            write_kwargs["layer"] = layername
-
-        gdf.to_file(output_dataset, driver=OUTPUT_DRIVER, **write_kwargs)
-        log.info("Write complete.")
-    except Exception as e:
-        raise Exception(f"Failed to write output: {e}") from e
-
-
-def _geom_type_str(geom) -> str:
-    """Return the geometry type string, or 'Unknown' for None / errors."""
-    if geom is None:
-        return "Unknown"
-    try:
-        t = geom.geom_type
-        return t if t else "Unknown"
-    except Exception:
-        return "Unknown"
-
-
-def safe_make_valid(geom: BaseGeometry):
-    """Try make_valid then fallback to buffer(0), or return None if can't fix."""
-
-    if geom is None:
-        return None
-    try:
-        return make_valid(geom)
-    except Exception as e:
-        log = Logger("Error")
-        log.debug(f"make_valid/buffer(0) failed: {e}")
-        try:
-            return geom.buffer(0)
-        except Exception as e2:
-            log.debug(f"fallback buffer(0) failed too: {e2}")
-            return None
-
-
-def clean_geometries(
-    gseries: gpd.GeoSeries,
-    simplify_tolerance: float,
-) -> Tuple[gpd.GeoSeries, Dict, List[Tuple]]:
-    """
-    Process a GeoSeries of geometries:
-      - drop null/empty
-      - attempt to fix invalid/self-intersecting geometries
-      - apply topology-preserving simplify (Shapely's simplify with preserve_topology=True)
-
-    Returns:
-        cleaned GeoSeries,
-        diagnostics dict,
-        list of (original_index, reason) tuples for every geometry set to None (dropped).
-        Reason is one of: "null", "empty", "invalid_unfixed".
-    """
-    cleaned = []
-    dropped: List[Tuple] = []  # (original_index, reason)
-    stats = {
-        "input_count": len(gseries),
+    # Accumulator for all statistics across chunks.
+    total_stats: Dict = {
+        "initial_count": total_features,
+        "input_count": 0,
+        "output_count": 0,
+        "mixed_types_detected": False,
+        # run_checks counters (int)
+        "zm_stripped": 0,
+        "multipart_detected": 0,
+        "geocollection_detected": 0,
+        "self_touching_fixed": 0,
+        "unclosed_rings_detected": 0,
+        "duplicate_vertices_detected": 0,
+        "string_cells_normalized": 0,
+        "schema_inconsistencies": 0,
+        "zero_area_bbox_dropped": 0,
+        "geometry_duplicates_dropped": 0,
+        "row_duplicates_dropped": 0,
+        "below_min_size_dropped": 0,
+        "slivers_dropped": 0,
+        # clean_geometries counters (int)
         "null_or_empty": 0,
         "invalid_fixed": 0,
         "invalid_unfixed": 0,
         "simplified_count": 0,
     }
+    total_dropped_by_reason: Dict[str, int] = {}
+    total_dropped_by_geom_type: Dict[str, int] = {}
 
-    for orig_idx, geom in zip(gseries.index, gseries):
-        if geom is None:
-            stats["null_or_empty"] += 1
-            cleaned.append(None)
-            dropped.append((orig_idx, "null"))
+    def _accum_drop(orig_chunk: gpd.GeoDataFrame, orig_idx: int, reason: str) -> None:
+        """Helper: tally a dropped feature into the global reason/type dicts."""
+        total_dropped_by_reason[reason] = total_dropped_by_reason.get(reason, 0) + 1
+        geom_val = (
+            orig_chunk.at[orig_idx, "geometry"] if orig_idx in orig_chunk.index else None
+        )
+        gt = _geom_type_str(geom_val)
+        total_dropped_by_geom_type[gt] = total_dropped_by_geom_type.get(gt, 0) + 1
+
+    # Separate written-flags for output and garbage so that a chunk that
+    # produces zero rows (and is therefore skipped) does not advance the flag.
+    output_written: bool = False
+    garbage_written: bool = False
+
+    # Global FID counter — incremented after each successful output write so
+    # FID values are unique across all chunks.
+    global_fid_offset: int = 0
+
+    pbar2 = ProgressBar(total_chunks, text="Pass 2: processing chunks")
+    for chunk_idx in range(total_chunks):
+        offset = chunk_idx * chunk_size
+        feat_start = offset + 1
+        feat_end = min(offset + chunk_size, total_features)
+        log.info(f"Chunk {chunk_idx + 1}/{total_chunks} — features {feat_start:,}-{feat_end:,}")
+
+        # ---- Read chunk ----------------------------------------
+        chunk_gdf = _read_chunk(
+            input_dataset, layer_name, offset, chunk_size,
+        )
+        if len(chunk_gdf) == 0:
+            pbar2.update(chunk_idx + 1)
             continue
-        # some drivers give empty geometries instead of None
-        try:
-            if geom.is_empty:
-                stats["null_or_empty"] += 1
-                cleaned.append(None)
-                dropped.append((orig_idx, "empty"))
-                continue
-        except Exception:
-            # if .is_empty fails, we'll try to continue
-            pass
 
-        # If geometry invalid, try to fix
-        try:
-            is_valid = geom.is_valid
-        except Exception:
-            # some malformed geometries might raise; attempt fix
-            is_valid = False
+        # Reset index to 0-based so dropped/changed indices are stable
+        # within this chunk and match original_chunk.
+        chunk_gdf = chunk_gdf.reset_index(drop=True)
+        total_stats["input_count"] += len(chunk_gdf)
 
-        if not is_valid:
-            fixed = safe_make_valid(geom)
-            if fixed is not None and not fixed.is_empty:
-                geom = fixed
-                stats["invalid_fixed"] += 1
-            else:
-                stats["invalid_unfixed"] += 1
-                # keep as-is (or set to None) - we'll mark as None to drop later
-                cleaned.append(None)
-                dropped.append((orig_idx, "invalid_unfixed"))
-                continue
+        # ---- Detect mixed geometry types (log-only) -------------
+        geom_types = chunk_gdf.geom_type.value_counts().to_dict()
+        base_types = {
+            t.replace("Multi", "")
+            for t in geom_types.keys()
+            if t not in (None, "NoneType", "None", "NaN")
+            and t != "GeometryCollection"
+        }
+        if len(base_types) > 1:
+            total_stats["mixed_types_detected"] = True
 
-        # If simplify tolerance > 0, simplify while trying to preserve topology
-        if simplify_tolerance is not None and simplify_tolerance > 0:
+        # ---- Reproject to Cartesian CRS for processing ----------
+        if epsg:
             try:
-                simplified = geom.simplify(simplify_tolerance, preserve_topology=True)
-                # ensure simplification didn't produce empty / invalid geometry
-                if simplified is not None and not simplified.is_empty:
-                    # if simplification creates invalid geometry, try to make valid again
-                    if not simplified.is_valid:
-                        simplified = safe_make_valid(simplified)
-                    geom = simplified
-                    if geom is None:
-                        stats["invalid_unfixed"] += 1
-                        cleaned.append(None)
-                        dropped.append((orig_idx, "invalid_unfixed"))
-                        continue
-                    stats["simplified_count"] += 1
-                elif simplified is not None and simplified.is_empty:
-                    stats["invalid_unfixed"] += 1
-                    cleaned.append(None)
-                    dropped.append((orig_idx, "invalid_unfixed"))
-                    continue
+                chunk_gdf = chunk_gdf.to_crs(epsg=epsg)
             except Exception as e:
-                log = Logger("Error")
-                log.debug(f"simplify failed on feature {orig_idx}: {e}")
-                # keep original geom (already valid)
-        cleaned.append(geom)
+                raise Exception(
+                    f"Failed to reproject chunk {chunk_idx} to EPSG:{epsg}: {e}"
+                ) from e
 
-    return gpd.GeoSeries(cleaned, index=gseries.index, crs=gseries.crs), stats, dropped
+        # Snapshot before any modifications (needed for garbage output).
+        original_chunk = chunk_gdf.copy()
+
+        # ---- Run checks A–M ------------------------------------
+        chunk_gdf, extra_stats, dropped_list, changed_list = run_checks(
+            chunk_gdf,
+            min_size,
+            duplicate_geom_hashes=duplicate_geom_hashes,
+            duplicate_row_hashes=duplicate_row_hashes,
+            processed_geom_hashes=processed_geom_hashes,
+            processed_row_hashes=processed_row_hashes,
+            dominant_type=dominant_type,
+        )
+
+        # If a feature was both changed (Step D) and later dropped (Steps I–M),
+        # the DROP takes precedence — remove it from changed_list.
+        dropped_indices = {idx for idx, _, _ in dropped_list}
+        changed_list = [
+            (idx, r, g) for idx, r, g in changed_list if idx not in dropped_indices
+        ]
+
+        # ---- Clean geometries ----------------------------------
+        cleaned_geom_series, clean_stats, clean_dropped = clean_geometries(
+            chunk_gdf.geometry, simplify_tolerance=tolerance
+        )
+        chunk_gdf["geometry"] = cleaned_geom_series
+        chunk_gdf = chunk_gdf[~chunk_gdf["geometry"].isna()]
+        chunk_gdf = chunk_gdf[~chunk_gdf["geometry"].is_empty]
+
+        total_stats["output_count"] += len(chunk_gdf)
+
+        # ---- Accumulate stats ----------------------------------
+        for key, val in extra_stats.items():
+            if isinstance(val, bool):
+                total_stats[key] = total_stats.get(key, False) or val
+            elif isinstance(val, int):
+                total_stats[key] = total_stats.get(key, 0) + val
+
+        for key, val in clean_stats.items():
+            if key == "input_count":
+                # Already counted above from len(chunk_gdf) pre-run_checks.
+                continue
+            if isinstance(val, bool):
+                total_stats[key] = total_stats.get(key, False) or val
+            elif isinstance(val, int):
+                total_stats[key] = total_stats.get(key, 0) + val
+
+        for orig_idx, _op, reason in dropped_list:
+            _accum_drop(original_chunk, orig_idx, reason)
+        for orig_idx, _op, reason in clean_dropped:
+            _accum_drop(original_chunk, orig_idx, reason)
+
+        # ---- Write output chunk --------------------------------
+        if len(chunk_gdf) > 0 and output_path:
+            # Assign globally-unique FID values across all chunks.
+            chunk_gdf = chunk_gdf.reset_index(drop=True)
+            chunk_gdf["FID"] = range(
+                global_fid_offset, global_fid_offset + len(chunk_gdf)
+            )
+            chunk_gdf["FID"] = chunk_gdf["FID"].astype("int64")
+            output_gdf_chunk(
+                chunk_gdf, output_path, layer_name, first_chunk=not output_written
+            )
+            global_fid_offset += len(chunk_gdf)
+            output_written = True
+
+        # ---- Write garbage chunk -------------------------------
+        if garbage_path:
+            n_garbage = write_garbage_chunk(
+                original_chunk,
+                dropped_list,
+                changed_list,
+                clean_dropped,
+                garbage_path,
+                first_chunk=not garbage_written,
+            )
+            if n_garbage > 0:
+                garbage_written = True
+
+        pbar2.update(chunk_idx + 1)
+
+    pbar2.finish()
+
+    # ------------------------------------------------------------------
+    # Finalise stats
+    # ------------------------------------------------------------------
+    total_stats["dropped_by_reason"] = total_dropped_by_reason
+    total_stats["dropped_by_geom_type"] = total_dropped_by_geom_type
+
+    log.info(f"Input features:                   {total_stats['input_count']:,}")
+    log.info(f"Null/empty geometries found:      {total_stats['null_or_empty']:,}")
+    log.info(f"Invalid geometries fixed:         {total_stats['invalid_fixed']:,}")
+    log.info(f"Invalid geometries unfixed:       {total_stats['invalid_unfixed']:,}")
+    log.info(f"Features simplified ({tolerance} m):  {total_stats['simplified_count']:,}")
+    log.info(f"Output features:                  {total_stats['output_count']:,}")
+
+    if total_stats["output_count"] == 0:
+        raise Exception("No valid geometries remain after cleaning. Aborting.")
+
+    return total_stats
 
 
-def print_report(stats: Dict, garbage_path: str | None) -> None:
-    """Log a formatted summary report of the vector prep run."""
-    log = Logger("Vector Prep Report")
-
-    dropped_by_reason: Dict[str, int] = stats.get("dropped_by_reason", {})
-    dropped_by_geom_type: Dict[str, int] = stats.get("dropped_by_geom_type", {})
-    null_empty_dropped = dropped_by_reason.get("null", 0) + dropped_by_reason.get("empty", 0)
-    invalid_unfixed_dropped = dropped_by_reason.get("invalid_unfixed", 0)
-    total_dropped = sum(dropped_by_reason.values())
-
-    lines = [
-        "=== Vector Prep Report ===",
-        f"Input features:           {stats.get('input_count', 0):>10,}",
-        f"Null/empty on input:      {stats.get('null_or_empty', 0):>10,}",
-        f"Invalid geometries fixed: {stats.get('invalid_fixed', 0):>10,}",
-        f"Invalid geometries unfixed: {stats.get('invalid_unfixed', 0):>10,}",
-        f"Features simplified:      {stats.get('simplified_count', 0):>10,}",
-        f"Features dropped (total): {total_dropped:>10,}",
-        f"  - null/empty:           {null_empty_dropped:>10,}",
-        f"  - invalid_unfixed:      {invalid_unfixed_dropped:>10,}",
-        "Dropped geometry types:",
-    ]
-
-    if dropped_by_geom_type:
-        for geom_type, count in sorted(dropped_by_geom_type.items(), key=lambda x: -x[1]):
-            lines.append(f"  - {geom_type:<20} {count:>10,}")
-    else:
-        lines.append("  (none)")
-
-    lines.append(f"Output features:          {stats.get('output_count', 0):>10,}")
-    lines.append(f"Garbage written to: {garbage_path if garbage_path else 'N/A'}")
-    lines.append("==========================")
-
-    for line in lines:
-        log.info(line)
+# ---------------------------------------------------------------------------
+# CLI
+# ---------------------------------------------------------------------------
 
 
 def main():
-    parser = argparse.ArgumentParser(description='Vector Prep: Clean and simplify vector datasets.')
+    """CLI entry point for vector_prep."""
+    parser = argparse.ArgumentParser(
+        description="Vector Prep: Clean and simplify vector datasets."
+    )
     parser.add_argument("input", help="Input vector (shapefile, gpkg, etc.)")
     parser.add_argument("--output", help="(OPTIONAL) Output vector path")
-    parser.add_argument("--garbage", help="(OPTIONAL) If provided, bad geometries will be saved to this GeoPackage for inspection in addition to being dropped from the output. Must be a .gpkg file.", default=None)
-    parser.add_argument("--layer", help="Layer name (for geopackage). If not provided and input is geopackage, first layer is used.", default=None)
-    parser.add_argument("--tolerance", type=float, help="Simplify tolerance in METRES (0 to skip).", default=0.0)
-    parser.add_argument("--epsg", type=int, help="Cartesian CRS EPSG code to reproject to before processing (optional). Default is 5070 (NAD83 / Conus Albers).", default=5070)
-    parser.add_argument('--verbose', help='(optional) a little extra logging', action='store_true', default=False)
+    parser.add_argument(
+        "--garbage",
+        help=(
+            "(OPTIONAL) If provided, dropped/changed features will be saved to this GeoPackage "
+            "for inspection. Must be a .gpkg file."
+        ),
+        default=None,
+    )
+    parser.add_argument(
+        "--layer",
+        help="Layer name (for geopackage). If not provided and input is geopackage, first layer is used.",
+        default=None,
+    )
+    parser.add_argument(
+        "--tolerance",
+        type=float,
+        help="Simplify tolerance in METRES (0 to skip).",
+        default=0.0,
+    )
+    parser.add_argument(
+        "--epsg",
+        type=int,
+        help=(
+            "Cartesian CRS EPSG code to reproject to before processing (optional). "
+            "Default is 5070 (NAD83 / Conus Albers)."
+        ),
+        default=5070,
+    )
+    parser.add_argument(
+        "--min_size",
+        type=float,
+        help=(
+            "Minimum area (m²) for polygons or minimum length (m) for lines. "
+            "Features smaller than this are dropped. Default is 1.0."
+        )
+    )
+    parser.add_argument(
+        "--chunk_size",
+        type=int,
+        help=(
+            "Number of features to process at a time (windowed/chunked mode). "
+            "Larger values use more memory but may be faster. Default is 10000."
+        ),
+        default=10_000,
+    )
+    parser.add_argument(
+        "--verbose",
+        help="(optional) a little extra logging",
+        action="store_true",
+        default=False,
+    )
     args = dotenv.parse_args_env(parser)
 
     log = Logger("Vector Prep")
-    log.setup(log_path=os.path.join(os.path.dirname(args.output), "vector_prep.log"), verbose=args.verbose)
+    log_dir = os.path.dirname(args.output) if args.output else "."
+    log.setup(
+        log_path=os.path.join(log_dir, "vector_prep.log"),
+        verbose=args.verbose,
+    )
 
     try:
-        prepped_gdf, stats = vector_prep(args.input, args.layer, float(args.tolerance), int(args.epsg), garbage_path=args.garbage)
-        output_gdf(prepped_gdf, args.output, args.layer)
+        stats = vector_prep(
+            args.input,
+            args.layer,
+            float(args.tolerance),
+            int(args.epsg),
+            output_path=args.output if args.output else None,
+            garbage_path=args.garbage,
+            min_size=float(args.min_size) if args.min_size is not None else None,
+            chunk_size=int(args.chunk_size),
+        )
+        if not args.output:
+            log.info("No --output path provided; skipping output write.")
         print_report(stats, args.garbage)
     except Exception as e:
         log.error("Vector prep failed: %s", e)
