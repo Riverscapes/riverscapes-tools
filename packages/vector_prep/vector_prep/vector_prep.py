@@ -16,8 +16,10 @@ import sys
 import os
 import traceback
 from pathlib import Path
+from typing import Dict, List, Tuple
 
 import geopandas as gpd
+import pandas as pd
 from shapely.geometry.base import BaseGeometry
 from shapely import make_valid  # shapely >=1.8
 from rsxml import Logger, dotenv
@@ -26,8 +28,31 @@ from rsxml import Logger, dotenv
 OUTPUT_DRIVER = "GPKG"
 
 
-def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: float, epsg: int | None) -> gpd.GeoDataFrame:
+def vector_prep(
+    input_dataset: Path | str,
+    layer_name: str | None,
+    tolerance: float,
+    epsg: int | None,
+    garbage_path: str | None = None,
+) -> Tuple[gpd.GeoDataFrame, Dict]:
+    """ Vector Prep
 
+    Args:
+        input_dataset (Path | str): _description_
+        layer_name (str | None): _description_
+        tolerance (float): _description_
+        epsg (int | None): _description_
+        garbage_path (str | None): Optional path to write dropped features as a GeoPackage.
+
+    Raises:
+        Exception: _description_
+        Exception: _description_
+        Exception: _description_
+        Exception: _description_
+
+    Returns:
+        Tuple[gpd.GeoDataFrame, Dict]: cleaned GeoDataFrame and stats dict
+    """
     log = Logger("Vector Prep")
     input_dataset = Path(input_dataset)
     if not input_dataset.exists():
@@ -53,6 +78,9 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
     # We'll also handle empty/invalid ones in our cleaning step
     # Create a copy to preserve original until final write
     gdf_proc = gdf.copy()
+    # Reset index so integer labels are unique and contiguous; avoids .loc
+    # returning unexpected extra rows when the source has duplicate index labels.
+    gdf_proc = gdf_proc.reset_index(drop=True)
 
     # Reproject to specified Cartesian CRS for processing
     if epsg:
@@ -68,7 +96,35 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
         log.info(f"Fixing invalid geometries and simplifying to {tolerance} m tolerance...")
     else:
         log.info("Fixing invalid geometries (no simplification)...")
-    cleaned_geom_series, stats = clean_geometries(gdf_proc.geometry, simplify_tolerance=tolerance)
+    cleaned_geom_series, stats, dropped_list = clean_geometries(gdf_proc.geometry, simplify_tolerance=tolerance)
+
+    # ------------------------------------------------------------------
+    # Build garbage GeoDataFrame from the dropped_list BEFORE we overwrite
+    # the geometry column so we can read original geometry types.
+    # ------------------------------------------------------------------
+
+    dropped_by_reason: Dict[str, int] = {}
+    dropped_by_geom_type: Dict[str, int] = {}
+    garbage_gdf: gpd.GeoDataFrame | None = None
+
+    if dropped_list:
+        dropped_indices = [idx for idx, _ in dropped_list]
+        reason_by_idx: Dict = {idx: reason for idx, reason in dropped_list}
+
+        # Look up rows in gdf_proc (original geometries still intact here).
+        # Because we reset_index above, .loc is safe against duplicate labels.
+        garbage_rows = gdf_proc.loc[dropped_indices].copy()
+        garbage_rows["vp_drop_reason"] = [reason_by_idx[idx] for idx in dropped_indices]
+        garbage_rows["vp_original_geom_type"] = [
+            _geom_type_str(gdf_proc.loc[idx, "geometry"]) for idx in dropped_indices
+        ]
+        garbage_gdf = garbage_rows
+
+        # Accumulate stats
+        for idx, reason in dropped_list:
+            dropped_by_reason[reason] = dropped_by_reason.get(reason, 0) + 1
+            gt = _geom_type_str(gdf_proc.loc[idx, "geometry"])
+            dropped_by_geom_type[gt] = dropped_by_geom_type.get(gt, 0) + 1
 
     # assign cleaned geometries back
     gdf_proc["geometry"] = cleaned_geom_series
@@ -88,10 +144,45 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
     log.info(f"Dropped features after cleaning:  {dropped:,}")
     log.info(f"Remaining features:               {len(gdf_proc):,}")
 
+    # Enrich stats with new fields
+    stats["output_count"] = len(gdf_proc)
+    stats["dropped_by_reason"] = dropped_by_reason
+    stats["dropped_by_geom_type"] = dropped_by_geom_type
+
+    # ------------------------------------------------------------------
+    # Write garbage GeoPackage if requested
+    # ------------------------------------------------------------------
+    if garbage_path and garbage_gdf is not None and len(garbage_gdf) > 0:
+        log.info(f"Writing {len(garbage_gdf)} dropped features to garbage file: {garbage_path}")
+        try:
+            # Reproject garbage to EPSG:4326 for consistency
+            garbage_out = garbage_gdf.copy()
+            # Only reproject if there are non-null geometries
+            has_valid_geom = garbage_out["geometry"].notna().any()
+            if has_valid_geom:
+                try:
+                    garbage_out = garbage_out.to_crs(epsg=4326)
+                except Exception as reproject_err:
+                    log.warning(f"Could not reproject garbage to EPSG:4326: {reproject_err}")
+
+            try:
+                garbage_out.to_file(garbage_path, driver="GPKG", layer="garbage")
+                log.info(f"Garbage file written: {garbage_path} ({len(garbage_out)} features)")
+            except Exception as write_err:
+                log.warning(f"GeoPackage write failed for garbage (trying CSV fallback): {write_err}")
+                csv_path = str(garbage_path).replace(".gpkg", "_garbage.csv")
+                df_fallback = pd.DataFrame(garbage_out.drop(columns="geometry", errors="ignore"))
+                df_fallback.to_csv(csv_path, index=False)
+                log.info(f"Garbage CSV fallback written: {csv_path} ({len(df_fallback)} rows)")
+        except Exception as e:
+            log.warning(f"Failed to write garbage file: {e}")
+    elif garbage_path and (garbage_gdf is None or len(garbage_gdf) == 0):
+        log.info("No dropped features — garbage file not written.")
+
     # If nothing remains
     if len(gdf_proc) == 0:
         raise Exception("No valid geometries remain after cleaning. Aborting write.")
-    
+
     # Loop over all string columns and ensure that empty strings are set to None (to avoid issues with some drivers)
     for col in gdf_proc.select_dtypes(include=['object']).columns:
         gdf_proc[col] = gdf_proc[col].apply(lambda x: x if x and str(x).strip() != "" else None)
@@ -100,14 +191,14 @@ def vector_prep(input_dataset: Path | str, layer_name: str | None, tolerance: fl
     if "FID" not in gdf_proc.columns:
         gdf_proc = gdf_proc.reset_index(drop=True)
         gdf_proc["FID"] = gdf_proc.index.astype('int64')
-    
-    return gdf_proc
+
+    return gdf_proc, stats
 
 
-def output_gdf(gdf: gpd.GeoDataFrame, output_dataset:str, layer_name: str | None):
+def output_gdf(gdf: gpd.GeoDataFrame, output_dataset: str, layer_name: str | None):
     """Save the gpd to file (geopackage layer) in EPSG 4326"""
     # Reproject to EPSG for final output
-    log = Logger ("Output GDF")
+    log = Logger("Output GDF")
 
     # If output exists and overwrite requested, remove it first (be careful with gpkg)
     if os.path.exists(output_dataset):
@@ -120,7 +211,6 @@ def output_gdf(gdf: gpd.GeoDataFrame, output_dataset:str, layer_name: str | None
         except Exception:
             # for gpkg, removal may be different; try to proceed and fiona may overwrite if allowed
             log.debug("Could not remove existing file prior to write (continuing)...")
-
 
     log.info("Reprojecting to EPSG 4326 for output")
     gdf = gdf.to_crs(epsg=4326)
@@ -141,6 +231,17 @@ def output_gdf(gdf: gpd.GeoDataFrame, output_dataset:str, layer_name: str | None
         raise Exception(f"Failed to write output: {e}") from e
 
 
+def _geom_type_str(geom) -> str:
+    """Return the geometry type string, or 'Unknown' for None / errors."""
+    if geom is None:
+        return "Unknown"
+    try:
+        t = geom.geom_type
+        return t if t else "Unknown"
+    except Exception:
+        return "Unknown"
+
+
 def safe_make_valid(geom: BaseGeometry):
     """Try make_valid then fallback to buffer(0), or return None if can't fix."""
 
@@ -158,15 +259,24 @@ def safe_make_valid(geom: BaseGeometry):
             return None
 
 
-def clean_geometries(gseries, simplify_tolerance):
+def clean_geometries(
+    gseries: gpd.GeoSeries,
+    simplify_tolerance: float,
+) -> Tuple[gpd.GeoSeries, Dict, List[Tuple]]:
     """
     Process a GeoSeries of geometries:
       - drop null/empty
       - attempt to fix invalid/self-intersecting geometries
       - apply topology-preserving simplify (Shapely's simplify with preserve_topology=True)
-    Returns cleaned GeoSeries and diagnostics dict.
+
+    Returns:
+        cleaned GeoSeries,
+        diagnostics dict,
+        list of (original_index, reason) tuples for every geometry set to None (dropped).
+        Reason is one of: "null", "empty", "invalid_unfixed".
     """
     cleaned = []
+    dropped: List[Tuple] = []  # (original_index, reason)
     stats = {
         "input_count": len(gseries),
         "null_or_empty": 0,
@@ -175,16 +285,18 @@ def clean_geometries(gseries, simplify_tolerance):
         "simplified_count": 0,
     }
 
-    for idx, geom in enumerate(gseries):
+    for orig_idx, geom in zip(gseries.index, gseries):
         if geom is None:
             stats["null_or_empty"] += 1
             cleaned.append(None)
+            dropped.append((orig_idx, "null"))
             continue
         # some drivers give empty geometries instead of None
         try:
             if geom.is_empty:
                 stats["null_or_empty"] += 1
                 cleaned.append(None)
+                dropped.append((orig_idx, "empty"))
                 continue
         except Exception:
             # if .is_empty fails, we'll try to continue
@@ -206,6 +318,7 @@ def clean_geometries(gseries, simplify_tolerance):
                 stats["invalid_unfixed"] += 1
                 # keep as-is (or set to None) - we'll mark as None to drop later
                 cleaned.append(None)
+                dropped.append((orig_idx, "invalid_unfixed"))
                 continue
 
         # If simplify tolerance > 0, simplify while trying to preserve topology
@@ -218,20 +331,68 @@ def clean_geometries(gseries, simplify_tolerance):
                     if not simplified.is_valid:
                         simplified = safe_make_valid(simplified)
                     geom = simplified
+                    if geom is None:
+                        stats["invalid_unfixed"] += 1
+                        cleaned.append(None)
+                        dropped.append((orig_idx, "invalid_unfixed"))
+                        continue
                     stats["simplified_count"] += 1
+                elif simplified is not None and simplified.is_empty:
+                    stats["invalid_unfixed"] += 1
+                    cleaned.append(None)
+                    dropped.append((orig_idx, "invalid_unfixed"))
+                    continue
             except Exception as e:
                 log = Logger("Error")
-                log.debug(f"simplify failed on feature {idx}: {e}")
+                log.debug(f"simplify failed on feature {orig_idx}: {e}")
                 # keep original geom (already valid)
         cleaned.append(geom)
 
-    return gpd.GeoSeries(cleaned, index=gseries.index, crs=gseries.crs), stats
+    return gpd.GeoSeries(cleaned, index=gseries.index, crs=gseries.crs), stats, dropped
+
+
+def print_report(stats: Dict, garbage_path: str | None) -> None:
+    """Log a formatted summary report of the vector prep run."""
+    log = Logger("Vector Prep Report")
+
+    dropped_by_reason: Dict[str, int] = stats.get("dropped_by_reason", {})
+    dropped_by_geom_type: Dict[str, int] = stats.get("dropped_by_geom_type", {})
+    null_empty_dropped = dropped_by_reason.get("null", 0) + dropped_by_reason.get("empty", 0)
+    invalid_unfixed_dropped = dropped_by_reason.get("invalid_unfixed", 0)
+    total_dropped = sum(dropped_by_reason.values())
+
+    lines = [
+        "=== Vector Prep Report ===",
+        f"Input features:           {stats.get('input_count', 0):>10,}",
+        f"Null/empty on input:      {stats.get('null_or_empty', 0):>10,}",
+        f"Invalid geometries fixed: {stats.get('invalid_fixed', 0):>10,}",
+        f"Invalid geometries unfixed: {stats.get('invalid_unfixed', 0):>10,}",
+        f"Features simplified:      {stats.get('simplified_count', 0):>10,}",
+        f"Features dropped (total): {total_dropped:>10,}",
+        f"  - null/empty:           {null_empty_dropped:>10,}",
+        f"  - invalid_unfixed:      {invalid_unfixed_dropped:>10,}",
+        "Dropped geometry types:",
+    ]
+
+    if dropped_by_geom_type:
+        for geom_type, count in sorted(dropped_by_geom_type.items(), key=lambda x: -x[1]):
+            lines.append(f"  - {geom_type:<20} {count:>10,}")
+    else:
+        lines.append("  (none)")
+
+    lines.append(f"Output features:          {stats.get('output_count', 0):>10,}")
+    lines.append(f"Garbage written to: {garbage_path if garbage_path else 'N/A'}")
+    lines.append("==========================")
+
+    for line in lines:
+        log.info(line)
 
 
 def main():
     parser = argparse.ArgumentParser(description='Vector Prep: Clean and simplify vector datasets.')
     parser.add_argument("input", help="Input vector (shapefile, gpkg, etc.)")
-    parser.add_argument("output", help="Output vector path")
+    parser.add_argument("--output", help="(OPTIONAL) Output vector path")
+    parser.add_argument("--garbage", help="(OPTIONAL) If provided, bad geometries will be saved to this GeoPackage for inspection in addition to being dropped from the output. Must be a .gpkg file.", default=None)
     parser.add_argument("--layer", help="Layer name (for geopackage). If not provided and input is geopackage, first layer is used.", default=None)
     parser.add_argument("--tolerance", type=float, help="Simplify tolerance in METRES (0 to skip).", default=0.0)
     parser.add_argument("--epsg", type=int, help="Cartesian CRS EPSG code to reproject to before processing (optional). Default is 5070 (NAD83 / Conus Albers).", default=5070)
@@ -242,13 +403,14 @@ def main():
     log.setup(log_path=os.path.join(os.path.dirname(args.output), "vector_prep.log"), verbose=args.verbose)
 
     try:
-        prepped_gdf = vector_prep(args.input, args.layer, float(args.tolerance), int(args.epsg))
+        prepped_gdf, stats = vector_prep(args.input, args.layer, float(args.tolerance), int(args.epsg), garbage_path=args.garbage)
         output_gdf(prepped_gdf, args.output, args.layer)
+        print_report(stats, args.garbage)
     except Exception as e:
         log.error("Vector prep failed: %s", e)
         log.debug(traceback.format_exc())
         sys.exit(1)
-        
+
 
 if __name__ == "__main__":
     main()
