@@ -48,7 +48,7 @@
                 "${input:inputPath}",
                 "--output", "${input:outputPath}",
                 "--garbage", "${input:garbagePath}",
-                // "--tolerance", "20",
+                "--tolerance", "20",
                 "--verbose"
             ]
         }

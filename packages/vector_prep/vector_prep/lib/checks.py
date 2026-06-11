@@ -108,13 +108,62 @@ def run_checks(
     log.info(f"   GeometryCollection features detected: {geocoll_count:,}")
 
     # ------------------------------------------------------------------ #
-    # D. Fix self-touching rings and strip GeometryCollection results
-    #    Changed features go to garbage (CHANGED) but stay in output.
+    # D. Fix invalid polygons and unwrap any GeometryCollection results.
+    #    Changed features are recorded in changed_list (VP_Operation=CHANGED)
+    #    so they appear in the garbage output for inspection, but they are
+    #    kept in the main output with their repaired geometry.
+    #
+    # WHY THIS STEP EXISTS
+    # --------------------
+    # Polygon rings that touch themselves ("bowtie" or "figure-eight" shapes)
+    # or self-intersect are flagged as invalid by Shapely/GEOS.  Many GIS
+    # operations (overlays, area calculations, spatial joins) produce silently
+    # wrong results on invalid geometries, so we repair them before any
+    # further processing.
+    #
+    # We also encounter GeometryCollection inputs directly — e.g. a layer
+    # that already has mixed geometry types stored as collections.  These
+    # need to be unwrapped before downstream tools can use them.
+    #
+    # HOW THE REPAIR WORKS (two distinct steps)
+    # ------------------------------------------
+    # Step 1 — safe_make_valid(geom)
+    #   Calls Shapely's make_valid(), which resolves self-intersections and
+    #   invalid rings by splitting or restructuring the geometry according to
+    #   the OGC validity rules.  For example, a bowtie polygon (two triangles
+    #   sharing a single vertex) is split into two separate valid polygons.
+    #   If make_valid() raises, we fall back to geom.buffer(0) which achieves
+    #   a similar result via a different algorithm.  THIS is the step that
+    #   actually fixes the geometry.
+    #
+    # Step 2 — _extract_dominant_from_collection(fixed, dominant_type)
+    #   make_valid() sometimes returns a GeometryCollection instead of a
+    #   simple Polygon/MultiPolygon.  This happens because the repair can
+    #   produce boundary artefacts — stray LineStrings or Points at the
+    #   former self-intersection points — alongside the repaired polygon
+    #   parts.  _extract_dominant_from_collection() does NOT fix anything;
+    #   it simply discards those artefacts and reunites the polygon parts
+    #   using unary_union, giving back a clean Polygon or MultiPolygon.
+    #   The dominant_type argument tells it which geometry type to keep
+    #   (derived from the rest of the layer so we don't change the layer's
+    #   overall geometry type).
+    #
+    # WHY WE DON'T DROP THESE FEATURES
+    # ----------------------------------
+    # Invalid geometry is usually a digitising or processing artefact, not
+    # evidence that the feature itself is wrong.  The repaired shape still
+    # represents real-world data so we keep it.  We do record it in the
+    # garbage output (VP_Operation=CHANGED) so the user can inspect whether
+    # the repair looked reasonable.
     # ------------------------------------------------------------------ #
-    log.info("D. Fixing self-touching rings and GeometryCollection geometries...")
+    log.info("D. Repairing invalid polygons and unwrapping GeometryCollections...")
 
-    # Use pre-computed dominant_type from pass 1 when available; otherwise derive
-    # from this chunk (legacy / single-pass mode).
+    # Use the dominant geometry type computed globally in pass 1 when
+    # available.  This ensures that GeometryCollection unwrapping is
+    # consistent across all chunks (e.g. always keeps Polygon parts, never
+    # accidentally switches to LineString on a chunk that happens to contain
+    # more lines than polygons).  Fall back to deriving it from this chunk
+    # in legacy / single-pass mode.
     if dominant_type is None:
         _valid_type_mask = gdf_proc.geometry.notna() & (gdf_proc.geom_type != "GeometryCollection")
         _type_counts = gdf_proc.loc[_valid_type_mask, "geometry"].geom_type.value_counts()
@@ -135,32 +184,41 @@ def run_checks(
         fix_reason = ""
 
         if geom.geom_type == "GeometryCollection":
+            # Input is already a GeometryCollection — unwrap it directly.
+            # No validity repair needed; we just need to extract the useful parts.
             needs_fix = True
-            fix_reason = "GeometryCollection stripped"
+            fix_reason = "GeometryCollection unwrapped"
         elif geom.geom_type in ("Polygon", "MultiPolygon"):
             try:
                 if not geom.is_valid:
+                    # Invalid polygon — needs make_valid() repair (Step 1 above).
                     needs_fix = True
-                    fix_reason = "Self-touching rings fixed"
+                    fix_reason = "Invalid polygon repaired"
             except Exception:
+                # is_valid check itself failed — treat as invalid and attempt repair.
                 needs_fix = True
-                fix_reason = "Self-touching rings fixed"
+                fix_reason = "Invalid polygon repaired"
 
         if needs_fix:
+            # Step 1: repair the geometry (this is what actually fixes the rings).
             fixed = safe_make_valid(geom)
             try:
                 if fixed is not None and not fixed.is_empty:
                     if fixed.geom_type == "GeometryCollection":
+                        # Step 2: make_valid returned a GeometryCollection, which means
+                        # the repair split the geometry and/or produced boundary artefacts
+                        # (stray lines/points at former self-intersection sites).  Unwrap
+                        # it to get back a clean polygon (or whichever type dominates).
                         fixed = _extract_dominant_from_collection(fixed, dominant_type)
-                        fix_reason = "GeometryCollection stripped"
+                        fix_reason = "Invalid polygon repaired (GeometryCollection unwrapped)"
                     if not geom.equals(fixed):
                         changed_list.append((idx, fix_reason, fixed))
                         self_touching_fixed += 1
             except Exception as exc:
-                log.debug(f"safe_make_valid post-processing failed for feature {idx}: {exc}")
+                log.debug(f"Geometry repair post-processing failed for feature {idx}: {exc}")
 
     extra_stats["self_touching_fixed"] = self_touching_fixed
-    log.info(f"   Self-touching / collection features fixed: {self_touching_fixed:,}")
+    log.info(f"   Invalid geometries repaired: {self_touching_fixed:,}")
 
     # Apply Step D geometry changes immediately so that subsequent checks
     # (I–M) operate on the fixed geometries.
@@ -436,9 +494,67 @@ def run_checks(
         log.info(f"   Below minimum size dropped: {min_size_count:,}")
 
     # ------------------------------------------------------------------ #
-    # M. Drop sliver polygons (isoperimetric quotient < 0.01)
+    # M. Drop sliver polygons — two-phase filter
+    #
+    # A "sliver" is a polygon that is disproportionately thin relative to its
+    # area: typically an artefact of overlay operations or digitising errors.
+    #
+    # WHY TWO PHASES?
+    # The naive approach — isoperimetric quotient (IQ) alone — is fast but
+    # produces false positives for any polygon with a naturally complex or
+    # jagged boundary (e.g. wetlands, parcels with many vertices, polygons
+    # with holes).  A high perimeter drives IQ toward zero even for wide,
+    # valid shapes, so IQ alone cannot be used as a definitive test.
+    #
+    # The definitive test is a negative buffer: shrink the polygon inward by
+    # half the minimum acceptable width.  If the result is empty, no interior
+    # point was more than min_width/2 metres from the boundary — i.e. the
+    # polygon is genuinely thin everywhere.  This is geometrically exact and
+    # completely unaffected by edge complexity or holes.  However it is
+    # significantly more expensive than IQ for complex geometries.
+    #
+    # TWO-PHASE STRATEGY:
+    #   Phase 1 — IQ pre-filter (fast)
+    #     IQ = 4π·area / perimeter²  ∈ (0, 1]
+    #     IQ → 1 for a circle (most compact); IQ → 0 for very thin shapes.
+    #     We use a deliberately LOOSE threshold (IQ_CANDIDATE_THRESHOLD = 0.1)
+    #     so that the pre-filter casts a wide net.  Any feature with IQ above
+    #     this threshold is provably too compact to be a sliver and is skipped
+    #     immediately — no buffer call needed.
+    #     A loose threshold means more false positives reach phase 2, but
+    #     critically ZERO real slivers are missed: a genuinely thin polygon
+    #     always has a low IQ regardless of edge complexity.
+    #
+    #   Phase 2 — negative buffer confirmation (slow, only for candidates)
+    #     For the small subset of features that pass the IQ pre-filter we
+    #     shrink the polygon inward by MIN_SLIVER_WIDTH / 2 metres.  If the
+    #     buffered result is None or empty the polygon is confirmed as a
+    #     sliver and dropped.  Valid complex shapes survive because they have
+    #     interior points far from any boundary.
+    #
+    # THRESHOLD RATIONALE:
+    #   IQ_CANDIDATE_THRESHOLD = 0.1  — loose enough to catch all real
+    #     slivers; a circle of radius r has IQ = 1.0 so only shapes with
+    #     significantly non-circular perimeter reach phase 2.
+    #   MIN_SLIVER_WIDTH = 1.0 m  — a polygon narrower than 1 metre at its
+    #     widest interior point has no practical value in most GIS contexts.
+    #     The buffer offset is half this (0.5 m) because the negative buffer
+    #     shrinks from *both* sides simultaneously.
     # ------------------------------------------------------------------ #
-    log.info("M. Dropping sliver polygons...")
+    log.info("M. Dropping sliver polygons (two-phase: IQ pre-filter + negative buffer)...")
+
+    # Phase 1 threshold: features with IQ above this are immediately kept.
+    # Deliberately loose — we prefer false positives (extra buffer calls) over
+    # false negatives (real slivers that slip through unchecked).
+    IQ_CANDIDATE_THRESHOLD = 0.1
+
+    # Phase 2 threshold: minimum acceptable interior width in CRS units (metres
+    # when the data is in a metric Cartesian CRS such as EPSG:5070).
+    MIN_SLIVER_WIDTH = 1.0
+    # The negative buffer offset is half the minimum width because the buffer
+    # erodes the polygon equally from all sides simultaneously.
+    BUFFER_INSET = MIN_SLIVER_WIDTH / 2.0
+
     sliver_count = 0
     for idx in gdf_proc.index:
         if idx in already_dropped:
@@ -452,18 +568,46 @@ def run_checks(
         except Exception:
             continue
         if geom.geom_type not in ("Polygon", "MultiPolygon"):
+            # Slivers are a polygon-only concept; lines/points are handled by
+            # the minimum-length check in step L.
             continue
         try:
             area = geom.area
-            perimeter = geom.length  # for polygons, .length == perimeter
-            if area > 0 and perimeter > 0:
-                iq = 4.0 * math.pi * area / (perimeter ** 2)
-                if iq < 0.01:
-                    dropped_list.append((idx, "DROPPED", "Sliver polygon"))
-                    already_dropped.add(idx)
-                    sliver_count += 1
+            perimeter = geom.length  # .length on a polygon returns perimeter
+
+            if area <= 0 or perimeter <= 0:
+                # Degenerate geometry — skip (already handled upstream).
+                continue
+
+            # ---- Phase 1: IQ pre-filter --------------------------------
+            # IQ is O(1) — just arithmetic on cached area/perimeter values.
+            # Features above the threshold are provably not slivers and cost
+            # nothing further.
+            iq = 4.0 * math.pi * area / (perimeter ** 2)
+            if iq > IQ_CANDIDATE_THRESHOLD:
+                # Compact enough that no sliver check is required.
+                continue
+
+            # ---- Phase 2: negative buffer confirmation -----------------
+            # Reached only for features with low IQ (thin *or* jagged).
+            # The buffer call is the expensive step; we reach this only for
+            # the small fraction of features that are plausibly thin.
+            buffered = geom.buffer(-BUFFER_INSET)
+            if buffered is None or buffered.is_empty:
+                # The polygon has no interior point more than BUFFER_INSET
+                # metres from its boundary — confirmed sliver.
+                dropped_list.append((idx, "DROPPED", "Sliver polygon"))
+                already_dropped.add(idx)
+                sliver_count += 1
+            # else: low IQ but survives the buffer test — complex valid shape
+            # (e.g. jagged wetland boundary, heavily indented parcel).  Keep.
+
         except Exception:
+            # If either the IQ arithmetic or the buffer call fails for any
+            # reason, leave the feature in place rather than silently dropping
+            # something we could not evaluate.
             pass
+
     extra_stats["slivers_dropped"] = sliver_count
     log.info(f"   Sliver polygons dropped: {sliver_count:,}")
 

@@ -19,7 +19,17 @@ def _geom_type_str(geom) -> str:
 
 
 def safe_make_valid(geom: BaseGeometry):
-    """Try make_valid then fallback to buffer(0), or return None if can't fix."""
+    """Repair an invalid geometry using Shapely's make_valid(), with a buffer(0) fallback.
+
+    make_valid() resolves self-intersections, bowtie polygons, and unclosed
+    rings by restructuring the geometry according to OGC validity rules.  It
+    may return a GeometryCollection if the repair splits the shape or produces
+    boundary artefacts — callers should check for this and unwrap as needed
+    (see _extract_dominant_from_collection).
+
+    Falls back to geom.buffer(0) if make_valid() raises; returns None if both
+    strategies fail.
+    """
     if geom is None:
         return None
     try:
@@ -64,7 +74,20 @@ def _geom_size(geom: BaseGeometry) -> float:
 
 
 def _extract_dominant_from_collection(geom: BaseGeometry, dominant_type: str | None) -> BaseGeometry:
-    """Extract parts matching dominant_type from a GeometryCollection, falling back to largest."""
+    """Unwrap a GeometryCollection by extracting parts that match the layer's dominant type.
+
+    This function does NOT repair geometry — it is a post-processing step used
+    after safe_make_valid() when make_valid() returns a GeometryCollection.
+    That can happen because:
+      - The repair split one invalid polygon into two valid ones.
+      - The repair produced stray LineStrings or Points at former
+        self-intersection sites as boundary artefacts.
+
+    We discard the artefacts and reunite the matching parts with unary_union,
+    returning a clean Polygon/MultiPolygon (or whichever type dominates the
+    layer).  If no parts match the dominant type we fall back to keeping the
+    largest sub-geometry by area/length.
+    """
     _base_map = {
         "Polygon": "Polygon",
         "MultiPolygon": "Polygon",

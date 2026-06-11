@@ -554,8 +554,17 @@ def main():
 
     log = Logger("Vector Prep")
     log_dir = os.path.dirname(args.output) if args.output else "."
+
+    # Log file name is "<ORIGINAL_BASENAME>_vector_prep.log" if output path provided, otherwise "vector_prep.log".
+    if args.output:
+        base_name = os.path.splitext(os.path.basename(args.output))[0]
+        log_file_name = f"{base_name}_vector_prep.log"
+        log_dir = os.path.dirname(args.output)
+    else:
+        log_file_name = "vector_prep.log"
+        log_dir = "."
     log.setup(
-        log_path=os.path.join(log_dir, "vector_prep.log"),
+        log_path=os.path.join(log_dir, log_file_name),
         verbose=args.verbose,
     )
 
