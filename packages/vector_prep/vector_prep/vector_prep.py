@@ -21,6 +21,7 @@ without loading the entire file into memory:
 Philip Bailey
 27 Nov 2025
 """
+
 from __future__ import annotations
 
 import argparse
@@ -47,14 +48,14 @@ from .lib.field_map import FieldMapConfig, apply_field_map, load_and_validate_fi
 from .lib.garbage import write_garbage_chunk
 from .lib.geometry_utils import _geom_type_str
 from .lib.output import output_gdf_chunk
-from .lib.report import print_report
+from .lib.report import write_markdown_report
 
 
 # ---------------------------------------------------------------------------
 # Config loading
 # ---------------------------------------------------------------------------
 
-_ENV_VAR_RE = re.compile(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)')
+_ENV_VAR_RE = re.compile(r"\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)")
 
 
 def _find_missing_env_vars(value: str) -> list[str]:
@@ -90,8 +91,7 @@ def load_config(config_path: Path) -> dict:
         )
 
     return {
-        k: os.path.expandvars(v) if isinstance(v, str) else v
-        for k, v in params.items()
+        k: os.path.expandvars(v) if isinstance(v, str) else v for k, v in params.items()
     }
 
 
@@ -160,7 +160,9 @@ def _build_duplicate_hash_sets(
         try:
             src_proj_crs = ProjCRS.from_user_input(info["crs"])
             dst_proj_crs = ProjCRS.from_epsg(epsg)
-            transformer = Transformer.from_crs(src_proj_crs, dst_proj_crs, always_xy=True)
+            transformer = Transformer.from_crs(
+                src_proj_crs, dst_proj_crs, always_xy=True
+            )
         except Exception:
             transformer = None
 
@@ -219,12 +221,8 @@ def _build_duplicate_hash_sets(
 
     # Keep only hashes that appear more than once — these are the candidates
     # that need first-occurrence tracking during pass 2.
-    duplicate_geom_hashes: Set[str] = {
-        h for h, n in geom_hash_counts.items() if n > 1
-    }
-    duplicate_row_hashes: Set[str] = {
-        h for h, n in row_hash_counts.items() if n > 1
-    }
+    duplicate_geom_hashes: Set[str] = {h for h, n in geom_hash_counts.items() if n > 1}
+    duplicate_row_hashes: Set[str] = {h for h, n in row_hash_counts.items() if n > 1}
 
     # Compute dominant geometry type (base type, excluding GeometryCollection).
     non_coll_counts: Dict[str, int] = {}
@@ -233,7 +231,9 @@ def _build_duplicate_hash_sets(
             base = t.replace("Multi", "")
             non_coll_counts[base] = non_coll_counts.get(base, 0) + n
     dominant_type: Optional[str] = (
-        max(non_coll_counts, key=non_coll_counts.__getitem__) if non_coll_counts else None
+        max(non_coll_counts, key=non_coll_counts.__getitem__)
+        if non_coll_counts
+        else None
     )
 
     return total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type
@@ -308,7 +308,11 @@ def vector_prep(
 
     # Validate that all I/O paths are absolute before doing anything else.
     _path_errors: list[str] = []
-    for _label, _p in (("input", str(input_dataset)), ("output", output_path), ("garbage", garbage_path)):
+    for _label, _p in (
+        ("input", str(input_dataset)),
+        ("output", output_path),
+        ("garbage", garbage_path),
+    ):
         if _p and not Path(_p).is_absolute():
             _path_errors.append(f"  \u2022 {_label}: '{_p}' is not an absolute path")
     if _path_errors:
@@ -324,7 +328,11 @@ def vector_prep(
     # always start clean rather than appending to stale data.
     # ------------------------------------------------------------------
     for path_to_clean, label in ((output_path, "output"), (garbage_path, "garbage")):
-        if path_to_clean and os.path.exists(path_to_clean) and not os.path.isdir(path_to_clean):
+        if (
+            path_to_clean
+            and os.path.exists(path_to_clean)
+            and not os.path.isdir(path_to_clean)
+        ):
             try:
                 os.remove(path_to_clean)
                 log.info(f"Removed existing {label} file: {path_to_clean}")
@@ -391,7 +399,9 @@ def vector_prep(
         """Helper: tally a dropped feature into the global reason/type dicts."""
         total_dropped_by_reason[reason] = total_dropped_by_reason.get(reason, 0) + 1
         geom_val = (
-            orig_chunk.at[orig_idx, "geometry"] if orig_idx in orig_chunk.index else None
+            orig_chunk.at[orig_idx, "geometry"]
+            if orig_idx in orig_chunk.index
+            else None
         )
         gt = _geom_type_str(geom_val)
         total_dropped_by_geom_type[gt] = total_dropped_by_geom_type.get(gt, 0) + 1
@@ -410,11 +420,16 @@ def vector_prep(
         offset = chunk_idx * chunk_size
         feat_start = offset + 1
         feat_end = min(offset + chunk_size, total_features)
-        log.info(f"Chunk {chunk_idx + 1}/{total_chunks} — features {feat_start:,}-{feat_end:,}")
+        log.info(
+            f"Chunk {chunk_idx + 1}/{total_chunks} — features {feat_start:,}-{feat_end:,}"
+        )
 
         # ---- Read chunk ----------------------------------------
         chunk_gdf = _read_chunk(
-            input_dataset, layer_name, offset, chunk_size,
+            input_dataset,
+            layer_name,
+            offset,
+            chunk_size,
         )
         if len(chunk_gdf) == 0:
             pbar2.update(chunk_idx + 1)
@@ -430,8 +445,7 @@ def vector_prep(
         base_types = {
             t.replace("Multi", "")
             for t in geom_types.keys()
-            if t not in (None, "NoneType", "None", "NaN")
-            and t != "GeometryCollection"
+            if t not in (None, "NoneType", "None", "NaN") and t != "GeometryCollection"
         }
         if len(base_types) > 1:
             total_stats["mixed_types_detected"] = True
@@ -538,6 +552,7 @@ def vector_prep(
     # ------------------------------------------------------------------
     # Finalise stats
     # ------------------------------------------------------------------
+    total_stats["garbage_written"] = garbage_written
     total_stats["dropped_by_reason"] = total_dropped_by_reason
     total_stats["dropped_by_geom_type"] = total_dropped_by_geom_type
 
@@ -545,7 +560,9 @@ def vector_prep(
     log.info(f"Null/empty geometries found:      {total_stats['null_or_empty']:,}")
     log.info(f"Invalid geometries fixed:         {total_stats['invalid_fixed']:,}")
     log.info(f"Invalid geometries unfixed:       {total_stats['invalid_unfixed']:,}")
-    log.info(f"Features simplified ({tolerance} m):  {total_stats['simplified_count']:,}")
+    log.info(
+        f"Features simplified ({tolerance} m):  {total_stats['simplified_count']:,}"
+    )
     log.info(f"Output features:                  {total_stats['output_count']:,}")
 
     if total_stats["output_count"] == 0:
@@ -682,8 +699,15 @@ def main():
     # ---- Enforce mutual exclusivity -------------------------------------------
     # Detect which direct-mode args were explicitly supplied (non-None / non-False).
     _direct_arg_names = [
-        "input", "output", "garbage", "layer",
-        "tolerance", "epsg", "min_size", "min_size_drop", "chunk_size",
+        "input",
+        "output",
+        "garbage",
+        "layer",
+        "tolerance",
+        "epsg",
+        "min_size",
+        "min_size_drop",
+        "chunk_size",
     ]
     if args.config is not None:
         supplied_direct = [
@@ -707,7 +731,9 @@ def main():
     # Apply defaults for direct-mode numeric args (only needed in direct mode,
     # but harmless to apply unconditionally since config mode ignores them).
     effective_epsg: int = args.epsg if args.epsg is not None else 5070
-    effective_chunk_size: int = args.chunk_size if args.chunk_size is not None else 10_000
+    effective_chunk_size: int = (
+        args.chunk_size if args.chunk_size is not None else 10_000
+    )
 
     log = Logger("Vector Prep")
 
@@ -732,29 +758,47 @@ def main():
 
     if raw_field_map is not None:
         if layer_defs_rel is None:
-            log.error("Config specifies 'field_map' but 'layer_definitions' is missing.")
+            log.error(
+                "Config specifies 'field_map' but 'layer_definitions' is missing."
+            )
             sys.exit(1)
         if cfg_path is None:
             log.error("Internal error: cfg_path not set when field_map is present")
             sys.exit(1)
         layer_defs_path = (cfg_path.parent / layer_defs_rel).resolve()
         try:
-            field_map_config = load_and_validate_field_map(raw_field_map, layer_defs_path)
+            field_map_config = load_and_validate_field_map(
+                raw_field_map, layer_defs_path
+            )
             log.info(f"Loaded field map: {len(raw_field_map)} field(s) mapped")
         except (ValueError, FileNotFoundError) as e:
             log.error(f"Field map error: {e}")
             sys.exit(1)
     elif layer_defs_rel is not None:
-        log.warning("layer_definitions specified but no field_map; all fields will be passed through.")
+        log.warning(
+            "layer_definitions specified but no field_map; all fields will be passed through."
+        )
 
     # Resolve effective parameter values:
     # In config mode, CLI direct-mode args are all None/False (enforced above),
     # so cfg_params is the only source. In direct mode, cfg_params is empty.
-    tolerance = float(args.tolerance) if args.tolerance is not None else float(cfg_params.get("tolerance", 0.0))
-    min_size_val = float(args.min_size) if args.min_size is not None else (
-        float(cfg_params.get("min_size")) if cfg_params.get("min_size") is not None else None
+    tolerance = (
+        float(args.tolerance)
+        if args.tolerance is not None
+        else float(cfg_params.get("tolerance", 0.0))
     )
-    min_size_drop_val = args.min_size_drop or bool(cfg_params.get("min_size_drop", False))
+    min_size_val = (
+        float(args.min_size)
+        if args.min_size is not None
+        else (
+            float(cfg_params.get("min_size"))
+            if cfg_params.get("min_size") is not None
+            else None
+        )
+    )
+    min_size_drop_val = args.min_size_drop or bool(
+        cfg_params.get("min_size_drop", False)
+    )
 
     input_path = args.input or cfg_params.get("input") or None
     output_path_val = args.output or cfg_params.get("output") or None
@@ -775,7 +819,9 @@ def main():
     # else: already set to 10_000 above
 
     if input_path is None:
-        log.error("No input path provided. Use --input or set 'input' in the config file.")
+        log.error(
+            "No input path provided. Use --input or set 'input' in the config file."
+        )
         sys.exit(1)
 
     # verbose can also come from config (CLI --verbose takes precedence)
@@ -816,7 +862,15 @@ def main():
         )
         if not output_path_val:
             log.info("No --output path provided; skipping output write.")
-        print_report(stats, garbage_path_val)
+        if output_path_val:
+            report_stem = Path(output_path_val).stem
+            report_dir = Path(output_path_val).parent
+        else:
+            report_stem = "vector_prep"
+            report_dir = Path(".")
+        report_path = report_dir / f"{report_stem}_report.md"
+        written_report = write_markdown_report(stats, garbage_path_val, report_path)
+        log.info(f"Markdown report written: {written_report}")
     except Exception as e:
         log.error("Vector prep failed: %s", e)
         log.debug(traceback.format_exc())

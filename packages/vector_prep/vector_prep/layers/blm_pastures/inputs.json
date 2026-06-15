@@ -1,0 +1,11 @@
+{
+    "input_vector_path": "/home/narlorin/udata/blm/pasture_polygons_2026-03-24/BLM_Natl_Grazing_Pasture_Polygons_654070438877449879.gpkg",
+    "input_layer_name": "BLM Grazing Pastures",
+    "source_category": "usgov",
+    "source_title": "US DOI Bureau of Land Management Geospatial Business Platform",
+    "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-grazing-pasture-polygons/about",
+    "layer_id": "blm-natl-grazing-pasture-polygons",
+    "snapshot_id": "2026-03-24",
+    "special_notes": "this is the first time we've prepared data this way in riverscapes-tools python repo. See the runlog-pastures-20260324.md file for more documentation",
+    "data_prep_operator": "Lorin Gaertner"
+}

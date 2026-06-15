@@ -1,0 +1,14 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${US_CENS_COUNTY_INPUT}",
+    "layer": "County",
+    "output": "${US_CENS_COUNTY_OUTPUT}",
+    "garbage": "${US_CENS_COUNTY_GARBAGE}",
+    "verbose": true,
+    "tolerance": 0,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json"
+  }
+}

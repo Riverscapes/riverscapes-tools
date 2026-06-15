@@ -1,0 +1,125 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "vector-prep-us-cens-county",
+  "tool_schema_version": "0.0.1",
+  "layers": [
+    {
+      "layer_id": "us_cens_county",
+      "layer_name": "US Census County And Equivalent Entity",
+      "description": "County and equivalent entity boundaries from the U.S. Census TIGER/Line national shapefile record layout (2025). Attribute definitions are derived from Figure 75 (Appendix I-2) of the TIGER/Line Technical Documentation.",
+      "layer_type": "Vector",
+      "columns": [
+        {
+          "name": "STATEFP",
+          "friendly_name": "State FIPS Code",
+          "dtype": "STRING",
+          "description": "Current state FIPS code (2-character string)."
+        },
+        {
+          "name": "COUNTYFP",
+          "friendly_name": "County FIPS Code",
+          "dtype": "STRING",
+          "description": "Current county FIPS code (3-character string)."
+        },
+        {
+          "name": "COUNTYNS",
+          "friendly_name": "County ANSI Feature Code",
+          "dtype": "STRING",
+          "description": "ANSI feature code for the county or equivalent feature (8-character string)."
+        },
+        {
+          "name": "GEOID",
+          "friendly_name": "County GEOID",
+          "dtype": "STRING",
+          "description": "County identifier; concatenation of current state FIPS and county FIPS codes (5-character string)."
+        },
+        {
+          "name": "GEOIDFQ",
+          "friendly_name": "Fully Qualified GEOID",
+          "dtype": "STRING",
+          "description": "Current fully qualified GEOID used to join data tables from data.census.gov (14-character string)."
+        },
+        {
+          "name": "NAME",
+          "friendly_name": "County Name",
+          "dtype": "STRING",
+          "description": "Current county name (up to 100 characters)."
+        },
+        {
+          "name": "NAMELSAD",
+          "friendly_name": "County Name With LSAD",
+          "dtype": "STRING",
+          "description": "Current county name and translated LSAD code (up to 100 characters)."
+        },
+        {
+          "name": "LSAD",
+          "friendly_name": "LSAD Code",
+          "dtype": "STRING",
+          "description": "Current legal/statistical area description (LSAD) code for county (2-character string)."
+        },
+        {
+          "name": "CLASSFP",
+          "friendly_name": "FIPS Class Code",
+          "dtype": "STRING",
+          "description": "Current FIPS class code (2-character string). See ANSI code lists for class definitions: https://www.census.gov/library/reference/codelists/ansi.html#cou"
+        },
+        {
+          "name": "MTFCC",
+          "friendly_name": "MAF/TIGER Feature Class Code",
+          "dtype": "STRING",
+          "description": "MAF/TIGER feature class code for county features (G4020)."
+        },
+        {
+          "name": "CSAFP",
+          "friendly_name": "Combined Statistical Area Code",
+          "dtype": "STRING",
+          "description": "Current combined statistical area code (3-character string)."
+        },
+        {
+          "name": "CBSAFP",
+          "friendly_name": "Core Based Statistical Area Code",
+          "dtype": "STRING",
+          "description": "Current metropolitan statistical area/micropolitan statistical area code (5-character string)."
+        },
+        {
+          "name": "METDIVFP",
+          "friendly_name": "Metropolitan Division Code",
+          "dtype": "STRING",
+          "description": "Current metropolitan division code (5-character string)."
+        },
+        {
+          "name": "FUNCSTAT",
+          "friendly_name": "Functional Status",
+          "dtype": "STRING",
+          "description": "Current functional status code (1-character string). See ANSI code lists for definitions: https://www.census.gov/library/reference/codelists/ansi.html#cou"
+        },
+        {
+          "name": "ALAND",
+          "friendly_name": "Land Area",
+          "dtype": "INTEGER",
+          "description": "Current land area value as provided by TIGER/Line (numeric field length 14).",
+          "data_unit": "m^2"
+        },
+        {
+          "name": "AWATER",
+          "friendly_name": "Water Area",
+          "dtype": "INTEGER",
+          "description": "Current water area value as provided by TIGER/Line (numeric field length 14).",
+          "data_unit": "m^2"
+        },
+        {
+          "name": "INTPTLAT",
+          "friendly_name": "Internal Point Latitude",
+          "dtype": "STRING",
+          "description": "Current latitude of the internal point (11-character string)."
+        },
+        {
+          "name": "INTPTLON",
+          "friendly_name": "Internal Point Longitude",
+          "dtype": "STRING",
+          "description": "Current longitude of the internal point (12-character string)."
+        }
+      ]
+    }
+  ]
+}

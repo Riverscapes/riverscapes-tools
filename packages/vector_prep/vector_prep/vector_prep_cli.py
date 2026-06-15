@@ -8,6 +8,7 @@ parameters.
 
 Entry point: ``vector-prep-cli``
 """
+
 from __future__ import annotations
 
 import os
@@ -16,13 +17,13 @@ from pathlib import Path
 from typing import Optional
 import traceback
 
-from rsxml import Logger
+from rsxml import Logger, dotenv
 
 import questionary
 
 from .vector_prep import vector_prep, load_config
 from .lib.field_map import load_and_validate_field_map
-from .lib.report import print_report
+from .lib.report import write_markdown_report
 
 
 # ---------------------------------------------------------------------------
@@ -30,6 +31,23 @@ from .lib.report import print_report
 # ---------------------------------------------------------------------------
 
 LAYERS_DIR = Path(__file__).parent / "layers"
+
+
+def _load_package_env() -> None:
+    """Load package-root .env into process env when present.
+
+    This is a fallback for runs where the shell/debug session did not pre-load
+    env vars. Existing environment values are preserved.
+    """
+    env_path = Path(__file__).resolve().parents[1] / ".env"
+    if not env_path.is_file():
+        return
+    env_values = dotenv.parse_dotenv(str(env_path))
+    if not env_values:
+        return
+    for key, value in env_values.items():
+        if key not in os.environ and value is not None:
+            os.environ[key] = str(value)
 
 
 def _discover_configs() -> list[tuple[str, Path]]:
@@ -54,11 +72,14 @@ def _discover_configs() -> list[tuple[str, Path]]:
 # Selection
 # ---------------------------------------------------------------------------
 
+
 def _select_layer(configs: list[tuple[str, Path]]) -> tuple[str, Path]:
     """Present an arrow-key select box and return the chosen (layer_name, config_path)."""
     log = Logger("vector-prep-cli")
     log.title("Available layers")
-    choices = [questionary.Choice(title=name, value=i) for i, (name, _) in enumerate(configs)]
+    choices = [
+        questionary.Choice(title=name, value=i) for i, (name, _) in enumerate(configs)
+    ]
     idx = questionary.select(
         "Choose a layer:",
         choices=choices,
@@ -75,11 +96,15 @@ def _select_layer(configs: list[tuple[str, Path]]) -> tuple[str, Path]:
 # Parameter resolution: config → prompt for any missing I/O paths
 # ---------------------------------------------------------------------------
 
+
 def _validate_absolute(val: str) -> bool | str:
     """questionary validator: accepts empty (optional) or an absolute path."""
     if not val:
         return True
-    return Path(val).is_absolute() or "Please enter an absolute path (e.g. /data/myfile.gpkg)"
+    return (
+        Path(val).is_absolute()
+        or "Please enter an absolute path (e.g. /data/myfile.gpkg)"
+    )
 
 
 def _resolve_params(params: dict, config_path: Path) -> dict:
@@ -87,9 +112,19 @@ def _resolve_params(params: dict, config_path: Path) -> dict:
     log = Logger("vector-prep-cli")
     log.title("Parameter review")
 
-    for key in ("input", "output", "garbage", "layer", "tolerance",
-                 "epsg", "min_size", "min_size_drop", "chunk_size",
-                 "verbose", "log_file"):
+    for key in (
+        "input",
+        "output",
+        "garbage",
+        "layer",
+        "tolerance",
+        "epsg",
+        "min_size",
+        "min_size_drop",
+        "chunk_size",
+        "verbose",
+        "log_file",
+    ):
         val = params.get(key)
         if val not in (None, False, ""):
             log.info(f"    {key}: {val}")
@@ -128,6 +163,7 @@ def _resolve_params(params: dict, config_path: Path) -> dict:
 # Run
 # ---------------------------------------------------------------------------
 
+
 def _run(params: dict, config_path: Path) -> None:
     """Import vector_prep internals and execute the pipeline."""
     log = Logger("vector-prep-cli")
@@ -141,9 +177,9 @@ def _run(params: dict, config_path: Path) -> None:
         p = Path(val)
         return str((cfg_dir / p).resolve()) if not p.is_absolute() else str(p)
 
-    input_path    = params.get("input") or None
-    output_path   = params.get("output") or None
-    garbage_path  = params.get("garbage") or None
+    input_path = params.get("input") or None
+    output_path = params.get("output") or None
+    garbage_path = params.get("garbage") or None
     log_file_path = _abs_optional(params.get("log_file"))
 
     if not input_path:
@@ -164,7 +200,7 @@ def _run(params: dict, config_path: Path) -> None:
 
     # Field map
     field_map_config = None
-    raw_field_map  = params.get("field_map")
+    raw_field_map = params.get("field_map")
     layer_defs_rel = params.get("layer_definitions")
     if raw_field_map is not None:
         if layer_defs_rel is None:
@@ -172,18 +208,22 @@ def _run(params: dict, config_path: Path) -> None:
             sys.exit(1)
         layer_defs_path = (cfg_dir / layer_defs_rel).resolve()
         try:
-            field_map_config = load_and_validate_field_map(raw_field_map, layer_defs_path)
+            field_map_config = load_and_validate_field_map(
+                raw_field_map, layer_defs_path
+            )
             log.info(f"Loaded field map: {len(raw_field_map)} field(s)")
         except (ValueError, FileNotFoundError) as exc:
             log.error(f"Field map error: {exc}")
             sys.exit(1)
 
-    tolerance:     float           = float(params.get("tolerance", 0.0))
-    min_size:      Optional[float] = float(params["min_size"]) if params.get("min_size") is not None else None
-    min_size_drop: bool            = bool(params.get("min_size_drop", False))
-    epsg:          int             = int(params.get("epsg", 5070))
-    chunk_size:    int             = int(params.get("chunk_size", 10_000))
-    layer_name:    Optional[str]   = params.get("layer") or None
+    tolerance: float = float(params.get("tolerance", 0.0))
+    min_size: Optional[float] = (
+        float(params["min_size"]) if params.get("min_size") is not None else None
+    )
+    min_size_drop: bool = bool(params.get("min_size_drop", False))
+    epsg: int = int(params.get("epsg", 5070))
+    chunk_size: int = int(params.get("chunk_size", 10_000))
+    layer_name: Optional[str] = params.get("layer") or None
 
     log.title("Running vector_prep")
     log.info(f"    input    : {input_path}")
@@ -209,8 +249,16 @@ def _run(params: dict, config_path: Path) -> None:
         )
         if not output_path:
             log.info("No output path provided; skipping output write.")
-        print_report(stats, garbage_path)
-        log.info("\n  ✓ Done.\n")
+        if output_path:
+            report_stem = Path(output_path).stem
+            report_dir = Path(output_path).parent
+        else:
+            report_stem = "vector_prep"
+            report_dir = Path(".")
+        report_path = report_dir / f"{report_stem}_report.md"
+        written_report = write_markdown_report(stats, garbage_path, report_path)
+        log.info(f"Markdown report written: {written_report}")
+        log.info("\n  Done.\n")
     except Exception as exc:
         log.error(f"vector_prep failed: {exc}")
         log.debug(traceback.format_exc())
@@ -221,11 +269,12 @@ def _run(params: dict, config_path: Path) -> None:
 # Entry point
 # ---------------------------------------------------------------------------
 
+
 def main() -> None:
-    """ Entry point
-    """
+    """Entry point"""
     log = Logger("vector-prep-cli")
     log.title("Vector Prep CLI")
+    _load_package_env()
     configs = _discover_configs()
     if not configs:
         log.error(f"  No config.json files found under {LAYERS_DIR}\n")
