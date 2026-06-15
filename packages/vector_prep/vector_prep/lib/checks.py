@@ -29,6 +29,7 @@ def run_checks(
     processed_geom_hashes: Optional[Set[str]] = None,
     processed_row_hashes: Optional[Set[str]] = None,
     dominant_type: Optional[str] = None,
+    min_size_drop: bool = False,
 ) -> Tuple[gpd.GeoDataFrame, Dict, List[Tuple[int, str, str]], List[Tuple[int, str, BaseGeometry]]]:
     """Run geometry and attribute quality checks A–M on gdf_proc.
 
@@ -75,6 +76,7 @@ def run_checks(
         "geometry_duplicates_dropped": 0,
         "row_duplicates_dropped": 0,
         "below_min_size_dropped": 0,
+        "below_min_size_detected": 0,
         "slivers_dropped": 0,
     }
 
@@ -278,8 +280,49 @@ def run_checks(
 
     # ------------------------------------------------------------------ #
     # H. Detect schema inconsistencies (log only)
+    #
+    # We look for two patterns:
+    #   1. Columns whose name suggests they hold integers (e.g. year) but
+    #      whose dtype is float — a sign the data was round-tripped through
+    #      a format that has no integer type (e.g. Shapefile stores all
+    #      numerics as double).
+    #   2. Columns whose name suggests a measurement (area, length, count)
+    #      but whose dtype is object (string) — likely a parsing error.
+    #   3. Object columns whose *values* look numeric — same cause as above
+    #      but caught by inspecting a sample of the data rather than the
+    #      column name.
+    #
+    # IMPORTANT — identifier / code columns are intentionally excluded.
+    # Route numbers, FIPS codes, HUC codes, ZIP codes and similar look
+    # numeric but are identifiers: they should stay as strings.  Reasons:
+    #   - Leading zeros are significant (FIPS "06037" ≠ integer 6037).
+    #   - Arithmetic on route numbers is meaningless.
+    #   - Mixed values are common ("I-90", "US-101", "14a").
+    # Any column whose name contains a pattern from IDENTIFIER_HINTS is
+    # skipped for the value-inspection check (check 3) so these columns
+    # never produce a false-positive warning.
     # ------------------------------------------------------------------ #
     log.info("H. Detecting schema inconsistencies...")
+
+    # Column name fragments that indicate the column holds identifier /
+    # code values that legitimately look numeric but must stay as strings.
+    IDENTIFIER_HINTS = (
+        "route", "rout",      # road / trail route numbers
+        "fips", "fipsc",      # FIPS codes (leading zeros matter)
+        "huc",                # hydrologic unit codes
+        "zip",                # postal codes (leading zeros matter)
+        "code", "cod",        # generic code columns
+        "guid", "uuid",       # globally unique identifiers
+        "interstate",         # interstate highway identifiers
+        "intersta",           # truncated interstate column names
+    )
+
+    # Column name fragments that suggest a column *should* hold a numeric
+    # measurement.  We intentionally exclude "id" and "num" here because
+    # they are too ambiguous: "road_id" or "feature_num" are often string
+    # identifiers, not quantities.
+    NUMERIC_HINTS = ("area", "length", "count")
+
     schema_issues = 0
     for col in gdf_proc.columns:
         if col == "geometry":
@@ -289,24 +332,29 @@ def run_checks(
         non_null = gdf_proc[col].dropna()
         already_flagged = False
 
-        # Columns suggesting year/integer but stored as float
+        # Check 1: columns suggesting year/integer but stored as float.
+        # Shapefiles in particular store all numbers as double, so year
+        # columns come back as 2024.0 instead of 2024.
         if any(hint in col_lower for hint in ("year", "yr")):
             if pd.api.types.is_float_dtype(dtype):
                 log.warning(f"   Schema: column '{col}' suggests integer (year) but has float dtype")
                 schema_issues += 1
                 already_flagged = True
 
-        # Columns suggesting numeric semantics but stored as object
-        if not already_flagged and any(
-            hint in col_lower for hint in ("area", "length", "count", "num", "id")
-        ):
+        # Check 2: columns whose name strongly implies a numeric measurement
+        # but are stored as object (string).
+        if not already_flagged and any(hint in col_lower for hint in NUMERIC_HINTS):
             if pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
-                log.warning(f"   Schema: column '{col}' suggests numeric but has object dtype")
+                log.warning(f"   Schema: column '{col}' suggests numeric measurement but has object dtype")
                 schema_issues += 1
                 already_flagged = True
 
-        # Any object column whose values appear to be numeric
-        if not already_flagged and pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
+        # Check 3: object columns whose sampled values are overwhelmingly
+        # numeric-looking — but skip known identifier/code columns because
+        # those legitimately contain numeric-looking strings (route numbers,
+        # FIPS codes, etc.) that must not be converted.
+        is_identifier = any(hint in col_lower for hint in IDENTIFIER_HINTS)
+        if not already_flagged and not is_identifier and pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
             try:
                 sample = non_null.head(20)
                 coerced = pd.to_numeric(sample, errors="coerce")
@@ -460,10 +508,13 @@ def run_checks(
     log.info(f"   Duplicate rows dropped: {row_dup_count:,}")
 
     # ------------------------------------------------------------------ #
-    # L. Drop features below minimum area / length threshold
+    # L. Drop or detect features below minimum area / length threshold
     # ------------------------------------------------------------------ #
     if min_size is not None and min_size > 0:
-        log.info(f"L. Dropping features below minimum size ({min_size})...")
+        if min_size_drop:
+            log.info(f"L. Dropping features below minimum size ({min_size})...")
+        else:
+            log.info(f"L. Detecting features below minimum size ({min_size})...")
         min_size_count = 0
         for idx in gdf_proc.index:
             if idx in already_dropped:
@@ -478,20 +529,26 @@ def run_checks(
                 continue
             gtype = geom.geom_type
             try:
+                below = False
                 if gtype in ("Polygon", "MultiPolygon"):
                     if geom.area < min_size:
-                        dropped_list.append((idx, "DROPPED", "Below minimum size threshold"))
-                        already_dropped.add(idx)
-                        min_size_count += 1
+                        below = True
                 elif gtype in ("LineString", "MultiLineString", "LinearRing"):
                     if geom.length < min_size:
+                        below = True
+                if below:
+                    if min_size_drop:
                         dropped_list.append((idx, "DROPPED", "Below minimum size threshold"))
                         already_dropped.add(idx)
-                        min_size_count += 1
+                    min_size_count += 1
             except Exception:
                 pass
-        extra_stats["below_min_size_dropped"] = min_size_count
-        log.info(f"   Below minimum size dropped: {min_size_count:,}")
+        if min_size_drop:
+            extra_stats["below_min_size_dropped"] = min_size_count
+            log.info(f"   Below minimum size dropped: {min_size_count:,}")
+        else:
+            extra_stats["below_min_size_detected"] = min_size_count
+            log.info(f"   Below minimum size detected: {min_size_count:,}")
 
     # ------------------------------------------------------------------ #
     # M. Drop sliver polygons — two-phase filter

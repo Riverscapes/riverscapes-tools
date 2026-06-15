@@ -1,0 +1,121 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "vector-prep-us-ntd-roads",
+  "tool_schema_version": "0.0.1",
+  "layers": [
+    {
+      "layer_id": "us-national-roads",
+      "layer_name": "US National Roads",
+      "description": "The USGS Transportation downloadable data from The National Map (TNM) is based on TIGER/Line data provided through U.S. Census Bureau and supplemented with HERE road data to create tile cache base maps. Some of the TIGER/Line data includes limited corrections done by USGS. Transportation data consists of roads, railroads, trails, airports, and other features associated with the transport of people or commerce. The data include the name or route designator, classification, and location. Transportation data support general mapping and geographic information system technology analysis for applications such as traffic safety, congestion mitigation, disaster planning, and emergency response.",
+      "layer_type": "Vector",
+      "columns": [
+        {
+          "name": "fid",
+          "friendly_name": "Feature ID",
+          "dtype": "INTEGER"
+        },
+        {
+          "name": "county_route",
+          "friendly_name": "County Route",
+          "dtype": "STRING",
+          "description": "A numeric identifier designating the road segments that form a particular path through the transportation system, as attributed by a state or county-level transportation organization."
+        },
+        {
+          "name": "federal_la",
+          "friendly_name": "Federal Lane",
+          "dtype": "STRING",
+          "description": "A numeric identifier designating the road segments that form a particular path through the transportation system, as attributed by the federal government."
+        },
+        {
+          "name": "interstate",
+          "friendly_name": "Interstate",
+          "dtype": "STRING",
+          "description": "A numeric or alphanumeric identifier designating the road segments that form a particular path through the transportation system, as attributed by the US Department of Transportation. It includes the Interstate number and Business, Bypass, Alternate, or Scenic designation."
+        },
+        {
+          "name": "intersta_1",
+          "dtype": "STRING"
+        },
+        {
+          "name": "intersta_2",
+          "dtype": "STRING"
+        },
+        {
+          "name": "intersta_3",
+          "dtype": "STRING"
+        },
+        {
+          "name": "mtfcc_code",
+          "friendly_name": "MAF/TIGER Feature Class Code (MTFCC)",
+          "dtype": "STRING",
+          "description": "The MAF/TIGER Feature Class Code (MTFCC) is a standardized code used by the U.S. Census Bureau to classify geographic features in the TIGER/Line dataset. It provides a way to categorize different types of features, such as roads, railroads, water bodies, and more, based on their characteristics and functions. The MTFCC code helps users understand the nature of each feature and is essential for various applications, including mapping, spatial analysis, and data management."
+        },
+        {
+          "name": "name",
+          "friendly_name": "Road Name",
+          "dtype": "STRING",
+          "description": "The name of the road segment, as attributed by the source dataset. This may include the official name of the road, a common name, or a route designation."
+        },
+        {
+          "name": "source_dataset",
+          "friendly_name": "Source Dataset",
+          "dtype": "STRING",
+          "description": "Brief narrative of the source dataset."
+        },
+        {
+          "name": "source_originator",
+          "friendly_name": "Source Originator",
+          "dtype": "STRING",
+          "description": "The organization or individual responsible for creating or providing the source dataset."
+        },
+        {
+          "name": "state_route",
+          "friendly_name": "State Route",
+          "dtype": "STRING",
+          "description": "A numeric identifier designating the road segments that form a particular path through the transportation system, as attributed by a state-level transportation organization."
+        },
+        {
+          "name": "state_ro_1",
+          "dtype": "STRING"
+        },
+        {
+          "name": "state_ro_2",
+          "dtype": "STRING"
+        },
+        {
+          "name": "state_ro_3",
+          "dtype": "STRING"
+        },
+        {
+          "name": "stco_fipsc",
+          "dtype": "STRING",
+          "description": "A five-digit code that uniquely identifies each county in the United States, as defined by the Federal Information Processing Standards (FIPS). The first two digits represent the state, and the last three digits represent the specific county within that state. This code is used for various administrative and data analysis purposes, including geographic information systems (GIS) and demographic studies."
+        },
+        {
+          "name": "tnmfrc",
+          "friendly_name": "TNM Functional Road Class",
+          "dtype": "STRING",
+          "description": "The National Map Functional Road Class (TNMFRC) is a classification system used by the USGS to categorize roads based on their functional importance and characteristics. It helps in understanding the hierarchy of roads and their intended use, which can be crucial for various applications such as transportation planning, emergency response, and infrastructure management."
+        },
+        {
+          "name": "us_route",
+          "friendly_name": "US Route",
+          "dtype": "STRING",
+          "description": "A numeric or alphanumeric identifier designating the road segments that form a particular path through the transportation system, as attributed by the US Department of Transportation. It includes the US highway number and Business, Bypass, Alternate, or Scenic designation."
+        },
+        {
+          "name": "us_route_a",
+          "dtype": "STRING"
+        },
+        {
+          "name": "us_route_b",
+          "dtype": "STRING"
+        },
+        {
+          "name": "us_route_c",
+          "dtype": "STRING"
+        }
+      ]
+    }
+  ]
+}

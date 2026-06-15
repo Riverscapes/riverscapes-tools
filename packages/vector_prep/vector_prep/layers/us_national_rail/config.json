@@ -1,0 +1,28 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${NTD_RAIL_INPUT}",
+    "output": "${NTD_RAIL_OUTPUT}",
+    "garbage": "${NTD_RAIL_GARBAGE}",    
+    "tolerance": 20,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "fcode": "fcode",
+      "name": "name",
+      "railclassi": "rail_class",
+      "railowner": "rail_owner",
+      "railownerc": "rail_owner_code",
+      "railsubdiv": "rail_subdiv",
+      "railusage": "rail_usage",
+      "lengthkm": "length_km",
+      "loaddate": "load_date",
+      "permanent_": "permanent_id",
+      "source_dat": "source_dataset",
+      "source_d_1": "source_dataset_date",
+      "source_fea": "source_feature_id",
+      "source_ori": "source_originator"
+    }
+  }
+}

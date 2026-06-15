@@ -1,0 +1,16 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${SURFACE_MANAGEMENT_INPUT}",
+    "output": "${SURFACE_MANAGEMENT_OUTPUT}",
+    "garbage": "${SURFACE_MANAGEMENT_GARBAGE}",
+    "verbose": true,
+    "tolerance": 20,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "ADMIN_AGEN": "admin_agency"
+    }
+  }
+}

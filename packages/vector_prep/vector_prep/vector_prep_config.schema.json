@@ -1,0 +1,85 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "vector_prep_config.schema.json",
+  "title": "Vector Prep Config",
+  "description": "Schema for a layer-specific configuration file used by vector_prep. Controls all processing parameters including I/O paths, simplification, field mapping, and logging.",
+  "type": "object",
+  "required": ["parameters"],
+  "additionalProperties": false,
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema reference URI."
+    },
+    "parameters": {
+      "type": "object",
+      "description": "Processing parameters for vector_prep. All path values support environment variable expansion (e.g. ${HOME}/data/input.gpkg).",
+      "additionalProperties": false,
+      "properties": {
+        "input": {
+          "type": "string",
+          "description": "Absolute path to the input vector dataset (shapefile, GeoPackage, etc.). Equivalent to --input on the command line. Supports environment variable expansion."
+        },
+        "output": {
+          "type": "string",
+          "description": "Absolute path to write the cleaned output GeoPackage. Equivalent to --output on the command line. Supports environment variable expansion."
+        },
+        "garbage": {
+          "type": "string",
+          "description": "Absolute path to write a GeoPackage of dropped/changed features. Must be a .gpkg file. Equivalent to --garbage on the command line. Supports environment variable expansion."
+        },
+        "layer": {
+          "type": "string",
+          "description": "Layer name for GeoPackage inputs. Defaults to the first layer if omitted. Equivalent to --layer on the command line."
+        },
+        "tolerance": {
+          "type": "number",
+          "description": "Simplification tolerance in metres (0 = skip simplification). Equivalent to --tolerance on the command line.",
+          "minimum": 0
+        },
+        "epsg": {
+          "type": "integer",
+          "description": "EPSG code for the Cartesian CRS used during processing (e.g. reprojection, area/length checks). Defaults to 5070 (NAD83 / Conus Albers). Equivalent to --epsg on the command line.",
+          "minimum": 1024,
+          "maximum": 32767
+        },
+        "min_size": {
+          "type": "number",
+          "description": "Minimum area (m²) for polygons or minimum length (m) for lines. Features below this threshold are flagged; use min_size_drop to also remove them. Equivalent to --min_size on the command line.",
+          "minimum": 0
+        },
+        "min_size_drop": {
+          "type": "boolean",
+          "description": "If true, features below the min_size threshold are dropped from the output. If false (default), they are counted and reported but kept. Equivalent to --min_size_drop on the command line.",
+          "default": false
+        },
+        "chunk_size": {
+          "type": "integer",
+          "description": "Number of features to process per chunk. Larger values use more memory but may be faster. Defaults to 10000. Equivalent to --chunk_size on the command line.",
+          "minimum": 1
+        },
+        "verbose": {
+          "type": "boolean",
+          "description": "Enable extra logging output. Equivalent to --verbose on the command line.",
+          "default": false
+        },
+        "log_file": {
+          "type": "string",
+          "description": "Path to a log file. When provided, logging output is written to this file instead of the default location beside the output. Equivalent to --log_file on the command line. Supports environment variable expansion."
+        },
+        "layer_definitions": {
+          "type": "string",
+          "description": "Relative or absolute path to the layer_definitions.json file for this layer. Required when field_map is specified. Supports environment variable expansion."
+        },
+        "field_map": {
+          "type": "object",
+          "description": "Mapping from source field names to output field names. Only the fields listed here are included in the output; all other source fields are dropped.",
+          "additionalProperties": {
+            "type": "string",
+            "description": "Output field name for this source field."
+          }
+        }
+      }
+    }
+  }
+}

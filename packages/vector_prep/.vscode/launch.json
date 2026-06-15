@@ -35,42 +35,17 @@
             ]
         },
         {
-            "name": "🚀 Run Vector Prep",
+            "name": "🗂️ Vector Prep CLI (interactive layer selector)",
             "type": "debugpy",
             "request": "launch",
-            "module": "vector_prep.vector_prep",
+            "module": "vector_prep.vector_prep_cli",
             "python": "${workspaceFolder}/../../.venv/bin/python",
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
             },
-            "args": [
-                "${input:inputPath}",
-                "--output", "${input:outputPath}",
-                "--garbage", "${input:garbagePath}",
-                "--tolerance", "20",
-                "--verbose"
-            ]
-        }
-    ],
-    "inputs": [
-        {
-            "id": "inputPath",
-            "type": "promptString",
-            "description": "Input vector path (shapefile, gpkg, etc.)",
-            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads.gpkg"
+            "envFile": "${workspaceFolder}/.env",
+            "args": []
         },
-        {
-            "id": "outputPath",
-            "type": "promptString",
-            "description": "Output GeoPackage path",
-            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads_cleaned_OUTPUT.gpkg"
-        },
-        {
-            "id": "garbagePath",
-            "type": "promptString",
-            "description": "Garbage GeoPackage path (for dropped/changed geometries)",
-            "default": "/Volumes/SAMSUNG2TB/Riverscapes/ReportLayers/national_transportation/national_roads_garbage_GARBAGE.gpkg"
-        }
     ]
 }

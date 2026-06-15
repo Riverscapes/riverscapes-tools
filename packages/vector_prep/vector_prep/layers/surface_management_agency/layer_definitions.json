@@ -1,0 +1,21 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "vector-prep-surface-management-agency",
+  "tool_schema_version": "0.0.1",
+  "layers": [
+    {
+      "layer_id": "surface-management-agency",
+      "layer_name": "Surface Management Agency",
+      "description": "The Surface Management Agency (SMA) dataset depicts polygon boundaries of federal, state, local, and private land surface ownership and management jurisdiction across the contiguous United States. It is maintained by the Bureau of Land Management (BLM) and is used to identify which agency is responsible for managing a given parcel of land. The dataset is commonly used for land use planning, permitting, environmental review, and natural resource management. Each polygon is attributed with a code representing the administering agency, ranging from major federal land management agencies (e.g., BLM, USFS, NPS, FWS) to Department of Defense branches, state governments, tribal lands, and private holdings.",
+      "layer_type": "Vector",
+      "columns": [
+        {
+          "name": "admin_agency",
+          "friendly_name": "Administering Agency",
+          "dtype": "STRING",
+          "description": "An abbreviated code identifying the agency or entity responsible for managing or administering the land surface within the polygon. Common values include: BLM (Bureau of Land Management), USFS (U.S. Forest Service), NPS (National Park Service), FWS (U.S. Fish and Wildlife Service), USBR (U.S. Bureau of Reclamation), BIA (Bureau of Indian Affairs), USACE (U.S. Army Corps of Engineers), DOD (Department of Defense), ARMY (U.S. Army), USAF (U.S. Air Force), USMC (U.S. Marine Corps), NAVY (U.S. Navy), USCG (U.S. Coast Guard), DOE (Department of Energy), DOI (Department of the Interior), USDA (U.S. Department of Agriculture), VA (Department of Veterans Affairs), FHA (Federal Highway Administration), FAA (Federal Aviation Administration), BOP (Bureau of Prisons), BPA (Bonneville Power Administration), IBWC (International Boundary and Water Commission), OTHFE (Other Federal), ST (State), LG (Local Government), PVT (Private), UND (Undetermined)."
+        }
+      ]
+    }
+  ]
+}

@@ -11,11 +11,11 @@ The output is always a GeoPackage layer with cleaned geometries, reprojected to 
 Processing is done in a windowed/chunked fashion so that very large datasets can be handled
 without loading the entire file into memory:
 
-  Pass 1 – lightweight hash scan (pyogrio): iterates all features in chunks, builds sets of SHA1 hashes
+  Pass 1 - lightweight hash scan (pyogrio): iterates all features in chunks, builds sets of SHA1 hashes
             for geometries / full rows that appear more than once (for cross-chunk dedup).
             Geometries are reprojected to the target EPSG before hashing so that pass-1
             hashes are computed in the same coordinate space as pass-2 (steps J & K).
-  Pass 2 – chunked processing: reads chunk_size features at a time, runs checks + clean,
+  Pass 2 - chunked processing: reads chunk_size features at a time, runs checks + clean,
             then appends to the output GeoPackage incrementally.
 
 Philip Bailey
@@ -30,6 +30,7 @@ import os
 import re
 import sys
 import traceback
+import json
 from pathlib import Path
 from typing import Dict, Optional, Set, Tuple
 
@@ -42,10 +43,56 @@ from rsxml import Logger, ProgressBar, dotenv
 
 from .lib.checks import run_checks
 from .lib.clean import clean_geometries
+from .lib.field_map import FieldMapConfig, apply_field_map, load_and_validate_field_map
 from .lib.garbage import write_garbage_chunk
 from .lib.geometry_utils import _geom_type_str
-from .lib.output import output_gdf, output_gdf_chunk  # output_gdf re-exported for orchestrate scripts
+from .lib.output import output_gdf_chunk
 from .lib.report import print_report
+
+
+# ---------------------------------------------------------------------------
+# Config loading
+# ---------------------------------------------------------------------------
+
+_ENV_VAR_RE = re.compile(r'\$\{([A-Za-z_][A-Za-z0-9_]*)\}|\$([A-Za-z_][A-Za-z0-9_]*)')
+
+
+def _find_missing_env_vars(value: str) -> list[str]:
+    """Return names of every $VAR / ${VAR} reference in *value* not set in the environment."""
+    return [
+        m.group(1) or m.group(2)
+        for m in _ENV_VAR_RE.finditer(value)
+        if (m.group(1) or m.group(2)) not in os.environ
+    ]
+
+
+def load_config(config_path: Path) -> dict:
+    """Load a vector_prep JSON config, expand env vars, and validate.
+
+    Raises:
+        EnvironmentError: if any ``$VAR`` / ``${VAR}`` references in string
+            values are not present in the environment.  The message lists
+            every unresolved reference so the user can fix them all at once.
+    """
+    with open(config_path, encoding="utf-8") as fh:
+        raw = json.load(fh)
+    params: dict = raw.get("parameters", {})
+
+    missing: list[str] = []
+    for k, v in params.items():
+        if isinstance(v, str):
+            missing.extend(f"{k}: ${var}" for var in _find_missing_env_vars(v))
+
+    if missing:
+        bullet_list = "\n".join(f"  \u2022 {m}" for m in missing)
+        raise EnvironmentError(
+            f"The following environment variables are not set:\n{bullet_list}"
+        )
+
+    return {
+        k: os.path.expandvars(v) if isinstance(v, str) else v
+        for k, v in params.items()
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -226,7 +273,9 @@ def vector_prep(
     output_path: Optional[str] = None,
     garbage_path: Optional[str] = None,
     min_size: float = None,
+    min_size_drop: bool = False,
     chunk_size: int = 10_000,
+    field_map_config: Optional[FieldMapConfig] = None,
 ) -> Dict:
     """Vector Prep: clean, validate, and optionally simplify a vector dataset.
 
@@ -249,12 +298,22 @@ def vector_prep(
         output_path: Optional path to write the cleaned GeoPackage.
         garbage_path: Optional path to write dropped/changed features.
         min_size: Minimum area (m²) for polygons or length (m) for lines.
+        min_size_drop: If True, features below min_size threshold are dropped. If False (default), they are detected/counted only.
         chunk_size: Number of features to load at once during pass 2.
 
     Returns:
         stats dict (suitable for print_report).
     """
     log = Logger("Vector Prep")
+
+    # Validate that all I/O paths are absolute before doing anything else.
+    _path_errors: list[str] = []
+    for _label, _p in (("input", str(input_dataset)), ("output", output_path), ("garbage", garbage_path)):
+        if _p and not Path(_p).is_absolute():
+            _path_errors.append(f"  \u2022 {_label}: '{_p}' is not an absolute path")
+    if _path_errors:
+        raise ValueError("All I/O paths must be absolute:\n" + "\n".join(_path_errors))
+
     input_dataset = str(Path(input_dataset).resolve())
 
     if not os.path.exists(input_dataset):
@@ -317,6 +376,7 @@ def vector_prep(
         "geometry_duplicates_dropped": 0,
         "row_duplicates_dropped": 0,
         "below_min_size_dropped": 0,
+        "below_min_size_detected": 0,
         "slivers_dropped": 0,
         # clean_geometries counters (int)
         "null_or_empty": 0,
@@ -397,6 +457,7 @@ def vector_prep(
             processed_geom_hashes=processed_geom_hashes,
             processed_row_hashes=processed_row_hashes,
             dominant_type=dominant_type,
+            min_size_drop=min_size_drop,
         )
 
         # If a feature was both changed (Step D) and later dropped (Steps I–M),
@@ -436,6 +497,12 @@ def vector_prep(
             _accum_drop(original_chunk, orig_idx, reason)
         for orig_idx, _op, reason in clean_dropped:
             _accum_drop(original_chunk, orig_idx, reason)
+
+        # ---- Apply field map (select, rename, cast) ---------------
+        # Must run AFTER checks/clean (which need original source fields)
+        # and BEFORE FID assignment and output write.
+        if field_map_config is not None:
+            chunk_gdf = apply_field_map(chunk_gdf, field_map_config)
 
         # ---- Write output chunk --------------------------------
         if len(chunk_gdf) > 0 and output_path:
@@ -495,93 +562,261 @@ def vector_prep(
 def main():
     """CLI entry point for vector_prep."""
     parser = argparse.ArgumentParser(
-        description="Vector Prep: Clean and simplify vector datasets."
+        description=(
+            "Vector Prep: Clean and simplify vector datasets.\n\n"
+            "Two mutually exclusive usage modes:\n\n"
+            "  Config mode:  vector_prep --config PATH [--verbose]\n"
+            "                  All processing parameters are read from the JSON config file.\n\n"
+            "  Direct mode:  vector_prep --input PATH [--output PATH] [--garbage PATH]\n"
+            "                            [--tolerance N] [--min_size N] [--min_size_drop]\n"
+            "                            [--layer NAME] [--epsg N] [--chunk_size N] [--verbose]\n"
+            "                  All processing parameters are provided as command-line arguments.\n\n"
+            "Mixing --config with any direct-mode argument is an error."
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
     )
-    parser.add_argument("input", help="Input vector (shapefile, gpkg, etc.)")
-    parser.add_argument("--output", help="(OPTIONAL) Output vector path")
+
+    # ---- Always-available arguments (valid in both modes) ----
     parser.add_argument(
-        "--garbage",
+        "--config",
+        metavar="PATH",
         help=(
-            "(OPTIONAL) If provided, dropped/changed features will be saved to this GeoPackage "
-            "for inspection. Must be a .gpkg file."
+            "Path to a JSON config file. When provided, all processing parameters are read "
+            "from the file. Cannot be combined with any direct-mode argument (see below)."
         ),
         default=None,
-    )
-    parser.add_argument(
-        "--layer",
-        help="Layer name (for geopackage). If not provided and input is geopackage, first layer is used.",
-        default=None,
-    )
-    parser.add_argument(
-        "--tolerance",
-        type=float,
-        help="Simplify tolerance in METRES (0 to skip).",
-        default=0.0,
-    )
-    parser.add_argument(
-        "--epsg",
-        type=int,
-        help=(
-            "Cartesian CRS EPSG code to reproject to before processing (optional). "
-            "Default is 5070 (NAD83 / Conus Albers)."
-        ),
-        default=5070,
-    )
-    parser.add_argument(
-        "--min_size",
-        type=float,
-        help=(
-            "Minimum area (m²) for polygons or minimum length (m) for lines. "
-            "Features smaller than this are dropped. Default is 1.0."
-        )
-    )
-    parser.add_argument(
-        "--chunk_size",
-        type=int,
-        help=(
-            "Number of features to process at a time (windowed/chunked mode). "
-            "Larger values use more memory but may be faster. Default is 10000."
-        ),
-        default=10_000,
     )
     parser.add_argument(
         "--verbose",
-        help="(optional) a little extra logging",
+        help="Enable extra logging output (valid in both modes).",
         action="store_true",
         default=False,
     )
+
+    # ---- Direct-mode arguments (invalid when --config is supplied) ----
+    direct = parser.add_argument_group(
+        "direct mode arguments",
+        "The following arguments are only valid when --config is NOT provided.",
+    )
+    direct.add_argument(
+        "--input",
+        metavar="PATH",
+        help="Input vector dataset (shapefile, GeoPackage, etc.).",
+        default=None,
+    )
+    direct.add_argument(
+        "--output",
+        metavar="PATH",
+        help="(Optional) Output GeoPackage path.",
+        default=None,
+    )
+    direct.add_argument(
+        "--garbage",
+        metavar="PATH",
+        help=(
+            "(Optional) GeoPackage path for dropped/changed features. Must be a .gpkg file."
+        ),
+        default=None,
+    )
+    direct.add_argument(
+        "--layer",
+        metavar="NAME",
+        help="Layer name for GeoPackage inputs. Defaults to the first layer.",
+        default=None,
+    )
+    direct.add_argument(
+        "--tolerance",
+        type=float,
+        metavar="METRES",
+        help="(Optional) Simplification tolerance in metres. Default: 0 (no simplification).",
+        default=None,
+    )
+    direct.add_argument(
+        "--epsg",
+        type=int,
+        metavar="CODE",
+        help=(
+            "Cartesian CRS EPSG code for reprojection before processing. "
+            "Default: 5070 (NAD83 / Conus Albers)."
+        ),
+        default=None,
+    )
+    direct.add_argument(
+        "--min_size",
+        type=float,
+        metavar="SIZE",
+        help=(
+            "Minimum area (m²) for polygons or minimum length (m) for lines. "
+            "Features smaller than this are flagged. Use --min_size_drop to also drop them."
+        ),
+        default=None,
+    )
+    direct.add_argument(
+        "--min_size_drop",
+        help=(
+            "When --min_size is set, drop features below the threshold instead of just flagging them."
+        ),
+        action="store_true",
+        default=False,
+    )
+    direct.add_argument(
+        "--log_file",
+        help=(
+            "Path to a log file. When provided, logging output will be written to this file."
+        ),
+        default=None,
+    )
+    direct.add_argument(
+        "--chunk_size",
+        type=int,
+        metavar="N",
+        help=(
+            "Number of features to process per chunk. Larger values use more memory "
+            "but may be faster. Default: 10000."
+        ),
+        default=None,
+    )
+
     args = dotenv.parse_args_env(parser)
 
-    log = Logger("Vector Prep")
-    log_dir = os.path.dirname(args.output) if args.output else "."
-
-    # Log file name is "<ORIGINAL_BASENAME>_vector_prep.log" if output path provided, otherwise "vector_prep.log".
-    if args.output:
-        base_name = os.path.splitext(os.path.basename(args.output))[0]
-        log_file_name = f"{base_name}_vector_prep.log"
-        log_dir = os.path.dirname(args.output)
+    # ---- Enforce mutual exclusivity -------------------------------------------
+    # Detect which direct-mode args were explicitly supplied (non-None / non-False).
+    _direct_arg_names = [
+        "input", "output", "garbage", "layer",
+        "tolerance", "epsg", "min_size", "min_size_drop", "chunk_size",
+    ]
+    if args.config is not None:
+        supplied_direct = [
+            f"--{name.replace('_', '-')}"
+            for name in _direct_arg_names
+            if getattr(args, name) not in (None, False)
+        ]
+        if supplied_direct:
+            parser.error(
+                f"--config cannot be combined with direct-mode arguments. "
+                f"Remove the following: {', '.join(supplied_direct)}"
+            )
     else:
-        log_file_name = "vector_prep.log"
-        log_dir = "."
+        # Direct mode: --input is required.
+        if args.input is None:
+            parser.error(
+                "either --config PATH or --input PATH (direct mode) is required. "
+                "Run with --help for usage details."
+            )
+
+    # Apply defaults for direct-mode numeric args (only needed in direct mode,
+    # but harmless to apply unconditionally since config mode ignores them).
+    effective_epsg: int = args.epsg if args.epsg is not None else 5070
+    effective_chunk_size: int = args.chunk_size if args.chunk_size is not None else 10_000
+
+    log = Logger("Vector Prep")
+
+    # --- load config if provided -----------------------------------------------
+    cfg_params: dict = {}
+    cfg_path: Optional[Path] = None
+    if args.config:
+        cfg_path = Path(args.config)
+        if not cfg_path.exists():
+            log.error(f"Config file not found: {args.config}")
+            sys.exit(1)
+        try:
+            cfg_params = load_config(cfg_path)
+        except EnvironmentError as exc:
+            log.error(str(exc))
+            sys.exit(1)
+
+    # Load and validate field_map + layer_definitions from config (if specified)
+    field_map_config = None
+    raw_field_map = cfg_params.get("field_map")
+    layer_defs_rel = cfg_params.get("layer_definitions")
+
+    if raw_field_map is not None:
+        if layer_defs_rel is None:
+            log.error("Config specifies 'field_map' but 'layer_definitions' is missing.")
+            sys.exit(1)
+        if cfg_path is None:
+            log.error("Internal error: cfg_path not set when field_map is present")
+            sys.exit(1)
+        layer_defs_path = (cfg_path.parent / layer_defs_rel).resolve()
+        try:
+            field_map_config = load_and_validate_field_map(raw_field_map, layer_defs_path)
+            log.info(f"Loaded field map: {len(raw_field_map)} field(s) mapped")
+        except (ValueError, FileNotFoundError) as e:
+            log.error(f"Field map error: {e}")
+            sys.exit(1)
+    elif layer_defs_rel is not None:
+        log.warning("layer_definitions specified but no field_map; all fields will be passed through.")
+
+    # Resolve effective parameter values:
+    # In config mode, CLI direct-mode args are all None/False (enforced above),
+    # so cfg_params is the only source. In direct mode, cfg_params is empty.
+    tolerance = float(args.tolerance) if args.tolerance is not None else float(cfg_params.get("tolerance", 0.0))
+    min_size_val = float(args.min_size) if args.min_size is not None else (
+        float(cfg_params.get("min_size")) if cfg_params.get("min_size") is not None else None
+    )
+    min_size_drop_val = args.min_size_drop or bool(cfg_params.get("min_size_drop", False))
+
+    input_path = args.input or cfg_params.get("input") or None
+    output_path_val = args.output or cfg_params.get("output") or None
+    garbage_path_val = args.garbage or cfg_params.get("garbage") or None
+
+    # layer / epsg / chunk_size: CLI wins; fall back to config; then hardcoded defaults.
+    effective_layer = args.layer or cfg_params.get("layer") or None
+    if args.epsg is not None:
+        effective_epsg = args.epsg
+    elif cfg_params.get("epsg") is not None:
+        effective_epsg = int(cfg_params["epsg"])
+    # else: already set to 5070 above
+
+    if args.chunk_size is not None:
+        effective_chunk_size = args.chunk_size
+    elif cfg_params.get("chunk_size") is not None:
+        effective_chunk_size = int(cfg_params["chunk_size"])
+    # else: already set to 10_000 above
+
+    if input_path is None:
+        log.error("No input path provided. Use --input or set 'input' in the config file.")
+        sys.exit(1)
+
+    # verbose can also come from config (CLI --verbose takes precedence)
+    effective_verbose = args.verbose or bool(cfg_params.get("verbose", False))
+
+    # Log file setup
+    log_path = None
+    if args.log_file:
+        log_path = args.log_file
+    elif cfg_params.get("log_file"):
+        log_path = cfg_params["log_file"]
+    else:
+        if output_path_val:
+            base_name = os.path.splitext(os.path.basename(output_path_val))[0]
+            log_file_name = f"{base_name}_vector_prep.log"
+            log_dir = os.path.dirname(output_path_val)
+        else:
+            log_file_name = "vector_prep.log"
+            log_dir = "."
+        log_path = os.path.join(log_dir, log_file_name)
     log.setup(
-        log_path=os.path.join(log_dir, log_file_name),
-        verbose=args.verbose,
+        log_path=log_path,
+        verbose=effective_verbose,
     )
 
     try:
         stats = vector_prep(
-            args.input,
-            args.layer,
-            float(args.tolerance),
-            int(args.epsg),
-            output_path=args.output if args.output else None,
-            garbage_path=args.garbage,
-            min_size=float(args.min_size) if args.min_size is not None else None,
-            chunk_size=int(args.chunk_size),
+            input_path,
+            effective_layer,
+            tolerance,
+            effective_epsg,
+            output_path=output_path_val,
+            garbage_path=garbage_path_val,
+            min_size=min_size_val,
+            min_size_drop=min_size_drop_val,
+            chunk_size=effective_chunk_size,
+            field_map_config=field_map_config,
         )
-        if not args.output:
+        if not output_path_val:
             log.info("No --output path provided; skipping output write.")
-        print_report(stats, args.garbage)
+        print_report(stats, garbage_path_val)
     except Exception as e:
         log.error("Vector prep failed: %s", e)
         log.debug(traceback.format_exc())
