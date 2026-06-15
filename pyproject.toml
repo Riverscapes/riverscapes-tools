@@ -106,22 +106,13 @@ known_first_party = [
     "vbet",
 ]
 
-# setuptools: ext-modules is causing the error "Additional properties are not allowed ('ext-modules' was unexpected)"
-# We haven't found a way to suppress this error, but the configuration works fine regardless.
+# Cython extension for rcat.lib.accessibility is built separately.
+# RCAT developers: run `uv pip install -e packages/rcat` once after checkout
+# or after modifying access.pyx to compile the Cython extension.
 [tool.setuptools.packages.find]
 where = ["packages", "lib"]
-
-[tool.setuptools]
-ext-modules = [
-    { name = "rcat.lib.accessibility.access", sources = ["packages/rcat/rcat/lib/accessibility/access.pyx"], language = "c" }
-]
-cmdclass = { build_ext = "packages.rcat.rcat.lib.accessibility._build_ext.BuildExt" }
-
 
 [tool.setuptools.package-dir]
 rcat = "packages/rcat/rcat"
 "rcat.lib" = "packages/rcat/rcat/lib"
 "rcat.lib.accessibility" = "packages/rcat/rcat/lib/accessibility"
-
-[tool.setuptools.package-data]
-"rcat.lib.accessibility" = ["*.pyx"]

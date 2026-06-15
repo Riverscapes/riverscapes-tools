@@ -1,0 +1,29 @@
+[build-system]
+requires = [
+    "setuptools>=68.0",
+    "wheel",
+    "Cython>=3.0",
+    "numpy>=1.26",
+]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rcat-cython"
+version = "0.1.0"
+description = "Cython extension for RCAT floodplain accessibility"
+requires-python = "~=3.12.0"
+
+[tool.setuptools.packages.find]
+where = ["rcat/lib"]
+
+[tool.setuptools]
+ext-modules = [
+    { name = "rcat.lib.accessibility.access", sources = ["rcat/lib/accessibility/access.pyx"], language = "c" }
+]
+cmdclass = { build_ext = "rcat.lib.accessibility._build_ext.BuildExt" }
+
+[tool.setuptools.package-dir]
+"rcat.lib.accessibility" = "rcat/lib/accessibility"
+
+[tool.setuptools.package-data]
+"rcat.lib.accessibility" = ["*.pyx"]
