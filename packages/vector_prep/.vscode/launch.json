@@ -9,7 +9,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${file}",
-            "python": "${workspaceFolder}/../../.venv/bin/python",
+            "python": "${command:python.interpreterPath}",
             "cwd": "${fileDirname}",
             "console": "integratedTerminal",
             "env": {
@@ -22,7 +22,7 @@
             "type": "debugpy",
             "request": "launch",
             "program": "${workspaceFolder}/vector_prep/orchestrate-nhdplushr.py",
-            "python": "${workspaceFolder}/../../.venv/bin/python",
+            "python": "${command:python.interpreterPath}",
             "cwd": "${workspaceFolder}/vector_prep",
             "console": "integratedTerminal",
             "env": {
@@ -39,7 +39,7 @@
             "type": "debugpy",
             "request": "launch",
             "module": "vector_prep.vector_prep_cli",
-            "python": "${workspaceFolder}/../../.venv/bin/python",
+            "python": "${command:python.interpreterPath}",
             "console": "integratedTerminal",
             "env": {
                 "PYTHONPATH": "${workspaceFolder}/../../lib/commons"
