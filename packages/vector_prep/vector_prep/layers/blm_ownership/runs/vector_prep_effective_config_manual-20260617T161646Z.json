@@ -1,0 +1,13 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "/home/vscode/GISData/SMA_WM.gdb",
+    "layer": "SurfaceManagementAgency",
+    "output": "/home/vscode/GISData/SMA_WM_VP.gpkg",
+    "garbage": "/GISData/SMA_WM_VP_GARBAGE.gpkg",
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/layer_definitions.json"
+  }
+}

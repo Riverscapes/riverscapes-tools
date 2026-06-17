@@ -1,14 +1,16 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import os
 import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 # Allow imports from the vector_prep package without requiring an install
-_REPO_ROOT = Path(__file__).resolve().parents[4]
-if str(_REPO_ROOT) not in sys.path:
+_REPO_ROOT = Path(__file__).resolve().parents[5]
+if str(_REPO_ROOT / "packages" / "vector_prep") not in sys.path:
     sys.path.insert(0, str(_REPO_ROOT / "packages" / "vector_prep"))
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -16,6 +18,7 @@ CATALOG_PATH = BASE_DIR / "step-catalog.json"
 HISTORY_PATH = BASE_DIR / "step-history.json"
 STEP1_SCRIPT = BASE_DIR / "step-1-download-unzip.sh"
 INPUTS_PATH = BASE_DIR / "inputs.json"
+RUNS_DIR = BASE_DIR / "runs"
 
 # Default paths / IDs used by steps 3-4
 AGOL_ITEM_ID = "6bf2e737c59d4111be92420ee5ab0b46"
@@ -37,9 +40,17 @@ def write_json(path: Path, data):
         f.write("\n")
 
 
-def append_history(step_id: str, status: str, execution_mode: str, run_id: str, notes: str = ""):
+def append_history(
+    step_id: str,
+    status: str,
+    execution_mode: str,
+    run_id: str,
+    notes: str = "",
+    artifacts: list[dict[str, str]] | None = None,
+    error_summary: dict[str, str] | None = None,
+):
     history = load_json(HISTORY_PATH)
-    entry = {
+    entry: dict[str, Any] = {
         "run_id": run_id,
         "step_id": step_id,
         "status": status,
@@ -48,8 +59,22 @@ def append_history(step_id: str, status: str, execution_mode: str, run_id: str, 
     }
     if notes:
         entry["notes"] = notes
+    if artifacts:
+        entry["artifacts"] = artifacts
+    if error_summary is not None:
+        entry["error_summary"] = error_summary
     history.setdefault("entries", []).append(entry)
     write_json(HISTORY_PATH, history)
+
+
+def _resolve_cfg_path(cfg_dir: Path, value: str | None) -> str | None:
+    """Resolve config path values with env/user expansion and cfg-dir relativity."""
+    if not value:
+        return None
+    expanded = Path(value).expanduser()
+    if expanded.is_absolute():
+        return str(expanded)
+    return str((cfg_dir / expanded).resolve())
 
 
 def latest_status_by_step():
@@ -218,14 +243,179 @@ def run_step_4(run_id: str, gdb_path: str):
         append_history("build_layer_definitions", "failed", "automated", run_id, str(exc))
         raise
 
+def run_vector_prep(run_id: str, config_path: str):
+    """Step 5 — run vector_prep in config mode and persist effective run parameters."""
+    cfg_path = Path(config_path).expanduser().resolve()
+    append_history(
+        "run_vector_prep",
+        "running",
+        "automated",
+        run_id,
+        notes=f"Config: {cfg_path}",
+    )
+
+    try:
+        if not cfg_path.exists():
+            raise FileNotFoundError(f"Config not found: {cfg_path}")
+
+        cfg_params = load_json(cfg_path).get("parameters", {})
+        cfg_dir = cfg_path.parent
+
+        # Expand env vars and user home to persist a machine-resolved run record.
+        expanded_cfg: dict[str, Any] = {}
+        for key, value in cfg_params.items():
+            if isinstance(value, str):
+                expanded_cfg[key] = os.path.expanduser(os.path.expandvars(value))
+            else:
+                expanded_cfg[key] = value
+
+        input_path = _resolve_cfg_path(cfg_dir, expanded_cfg.get("input"))
+        output_path = _resolve_cfg_path(cfg_dir, expanded_cfg.get("output"))
+        garbage_path = _resolve_cfg_path(cfg_dir, expanded_cfg.get("garbage"))
+        layer_name = cfg_params.get("layer") or None
+        tolerance = float(cfg_params.get("tolerance", 0.0))
+        epsg = int(cfg_params.get("epsg", 5070))
+        min_size = float(cfg_params["min_size"]) if cfg_params.get("min_size") is not None else None
+        min_size_drop = bool(cfg_params.get("min_size_drop", False))
+        chunk_size = int(cfg_params.get("chunk_size", 10_000))
+
+        if input_path is None:
+            raise ValueError("Missing required config parameter: parameters.input")
+
+        RUNS_DIR.mkdir(parents=True, exist_ok=True)
+
+        effective_parameters = dict(expanded_cfg)
+        effective_parameters["input"] = input_path
+        if output_path is not None:
+            effective_parameters["output"] = output_path
+        if garbage_path is not None:
+            effective_parameters["garbage"] = garbage_path
+        if effective_parameters.get("layer_definitions") is not None:
+            effective_parameters["layer_definitions"] = _resolve_cfg_path(
+                cfg_dir,
+                str(effective_parameters.get("layer_definitions")),
+            )
+        if effective_parameters.get("log_file") is not None:
+            effective_parameters["log_file"] = _resolve_cfg_path(
+                cfg_dir,
+                str(effective_parameters.get("log_file")),
+            )
+
+        effective_cfg_path = RUNS_DIR / f"vector_prep_effective_config_{run_id}.json"
+        write_json(
+            effective_cfg_path,
+            {
+                "$schema": "../../vector_prep_config.schema.json",
+                "parameters": effective_parameters,
+            },
+        )
+
+        command = [
+            sys.executable,
+            "-m",
+            "vector_prep.vector_prep.vector_prep",
+            "--config",
+            str(effective_cfg_path),
+        ]
+        subprocess.run(command, check=True, cwd=str(_REPO_ROOT))
+
+        report_path = None
+        if output_path:
+            report_path = str(Path(output_path).parent / f"{Path(output_path).stem}_report.md")
+
+        run_manifest_path = RUNS_DIR / f"vector_prep_run_{run_id}.json"
+        run_manifest = {
+            "run_id": run_id,
+            "step_id": "run_vector_prep",
+            "executed_at": datetime.now(timezone.utc).isoformat(),
+            "config_path": str(cfg_path),
+            "effective_config_path": str(effective_cfg_path),
+            "command": command,
+            "resolved_parameters": {
+                "input": input_path,
+                "layer": layer_name,
+                "output": output_path,
+                "garbage": garbage_path,
+                "tolerance": tolerance,
+                "epsg": epsg,
+                "min_size": min_size,
+                "min_size_drop": min_size_drop,
+                "chunk_size": chunk_size,
+                "field_map_keys": sorted(expanded_cfg.get("field_map", {}).keys()) if isinstance(expanded_cfg.get("field_map"), dict) else None,
+                "layer_definitions": _resolve_cfg_path(cfg_dir, expanded_cfg.get("layer_definitions")),
+            },
+            "artifacts": {
+                "report": str(report_path),
+                "output": output_path,
+                "garbage": garbage_path,
+            },
+        }
+        write_json(run_manifest_path, run_manifest)
+
+        artifacts = [
+            {"name": "vector_prep_config", "kind": "config", "path": str(cfg_path)},
+            {"name": "vector_prep_effective_config", "kind": "config", "path": str(effective_cfg_path)},
+            {"name": "vector_prep_run_manifest", "kind": "run_record", "path": str(run_manifest_path)},
+        ]
+        if report_path:
+            artifacts.append({"name": "vector_prep_report", "kind": "report", "path": str(report_path)})
+        if output_path:
+            artifacts.append({"name": "vector_prep_output", "kind": "vector", "path": output_path})
+        if garbage_path:
+            artifacts.append({"name": "vector_prep_garbage", "kind": "vector", "path": garbage_path})
+
+        append_history(
+            "run_vector_prep",
+            "done",
+            "automated",
+            run_id,
+            notes=(
+                f"Ran vector_prep via config mode; "
+                f"Output={output_path or '-'}; "
+                f"Report={Path(report_path).name if report_path else '-'}; "
+                f"Manifest={run_manifest_path.name}"
+            ),
+            artifacts=artifacts,
+        )
+
+        if report_path:
+            print(f"Vector prep complete. Report: {report_path}")
+        print(f"Run manifest: {run_manifest_path}")
+
+    except Exception as exc:
+        append_history(
+            "run_vector_prep",
+            "failed",
+            "automated",
+            run_id,
+            notes=str(exc),
+            error_summary={"message": str(exc)},
+        )
+        raise
+
+
 
 def main():
     parser = argparse.ArgumentParser(description="BLM ownership orchestration helper")
     parser.add_argument("--list", action="store_true", help="List steps and latest status")
     parser.add_argument(
         "--run-step",
-        choices=["step1", "download_unzip", "step3", "extract_metadata", "step4", "build_layer_definitions"],
+        choices=[
+            "step1",
+            "download_unzip",
+            "step3",
+            "extract_metadata",
+            "step4",
+            "build_layer_definitions",
+            "step5",
+            "run_vector_prep",
+        ],
         help="Run an automated step",
+    )
+    parser.add_argument(
+        "--config",
+        default=str(BASE_DIR / "config.json"),
+        help="Path to vector_prep config.json used by step5/run_vector_prep",
     )
     parser.add_argument(
         "--gdb",
@@ -254,6 +444,9 @@ def main():
             return
         if args.run_step in {"step4", "build_layer_definitions"}:
             run_step_4(args.run_id, args.gdb)
+            return
+        if args.run_step in {"step5", "run_vector_prep"}:
+            run_vector_prep(args.run_id, args.config)
             return
 
     if args.mark_done:

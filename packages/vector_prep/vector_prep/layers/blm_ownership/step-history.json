@@ -50,6 +50,109 @@
       "execution_mode": "automated",
       "executed_at": "2026-06-17T15:21:13.528963+00:00",
       "notes": "Merged 13 columns written to layer_definitions.json"
+    },
+    {
+      "run_id": "manual-20260617T161358Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:13:58.358322+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161358Z",
+      "step_id": "run_vector_prep",
+      "status": "failed",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:13:58.387786+00:00",
+      "notes": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1.",
+      "error_summary": {
+        "message": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1."
+      }
+    },
+    {
+      "run_id": "manual-20260617T161447Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:14:47.521170+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161447Z",
+      "step_id": "run_vector_prep",
+      "status": "failed",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:14:47.550485+00:00",
+      "notes": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '/workspaces/riverscapes-tools/packages/packages/vector_prep/vector_prep/vector_prep.py', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 2.",
+      "error_summary": {
+        "message": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '/workspaces/riverscapes-tools/packages/packages/vector_prep/vector_prep/vector_prep.py', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 2."
+      }
+    },
+    {
+      "run_id": "manual-20260617T161506Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:15:06.744274+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161506Z",
+      "step_id": "run_vector_prep",
+      "status": "failed",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:15:13.385708+00:00",
+      "notes": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/vector_prep.py', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1.",
+      "error_summary": {
+        "message": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/vector_prep.py', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1."
+      }
+    },
+    {
+      "run_id": "manual-20260617T161538Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:15:38.485198+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161538Z",
+      "step_id": "run_vector_prep",
+      "status": "failed",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:15:39.014711+00:00",
+      "notes": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1.",
+      "error_summary": {
+        "message": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1."
+      }
+    },
+    {
+      "run_id": "manual-20260617T161627Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:16:27.585096+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161627Z",
+      "step_id": "run_vector_prep",
+      "status": "failed",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:16:28.099535+00:00",
+      "notes": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1.",
+      "error_summary": {
+        "message": "Command '['/workspaces/riverscapes-tools/.venv/bin/python3', '-m', 'vector_prep.vector_prep.vector_prep', '--config', '/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json']' returned non-zero exit status 1."
+      }
+    },
+    {
+      "run_id": "manual-20260617T161646Z",
+      "step_id": "run_vector_prep",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T16:16:46.326832+00:00",
+      "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
     }
   ]
 }
