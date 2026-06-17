@@ -1,0 +1,105 @@
+{
+  "only_in_fgdb": [
+    "ADMIN_ST",
+    "FAU_ID",
+    "SHAPE_Area",
+    "SHAPE_Length",
+    "shape"
+  ],
+  "only_in_xml": [
+    "DE_UNIT_CODE"
+  ],
+  "differences": [
+    {
+      "name": "ADMIN_AGENCY_CODE",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "The acronym for the agency responsible for managing the land designation. Values: AF=Air Force Installations Values: APHIS=Animal and Plant Health and Inspection Service Values: ARMY=Army Installations Values: ARS=Agricultural Research Service Values: BIA=Bureau of Indian Affairs Values: BLM=Bureau of Land Management Values: BOR=Bureau of Reclamation Values: BPA=Bonneville Power Administration Values: CG=Coast Guard Values: COE=Corps of Engineers Values: FAA=Federal Aviation Administration Values: FERC=Federal Energy Regulatory Commission Values: FHA=Federal Housing Administration Values: FRMHA=Farmers Home Administration Values: FS=Forest Service Values: FWS=Fish and Wildlife Service Values: GS=Geological Survey Values: GSA=General Services Administration Values: MC=Marine Corps Installations Values: MMS=Minerals Management Service Values: NAVY=Navy Installations Values: NOAA=National Oceanic and Atmospheric Administration Values: NPS=National Park Service Values: VADM=Veteran's Administration Values: NRCS=Natural Resources Conservation Service"
+        }
+      ]
+    },
+    {
+      "name": "ADMIN_DEPT_CODE",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "The acronym for the department responsible for managing the land designation. Values: DHS=Department of Homeland Security Values: DOC=Department of Commerce Values: DOD=Department of Defense Values: DOE=Department of Energy Values: DOI=Department of the Interior Values: DOJ=Department of Justice Values: DOL=Department of Labor Values: DOS=Department of State Values: DOT=Department of Transportation Values: DOTR=Department of Treasury Values: HUD=Department of Housing and Urban Development Values: OTHFE=Other Federal Agencies Values: USDA=Department of Agriculture Values: VA=Department of Veteran's Affairs"
+        }
+      ]
+    },
+    {
+      "name": "ADMIN_UNIT_NAME",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "The name of the land designation. The name of the site or area (i.e. Saguaro National Park, Saddle Mountain Wilderness, or Yukon Delta National Wildlife Refuge, etc.)"
+        }
+      ]
+    },
+    {
+      "name": "ADMIN_UNIT_TYPE",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "The category of the function the land designation fulfills (i.e. National Historic Site, Wilderness, Wildlife Management Unit, etc.). Land category (i.e. National Historic Site, Reservation, National Seashore, etc.)."
+        }
+      ]
+    },
+    {
+      "name": "HOLD_AGENCY_CODE",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "Code for the holding agency."
+        }
+      ]
+    },
+    {
+      "name": "HOLD_DEPT_CODE",
+      "diffs": [
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "Code for the holding department."
+        }
+      ]
+    },
+    {
+      "name": "HOLD_ID",
+      "diffs": [
+        {
+          "field": "dtype",
+          "fgdb": "INTEGER",
+          "xml": "STRING"
+        },
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "Unique identifier associated with the holding department and the holding agency. Whole numbers assigned as unique ID flag."
+        }
+      ]
+    },
+    {
+      "name": "SMA_ID",
+      "diffs": [
+        {
+          "field": "dtype",
+          "fgdb": "INTEGER",
+          "xml": "STRING"
+        },
+        {
+          "field": "description",
+          "fgdb": "",
+          "xml": "The unique identifier key associated to the unique combination of master SMA information made up of administrative department, administrative agency, and land designation. Whole numbers assigned as unique ID."
+        }
+      ]
+    }
+  ],
+  "matching": 0
+}

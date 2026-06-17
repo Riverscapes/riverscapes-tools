@@ -1,0 +1,60 @@
+{
+  "source": "fgdb",
+  "layer": "SurfaceManagementAgency",
+  "columns": [
+    {
+      "name": "SMA_ID",
+      "dtype": "INTEGER"
+    },
+    {
+      "name": "HOLD_ID",
+      "dtype": "INTEGER"
+    },
+    {
+      "name": "ADMIN_ST",
+      "dtype": "STRING"
+    },
+    {
+      "name": "FAU_ID",
+      "dtype": "INTEGER"
+    },
+    {
+      "name": "ADMIN_UNIT_NAME",
+      "dtype": "STRING"
+    },
+    {
+      "name": "ADMIN_UNIT_TYPE",
+      "dtype": "STRING"
+    },
+    {
+      "name": "ADMIN_DEPT_CODE",
+      "dtype": "STRING"
+    },
+    {
+      "name": "ADMIN_AGENCY_CODE",
+      "dtype": "STRING"
+    },
+    {
+      "name": "HOLD_DEPT_CODE",
+      "dtype": "STRING"
+    },
+    {
+      "name": "HOLD_AGENCY_CODE",
+      "dtype": "STRING"
+    },
+    {
+      "name": "SHAPE_Length",
+      "dtype": "FLOAT"
+    },
+    {
+      "name": "SHAPE_Area",
+      "dtype": "FLOAT"
+    },
+    {
+      "name": "shape",
+      "friendly_name": "Geometry",
+      "dtype": "GEOMETRY",
+      "description": "Feature geometry. Source type: Multi Polygon. Riverscapes processing reprojects to EPSG:4326 and strips Z."
+    }
+  ]
+}

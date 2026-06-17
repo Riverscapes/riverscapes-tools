@@ -1,0 +1,87 @@
+{
+  "source": "fgdc_xml",
+  "item_id": "6bf2e737c59d4111be92420ee5ab0b46",
+  "dataset_info": {
+    "title": "BLM National SMA Surface Management Agency Area Polygons",
+    "pub_date": "2026-04-24T00:00:00",
+    "abstract": "The Surface Management Agency (SMA) Geographic Information System (GIS) dataset depicts Federal land for the United States and classifies this land by its active Federal surface managing agency. The SMA feature class covers the continental United States, Alaska, Hawaii, Puerto Rico, Guam, American Samoa and the Virgin Islands. A Federal SMA agency refers to a Federal agency with administrative jurisdiction over the surface of Federal lands. Jurisdiction over the land is defined when the land is ...",
+    "purpose": "The purpose of this dataset is to fulfill the public and Government\u2019s need to know what agency is managing Federal land in a given area, and for use by BLM Staff for use in analysis and reports. This dataset is useful as a tool to determine and illustrate the boundaries of a particular Federal agenc...",
+    "entity_name": "SurfaceManagementAgency",
+    "entity_description": "BLM National Surface Management Agency Area Polygons",
+    "bounding_box": {
+      "west": -179.144809,
+      "east": 179.774913,
+      "north": 71.389488,
+      "south": 17.67376
+    },
+    "keywords": [
+      "Alaska",
+      "Arizona",
+      "Cadastre Theme",
+      "California",
+      "Colorado",
+      "Eastern States",
+      "Federal Land Stewardship",
+      "Federal Lands",
+      "Federal Surface Management",
+      "Geospatial",
+      "Idaho",
+      "Land Status",
+      "Land Use Planning",
+      "Lands",
+      "Management",
+      "Montana",
+      "National Geospatial Data Asset",
+      "Nevada",
+      "New Mexico",
+      "NGDA"
+    ]
+  },
+  "columns": [
+    {
+      "name": "SMA_ID",
+      "dtype": "STRING",
+      "description": "The unique identifier key associated to the unique combination of master SMA information made up of administrative department, administrative agency, and land designation. Whole numbers assigned as unique ID."
+    },
+    {
+      "name": "DE_UNIT_CODE",
+      "dtype": "STRING",
+      "description": "The code found in the BLM LR2000 system/Corporate Metadata Repository. LR2000 system code (e.g. 22874601 stands for Sunset Crater National Monument)."
+    },
+    {
+      "name": "ADMIN_DEPT_CODE",
+      "dtype": "STRING",
+      "description": "The acronym for the department responsible for managing the land designation. Values: DHS=Department of Homeland Security Values: DOC=Department of Commerce Values: DOD=Department of Defense Values: DOE=Department of Energy Values: DOI=Department of the Interior Values: DOJ=Department of Justice Values: DOL=Department of Labor Values: DOS=Department of State Values: DOT=Department of Transportation Values: DOTR=Department of Treasury Values: HUD=Department of Housing and Urban Development Values: OTHFE=Other Federal Agencies Values: USDA=Department of Agriculture Values: VA=Department of Veteran's Affairs"
+    },
+    {
+      "name": "ADMIN_AGENCY_CODE",
+      "dtype": "STRING",
+      "description": "The acronym for the agency responsible for managing the land designation. Values: AF=Air Force Installations Values: APHIS=Animal and Plant Health and Inspection Service Values: ARMY=Army Installations Values: ARS=Agricultural Research Service Values: BIA=Bureau of Indian Affairs Values: BLM=Bureau of Land Management Values: BOR=Bureau of Reclamation Values: BPA=Bonneville Power Administration Values: CG=Coast Guard Values: COE=Corps of Engineers Values: FAA=Federal Aviation Administration Values: FERC=Federal Energy Regulatory Commission Values: FHA=Federal Housing Administration Values: FRMHA=Farmers Home Administration Values: FS=Forest Service Values: FWS=Fish and Wildlife Service Values: GS=Geological Survey Values: GSA=General Services Administration Values: MC=Marine Corps Installations Values: MMS=Minerals Management Service Values: NAVY=Navy Installations Values: NOAA=National Oceanic and Atmospheric Administration Values: NPS=National Park Service Values: VADM=Veteran's Administration Values: NRCS=Natural Resources Conservation Service"
+    },
+    {
+      "name": "ADMIN_UNIT_NAME",
+      "dtype": "STRING",
+      "description": "The name of the land designation. The name of the site or area (i.e. Saguaro National Park, Saddle Mountain Wilderness, or Yukon Delta National Wildlife Refuge, etc.)"
+    },
+    {
+      "name": "ADMIN_UNIT_TYPE",
+      "dtype": "STRING",
+      "description": "The category of the function the land designation fulfills (i.e. National Historic Site, Wilderness, Wildlife Management Unit, etc.). Land category (i.e. National Historic Site, Reservation, National Seashore, etc.)."
+    },
+    {
+      "name": "HOLD_ID",
+      "dtype": "STRING",
+      "description": "Unique identifier associated with the holding department and the holding agency. Whole numbers assigned as unique ID flag."
+    },
+    {
+      "name": "HOLD_DEPT_CODE",
+      "dtype": "STRING",
+      "description": "Code for the holding department."
+    },
+    {
+      "name": "HOLD_AGENCY_CODE",
+      "dtype": "STRING",
+      "description": "Code for the holding agency."
+    }
+  ]
+}

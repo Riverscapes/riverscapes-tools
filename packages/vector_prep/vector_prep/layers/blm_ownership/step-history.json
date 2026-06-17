@@ -2,7 +2,54 @@
   "$schema": "./step-history.schema.json",
   "workflow_id": "blm_ownership",
   "version": "1.0.0",
-  "entries": [{"run_id": "blm_ownership", "step_id": "download_data", "status": "done", "execution_mode": "manual", "executed_at": "2026-06-16T16:00:00-08:00", "actor": "LSG", "notes":"I ran wget from command line, it downloaded to data, which I renamed .zip. Created step-1-download-unzip.sh after the fact. Output: ~/GISData/data.zip"},
-  {"run_id": "blm_ownership", "step_id": "unzip_data", "status": "done", "execution_mode": "manual", "executed_at": "2026-06-16T17:00:00-08:00", "actor": "LSG", "notes":"I ran unzip from command line. Output: /workspaces/riverscapes-tools/SMA_WM.gdb. That wasn't a good place for it so mv to ~/GISData"}
+  "entries": [
+    {
+      "run_id": "blm_ownership",
+      "step_id": "download_data",
+      "status": "done",
+      "execution_mode": "manual",
+      "executed_at": "2026-06-16T16:00:00-08:00",
+      "actor": "LSG",
+      "notes": "I ran wget from command line, it downloaded to data, which I renamed .zip. Created step-1-download-unzip.sh after the fact. Output: ~/GISData/data.zip"
+    },
+    {
+      "run_id": "blm_ownership",
+      "step_id": "unzip_data",
+      "status": "done",
+      "execution_mode": "manual",
+      "executed_at": "2026-06-16T17:00:00-08:00",
+      "actor": "LSG",
+      "notes": "I ran unzip from command line. Output: /workspaces/riverscapes-tools/SMA_WM.gdb. That wasn't a good place for it so mv to ~/GISData"
+    },
+    {
+      "run_id": "manual-20260617T152045Z",
+      "step_id": "extract_metadata",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T15:20:45.658669+00:00"
+    },
+    {
+      "run_id": "manual-20260617T152045Z",
+      "step_id": "extract_metadata",
+      "status": "done",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T15:20:46.371647+00:00",
+      "notes": "FGDB: 13 cols, XML: 9 cols, diff written to metadata_diff.json"
+    },
+    {
+      "run_id": "manual-20260617T152113Z",
+      "step_id": "build_layer_definitions",
+      "status": "running",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T15:21:13.528004+00:00"
+    },
+    {
+      "run_id": "manual-20260617T152113Z",
+      "step_id": "build_layer_definitions",
+      "status": "done",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T15:21:13.528963+00:00",
+      "notes": "Merged 13 columns written to layer_definitions.json"
+    }
   ]
 }
