@@ -1,0 +1,25 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${ECOREGIONS_L3_INPUT}",
+    "output": "${ECOREGIONS_L3_OUTPUT}",
+    "garbage": "${ECOREGIONS_L3_GARBAGE}",    
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "US_L3CODE": "US_L3CODE",
+      "US_L3NAME": "US_L3NAME",
+      "NA_L3CODE": "NA_L3CODE",
+      "NA_L3NAME": "NA_L3NAME",
+      "NA_L2CODE": "NA_L2CODE",
+      "NA_L2NAME": "NA_L2NAME",
+      "NA_L1CODE": "NA_L1CODE",
+      "NA_L1NAME": "NA_L1NAME",
+      "L3_KEY": "L3_KEY",
+      "L2_KEY": "L2_KEY",
+      "L1_KEY": "L1_KEY"
+    }
+  }
+}
