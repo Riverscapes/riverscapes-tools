@@ -33,7 +33,6 @@ import sys
 import traceback
 import json
 from pathlib import Path
-from typing import Optional, Set, Tuple
 
 import geopandas as gpd
 import pyogrio
@@ -116,8 +115,8 @@ def _normalize_str_for_hash(val: object) -> object:
 
 def _validate_sql_filter(
     input_path: str,
-    layer_name: Optional[str],
-    sql_filter: Optional[str],
+    layer_name: str | None,
+    sql_filter: str | None,
 ) -> None:
     """Validate an optional SQL WHERE clause against the input layer.
 
@@ -150,10 +149,10 @@ def _validate_sql_filter(
 
 def _build_duplicate_hash_sets(
     input_path: str,
-    layer_name: Optional[str],
-    epsg: Optional[int],
-    sql_filter: Optional[str] = None,
-) -> Tuple[int, Set[str], Set[str], Optional[str]]:
+    layer_name: str | None,
+    epsg: int | None,
+    sql_filter: str | None = None,
+) -> tuple[int, set[str], set[str], str | None]:
     """Iterate all features with pyogrio and build sets of duplicate hashes.
 
     Geometries are reprojected to *epsg* before hashing so that the WKB bytes
@@ -189,7 +188,7 @@ def _build_duplicate_hash_sets(
     attr_cols = sorted(info["fields"])
 
     # Build a geometry transformer when a target EPSG is specified.
-    transformer: Optional[Transformer] = None
+    transformer: Transformer | None = None
     if epsg is not None and info.get("crs") is not None:
         try:
             src_proj_crs = ProjCRS.from_user_input(info["crs"])
@@ -263,8 +262,8 @@ def _build_duplicate_hash_sets(
 
     # Keep only hashes that appear more than once — these are the candidates
     # that need first-occurrence tracking during pass 2.
-    duplicate_geom_hashes: Set[str] = {h for h, n in geom_hash_counts.items() if n > 1}
-    duplicate_row_hashes: Set[str] = {h for h, n in row_hash_counts.items() if n > 1}
+    duplicate_geom_hashes: set[str] = {h for h, n in geom_hash_counts.items() if n > 1}
+    duplicate_row_hashes: set[str] = {h for h, n in row_hash_counts.items() if n > 1}
 
     # Compute dominant geometry type (base type, excluding GeometryCollection).
     non_coll_counts: dict[str, int] = {}
@@ -272,7 +271,7 @@ def _build_duplicate_hash_sets(
         if t != "GeometryCollection":
             base = t.replace("Multi", "")
             non_coll_counts[base] = non_coll_counts.get(base, 0) + n
-    dominant_type: Optional[str] = (
+    dominant_type: str | None = (
         max(non_coll_counts, key=non_coll_counts.__getitem__)
         if non_coll_counts
         else None
@@ -288,10 +287,10 @@ def _build_duplicate_hash_sets(
 
 def _read_chunk(
     input_path: str,
-    layer_name: Optional[str],
+    layer_name: str | None,
     offset: int,
     chunk_size: int,
-    sql_filter: Optional[str] = None,
+    sql_filter: str | None = None,
 ) -> gpd.GeoDataFrame:
     """Read a slice of features starting at *offset* (0-indexed) using pyogrio."""
     layer_kwargs = {"layer": layer_name} if layer_name else {}
@@ -312,16 +311,16 @@ def _read_chunk(
 
 def vector_prep(
     input_dataset: Path | str,
-    layer_name: Optional[str],
+    layer_name: str | None,
     tolerance: float,
-    epsg: Optional[int],
-    output_path: Optional[str] = None,
-    garbage_path: Optional[str] = None,
+    epsg: int | None,
+    output_path: str | None = None,
+    garbage_path: str | None = None,
     min_size: float = None,
     min_size_drop: bool = False,
     chunk_size: int = 10_000,
-    field_map_config: Optional[FieldMapConfig] = None,
-    sql_filter: Optional[str] = None,
+    field_map_config: FieldMapConfig | None = None,
+    sql_filter: str | None = None,
 ) -> dict:
     """Vector Prep: clean, validate, and optionally simplify a vector dataset.
 
@@ -440,8 +439,8 @@ def vector_prep(
 
     # Mutable sets that grow across chunks — track first-seen occurrences
     # so we know which duplicate features to keep vs. drop.
-    processed_geom_hashes: Set[str] = set()
-    processed_row_hashes: Set[str] = set()
+    processed_geom_hashes: set[str] = set()
+    processed_row_hashes: set[str] = set()
 
     # Accumulator for all statistics across chunks.
     total_stats: dict = {
@@ -832,7 +831,7 @@ def main():
 
     # --- load config if provided -----------------------------------------------
     cfg_params: dict = {}
-    cfg_path: Optional[Path] = None
+    cfg_path: Path | None = None
     if args.config:
         cfg_path = Path(args.config)
         if not cfg_path.exists():
