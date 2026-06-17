@@ -1,0 +1,41 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${GEOLOGY_INPUT}",
+    "layer": "MapUnitPolys",
+    "output": "${GEOLOGY_OUTPUT}",
+    "garbage": "${GEOLOGY_GARBAGE}",    
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "STATE": "STATE",
+      "MapUnit": "MapUnit",
+      "IdentityConfidence": "IdentityConfidence",
+      "Label": "Label",
+      "Symbol": "Symbol",
+      "DataSourceID": "DataSourceID",
+      "Notes": "Notes",
+      "UNIT_NAME": "UNIT_NAME",
+      "AGE_MIN": "AGE_MIN",
+      "AGE_MAX": "AGE_MAX",
+      "MAJOR1": "MAJOR1",
+      "MAJOR2": "MAJOR2",
+      "MAJOR3": "MAJOR3",
+      "MINOR1": "MINOR1",
+      "MINOR2": "MINOR2",
+      "MINOR3": "MINOR3",
+      "MINOR4": "MINOR4",
+      "MINOR5": "MINOR5",
+      "INCIDENTAL": "INCIDENTAL",
+      "INDETERMINATE": "INDETERMINATE",
+      "REFERENCE": "REFERENCE",
+      "DIGITAL_URL": "DIGITAL_URL",
+      "NGMDB1": "NGMDB1",
+      "NGMDB2": "NGMDB2",
+      "NGMDB3": "NGMDB3",
+      "MapUnitPolys_ID": "MapUnitPolys_ID"
+    }
+  }
+}
