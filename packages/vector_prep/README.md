@@ -81,6 +81,7 @@ All I/O paths **must be absolute**. The tool will exit with a clear error if the
 | `--output PATH` | *(optional)* | Output cleaned GeoPackage. Omit for a dry-run report. |
 | `--garbage PATH` | *(optional)* | GeoPackage of every dropped/changed feature with reason codes. |
 | `--layer NAME` | first layer | Layer name for multi-layer GeoPackage inputs. |
+| `--filter "WHERE clause"` | *(none)* | SQL WHERE clause to pre-filter features on load (e.g. `"state_code = 'CA'"`). Only matching features are processed; non-matching features are silently skipped. |
 | `--tolerance METRES` | `0` | Simplification tolerance in metres. `0` skips simplification. |
 | `--epsg CODE` | `5070` | Cartesian CRS used for processing (area/length/simplification). |
 | `--min_size N` | *(none)* | Minimum area (m²) for polygons or length (m) for lines. |
@@ -88,6 +89,11 @@ All I/O paths **must be absolute**. The tool will exit with a clear error if the
 | `--chunk_size N` | `10000` | Features per chunk. Increase for speed, decrease to save memory. |
 | `--log_file PATH` | auto | Log file path. Auto-derives a name beside the output if omitted. |
 | `--verbose` | `false` | Extra log output. |
+
+Notes for `--filter`:
+- The expression is passed directly to GDAL/OGR as a SQL `WHERE` clause.
+- Both `STUSPS NOT IN ('AK', 'AS', 'MP', 'HI', 'PR', 'VI')` and `"STUSPS" NOT IN (...)` are accepted for typical GeoPackage field names.
+- `vector_prep` validates the filter at startup with a tiny test read and exits early with the driver error if the expression is invalid.
 
 ### Config mode (repeatable / per-layer)
 
@@ -126,6 +132,7 @@ Config files live at `vector_prep/layers/<layer_name>/config.json` and are valid
     "output":  "${MY_LAYER_OUTPUT}",
     "garbage": "${MY_LAYER_GARBAGE}",
     "layer":   "my_layer_name",      // optional; defaults to first layer
+    "filter":  "state_code = 'CA'", // optional; SQL WHERE clause to pre-filter features on load
 
     // ── Processing ─────────────────────────────────────────────────────────
     "tolerance":     20,             // simplification tolerance in metres (0 = skip)

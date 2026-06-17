@@ -117,6 +117,7 @@ def _resolve_params(params: dict, config_path: Path) -> dict:
         "output",
         "garbage",
         "layer",
+        "filter",
         "tolerance",
         "epsg",
         "min_size",
@@ -224,11 +225,13 @@ def _run(params: dict, config_path: Path) -> None:
     epsg: int = int(params.get("epsg", 5070))
     chunk_size: int = int(params.get("chunk_size", 10_000))
     layer_name: Optional[str] = params.get("layer") or None
+    sql_filter: Optional[str] = params.get("filter") or None
 
     log.title("Running vector_prep")
     log.info(f"    input    : {input_path}")
     log.info(f"    output   : {output_path}")
     log.info(f"    garbage  : {garbage_path}")
+    log.info(f"    filter   : {sql_filter}")
     log.info(f"    tolerance: {tolerance} m")
     log.info(f"    epsg     : {epsg}")
     print(f"    log      : {log_file_path}")
@@ -246,6 +249,7 @@ def _run(params: dict, config_path: Path) -> None:
             min_size_drop=min_size_drop,
             chunk_size=chunk_size,
             field_map_config=field_map_config,
+            sql_filter=sql_filter,
         )
         if not output_path:
             log.info("No output path provided; skipping output write.")

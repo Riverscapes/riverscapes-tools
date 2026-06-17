@@ -1,0 +1,29 @@
+{
+    "$schema": "../../vector_prep_config.schema.json",
+    "parameters": {
+        "input": "C:\\nardata\\datadownload\\uscensus\\cb_2025_us_all_500k.gpkg",
+        "layer": "cb_2025_us_county_500k",
+        "filter": "STUSPS NOT IN ('AK', 'AS', 'MP', 'HI', 'PR', 'VI')",
+        "output": "${US_CENS_COUNTY_OUTPUT}",
+        "garbage": "${US_CENS_COUNTY_GARBAGE}",
+        "verbose": true,
+        "tolerance": 2,
+        "min_size": 1,
+        "min_size_drop": false,
+        "layer_definitions": "./layer_definitions.json",
+        "field_map": {
+            "STATEFP": "statefp",
+            "COUNTYFP": "countyfp",
+            "COUNTYNS": "countyns",
+            "GEOIDFQ": "geoidfq",
+            "GEOID": "geoid",
+            "NAME": "name",
+            "NAMELSAD": "namelsad",
+            "STUSPS": "stusps",
+            "STATE_NAME": "state_name",
+            "LSAD": "lsad",
+            "ALAND": "aland",
+            "AWATER": "awater"
+        }
+    }
+}

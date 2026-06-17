@@ -32,6 +32,10 @@
           "type": "string",
           "description": "Layer name for GeoPackage inputs. Defaults to the first layer if omitted. Equivalent to --layer on the command line."
         },
+        "filter": {
+          "type": "string",
+          "description": "SQL WHERE clause used to pre-filter features when reading the input dataset (e.g. \"state_code = 'CA'\"). Only matching features are loaded and processed; non-matching features are silently skipped. Equivalent to --filter on the command line."
+        },
         "tolerance": {
           "type": "number",
           "description": "Simplification tolerance in metres (0 = skip simplification). Equivalent to --tolerance on the command line.",

@@ -33,7 +33,7 @@ import sys
 import traceback
 import json
 from pathlib import Path
-from typing import Dict, Optional, Set, Tuple
+from typing import Optional, Set, Tuple
 
 import geopandas as gpd
 import pyogrio
@@ -114,6 +114,35 @@ def _normalize_str_for_hash(val: object) -> object:
     return None if cleaned == "" else cleaned
 
 
+def _validate_sql_filter(
+    input_path: str,
+    layer_name: Optional[str],
+    sql_filter: Optional[str],
+) -> None:
+    """Validate an optional SQL WHERE clause against the input layer.
+
+    Validation uses pyogrio/GDAL directly by attempting a tiny read with
+    ``max_features=1``. This catches SQL syntax errors and unknown fields
+    before any long-running processing starts.
+    """
+    if not sql_filter:
+        return
+
+    layer_kwargs = {"layer": layer_name} if layer_name else {}
+    try:
+        pyogrio.read_dataframe(
+            input_path,
+            where=sql_filter,
+            max_features=1,
+            read_geometry=False,
+            **layer_kwargs,
+        )
+    except Exception as exc:
+        raise ValueError(
+            f"Invalid SQL filter expression. Filter: {sql_filter}\nDriver error: {exc}"
+        ) from exc
+
+
 # ---------------------------------------------------------------------------
 # Pass-1 helper
 # ---------------------------------------------------------------------------
@@ -123,6 +152,7 @@ def _build_duplicate_hash_sets(
     input_path: str,
     layer_name: Optional[str],
     epsg: Optional[int],
+    sql_filter: Optional[str] = None,
 ) -> Tuple[int, Set[str], Set[str], Optional[str]]:
     """Iterate all features with pyogrio and build sets of duplicate hashes.
 
@@ -143,14 +173,18 @@ def _build_duplicate_hash_sets(
         dominant_type: Most common non-GeometryCollection base geometry type,
             or None if the dataset is empty.
     """
-    geom_hash_counts: Dict[str, int] = {}
-    row_hash_counts: Dict[str, int] = {}
-    geom_type_counts: Dict[str, int] = {}
+    geom_hash_counts: dict[str, int] = {}
+    row_hash_counts: dict[str, int] = {}
+    geom_type_counts: dict[str, int] = {}
 
-    # Use pyogrio.read_info() for metadata (total features, CRS, field names).
+    # Use pyogrio.read_info() for metadata (CRS, field names).
     layer_kwargs = {"layer": layer_name} if layer_name else {}
-    info = pyogrio.read_info(input_path, **layer_kwargs)
-    total_features = info["features"]
+    if sql_filter:
+        layer_kwargs["where"] = sql_filter
+    info = pyogrio.read_info(
+        input_path, **({"layer": layer_name} if layer_name else {})
+    )
+    estimated_total_features = info["features"]
     # attr_cols: sorted field names (no geometry) — canonical order for row hashing.
     attr_cols = sorted(info["fields"])
 
@@ -170,15 +204,21 @@ def _build_duplicate_hash_sets(
     # small enough not to balloon memory.
     _P1_CHUNK = 50_000
 
-    pbar = ProgressBar(total_features, text="Pass 1: hashing features")
+    pbar = ProgressBar(
+        max(estimated_total_features, 1), text="Pass 1: hashing features"
+    )
     features_hashed = 0
-    for offset in range(0, max(total_features, 1), _P1_CHUNK):
+    offset = 0
+    while True:
         chunk = pyogrio.read_dataframe(
             input_path,
             skip_features=offset,
             max_features=_P1_CHUNK,
             **layer_kwargs,
         )
+        if len(chunk) == 0:
+            break
+
         for _, row in chunk.iterrows():
             features_hashed += 1
             pbar.update(features_hashed)
@@ -217,6 +257,8 @@ def _build_duplicate_hash_sets(
             r_hash = hashlib.sha1(wkb + repr(attr_vals).encode()).hexdigest()
             row_hash_counts[r_hash] = row_hash_counts.get(r_hash, 0) + 1
 
+        offset += len(chunk)
+
     pbar.finish()
 
     # Keep only hashes that appear more than once — these are the candidates
@@ -225,7 +267,7 @@ def _build_duplicate_hash_sets(
     duplicate_row_hashes: Set[str] = {h for h, n in row_hash_counts.items() if n > 1}
 
     # Compute dominant geometry type (base type, excluding GeometryCollection).
-    non_coll_counts: Dict[str, int] = {}
+    non_coll_counts: dict[str, int] = {}
     for t, n in geom_type_counts.items():
         if t != "GeometryCollection":
             base = t.replace("Multi", "")
@@ -236,7 +278,7 @@ def _build_duplicate_hash_sets(
         else None
     )
 
-    return total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type
+    return features_hashed, duplicate_geom_hashes, duplicate_row_hashes, dominant_type
 
 
 # ---------------------------------------------------------------------------
@@ -249,9 +291,12 @@ def _read_chunk(
     layer_name: Optional[str],
     offset: int,
     chunk_size: int,
+    sql_filter: Optional[str] = None,
 ) -> gpd.GeoDataFrame:
     """Read a slice of features starting at *offset* (0-indexed) using pyogrio."""
     layer_kwargs = {"layer": layer_name} if layer_name else {}
+    if sql_filter:
+        layer_kwargs["where"] = sql_filter
     return pyogrio.read_dataframe(
         input_path,
         skip_features=offset,
@@ -276,7 +321,8 @@ def vector_prep(
     min_size_drop: bool = False,
     chunk_size: int = 10_000,
     field_map_config: Optional[FieldMapConfig] = None,
-) -> Dict:
+    sql_filter: Optional[str] = None,
+) -> dict:
     """Vector Prep: clean, validate, and optionally simplify a vector dataset.
 
     Processing is chunked: features are read and processed in slices of
@@ -300,6 +346,9 @@ def vector_prep(
         min_size: Minimum area (m²) for polygons or length (m) for lines.
         min_size_drop: If True, features below min_size threshold are dropped. If False (default), they are detected/counted only.
         chunk_size: Number of features to load at once during pass 2.
+        sql_filter: Optional SQL WHERE clause to pre-filter features on read
+            (e.g. ``"state_code = 'CA'"``).  Applied by pyogrio at read time so
+            only matching features are loaded into memory.
 
     Returns:
         stats dict (suitable for print_report).
@@ -323,6 +372,24 @@ def vector_prep(
     if not os.path.exists(input_dataset):
         raise Exception(f"Input file does not exist: {input_dataset}")
 
+    # Validate SQL WHERE clause early so failures are immediate and explicit.
+    _validate_sql_filter(input_dataset, layer_name, sql_filter)
+
+    # Count features in the full source layer (without SQL WHERE) so reports can
+    # show both total source features and filtered subset features.
+    source_feature_count = 0
+    try:
+        if layer_name:
+            source_info = pyogrio.read_info(input_dataset, layer=layer_name)
+        else:
+            source_info = pyogrio.read_info(input_dataset)
+        source_feature_count = int(source_info.get("features", 0) or 0)
+    except Exception as info_err:
+        log.warning(
+            "Could not read unfiltered source feature count; report will use processed count. "
+            f"Reason: {info_err}"
+        )
+
     # ------------------------------------------------------------------
     # Delete any pre-existing output / garbage files so that re-runs
     # always start clean rather than appending to stale data.
@@ -343,17 +410,28 @@ def vector_prep(
     # Pass 1: scan all features to find duplicate geometry / row hashes.
     # Geometries are reprojected to *epsg* before hashing.
     # ------------------------------------------------------------------
+    if sql_filter:
+        log.info(f"SQL filter applied: {sql_filter}")
     log.info(f"Pass 1: scanning all features for duplicate hashes: {input_dataset}")
     total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type = (
-        _build_duplicate_hash_sets(input_dataset, layer_name, epsg)
+        _build_duplicate_hash_sets(
+            input_dataset, layer_name, epsg, sql_filter=sql_filter
+        )
     )
     log.info(
         f"Pass 1 complete — {total_features:,} features scanned; "
         f"{len(duplicate_geom_hashes):,} duplicate geometry hash(es), "
         f"{len(duplicate_row_hashes):,} duplicate row hash(es)."
     )
+    if sql_filter:
+        log.info(f"Features matching SQL filter: {total_features:,}")
     if dominant_type:
         log.info(f"Pass 1 dominant geometry type: {dominant_type}")
+
+    if total_features == 0:
+        if sql_filter:
+            raise Exception(f"SQL filter matched zero features: {sql_filter}")
+        raise Exception("Input dataset contains zero features. Aborting.")
 
     # ------------------------------------------------------------------
     # Pass 2: process features in chunks.
@@ -366,8 +444,12 @@ def vector_prep(
     processed_row_hashes: Set[str] = set()
 
     # Accumulator for all statistics across chunks.
-    total_stats: Dict = {
+    total_stats: dict = {
         "initial_count": total_features,
+        "source_count": source_feature_count or total_features,
+        "filtered_input_count": total_features,
+        "filter_applied": bool(sql_filter),
+        "input_filter": sql_filter,
         "input_count": 0,
         "output_count": 0,
         "mixed_types_detected": False,
@@ -392,8 +474,8 @@ def vector_prep(
         "invalid_unfixed": 0,
         "simplified_count": 0,
     }
-    total_dropped_by_reason: Dict[str, int] = {}
-    total_dropped_by_geom_type: Dict[str, int] = {}
+    total_dropped_by_reason: dict[str, int] = {}
+    total_dropped_by_geom_type: dict[str, int] = {}
 
     def _accum_drop(orig_chunk: gpd.GeoDataFrame, orig_idx: int, reason: str) -> None:
         """Helper: tally a dropped feature into the global reason/type dicts."""
@@ -430,6 +512,7 @@ def vector_prep(
             layer_name,
             offset,
             chunk_size,
+            sql_filter=sql_filter,
         )
         if len(chunk_gdf) == 0:
             pbar2.update(chunk_idx + 1)
@@ -642,6 +725,15 @@ def main():
         default=None,
     )
     direct.add_argument(
+        "--filter",
+        metavar="WHERE",
+        help=(
+            "SQL WHERE clause to pre-filter features when reading the input "
+            "(e.g. \"state_code = 'CA'\"). Only matching features are processed."
+        ),
+        default=None,
+    )
+    direct.add_argument(
         "--tolerance",
         type=float,
         metavar="METRES",
@@ -703,6 +795,7 @@ def main():
         "output",
         "garbage",
         "layer",
+        "filter",
         "tolerance",
         "epsg",
         "min_size",
@@ -806,6 +899,7 @@ def main():
 
     # layer / epsg / chunk_size: CLI wins; fall back to config; then hardcoded defaults.
     effective_layer = args.layer or cfg_params.get("layer") or None
+    effective_filter = args.filter or cfg_params.get("filter") or None
     if args.epsg is not None:
         effective_epsg = args.epsg
     elif cfg_params.get("epsg") is not None:
@@ -859,6 +953,7 @@ def main():
             min_size_drop=min_size_drop_val,
             chunk_size=effective_chunk_size,
             field_map_config=field_map_config,
+            sql_filter=effective_filter,
         )
         if not output_path_val:
             log.info("No --output path provided; skipping output write.")
