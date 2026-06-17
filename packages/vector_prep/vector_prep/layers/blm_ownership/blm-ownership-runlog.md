@@ -73,3 +73,8 @@ Start with this config:
         "layer_definitions": "./layer_definitions.json"
     }
 ```
+
+Succeeded in about 2 hours. 
+The garbage gpkg wasn't written due to error in the config path (wasn't a writable path) - fixed for next time
+
+There were some 

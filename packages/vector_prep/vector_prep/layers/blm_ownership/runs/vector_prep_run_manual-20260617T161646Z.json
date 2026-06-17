@@ -1,0 +1,32 @@
+{
+  "run_id": "manual-20260617T161646Z",
+  "step_id": "run_vector_prep",
+  "executed_at": "2026-06-17T18:14:56.077164+00:00",
+  "config_path": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json",
+  "effective_config_path": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/runs/vector_prep_effective_config_manual-20260617T161646Z.json",
+  "command": [
+    "/workspaces/riverscapes-tools/.venv/bin/python3",
+    "-m",
+    "vector_prep.vector_prep.vector_prep",
+    "--config",
+    "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/runs/vector_prep_effective_config_manual-20260617T161646Z.json"
+  ],
+  "resolved_parameters": {
+    "input": "/home/vscode/GISData/SMA_WM.gdb",
+    "layer": "SurfaceManagementAgency",
+    "output": "/home/vscode/GISData/SMA_WM_VP.gpkg",
+    "garbage": "/GISData/SMA_WM_VP_GARBAGE.gpkg",
+    "tolerance": 2.0,
+    "epsg": 5070,
+    "min_size": 1.0,
+    "min_size_drop": false,
+    "chunk_size": 10000,
+    "field_map_keys": null,
+    "layer_definitions": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/layer_definitions.json"
+  },
+  "artifacts": {
+    "report": "/home/vscode/GISData/SMA_WM_VP_report.md",
+    "output": "/home/vscode/GISData/SMA_WM_VP.gpkg",
+    "garbage": "/GISData/SMA_WM_VP_GARBAGE.gpkg"
+  }
+}

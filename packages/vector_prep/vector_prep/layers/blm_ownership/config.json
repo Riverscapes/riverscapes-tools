@@ -4,7 +4,7 @@
         "input": "~/GISData/SMA_WM.gdb",
         "layer": "SurfaceManagementAgency",
         "output": "~/GISData/SMA_WM_VP.gpkg",
-        "garbage": "/GISData/SMA_WM_VP_GARBAGE.gpkg",
+        "garbage": "~/GISData/SMA_WM_VP_GARBAGE.gpkg",
         "tolerance": 2,
         "min_size": 1,
         "min_size_drop": false,

@@ -153,6 +153,46 @@
       "execution_mode": "automated",
       "executed_at": "2026-06-17T16:16:46.326832+00:00",
       "notes": "Config: /workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+    },
+    {
+      "run_id": "manual-20260617T161646Z",
+      "step_id": "run_vector_prep",
+      "status": "done",
+      "execution_mode": "automated",
+      "executed_at": "2026-06-17T18:14:56.077800+00:00",
+      "notes": "Ran vector_prep via config mode; Output=/home/vscode/GISData/SMA_WM_VP.gpkg; Report=SMA_WM_VP_report.md; Manifest=vector_prep_run_manual-20260617T161646Z.json",
+      "artifacts": [
+        {
+          "name": "vector_prep_config",
+          "kind": "config",
+          "path": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/config.json"
+        },
+        {
+          "name": "vector_prep_effective_config",
+          "kind": "config",
+          "path": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/runs/vector_prep_effective_config_manual-20260617T161646Z.json"
+        },
+        {
+          "name": "vector_prep_run_manifest",
+          "kind": "run_record",
+          "path": "/workspaces/riverscapes-tools/packages/vector_prep/vector_prep/layers/blm_ownership/runs/vector_prep_run_manual-20260617T161646Z.json"
+        },
+        {
+          "name": "vector_prep_report",
+          "kind": "report",
+          "path": "/home/vscode/GISData/SMA_WM_VP_report.md"
+        },
+        {
+          "name": "vector_prep_output",
+          "kind": "vector",
+          "path": "/home/vscode/GISData/SMA_WM_VP.gpkg"
+        },
+        {
+          "name": "vector_prep_garbage",
+          "kind": "vector",
+          "path": "/GISData/SMA_WM_VP_GARBAGE.gpkg"
+        }
+      ]
     }
   ]
 }
