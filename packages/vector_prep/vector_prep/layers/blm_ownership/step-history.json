@@ -1,0 +1,8 @@
+{
+  "$schema": "./step-history.schema.json",
+  "workflow_id": "blm_ownership",
+  "version": "1.0.0",
+  "entries": [{"run_id": "blm_ownership", "step_id": "download_data", "status": "done", "execution_mode": "manual", "executed_at": "2026-06-16T16:00:00-08:00", "actor": "LSG", "notes":"I ran wget from command line, it downloaded to data, which I renamed .zip. Created step-1-download-unzip.sh after the fact. Output: ~/GISData/data.zip"},
+  {"run_id": "blm_ownership", "step_id": "unzip_data", "status": "done", "execution_mode": "manual", "executed_at": "2026-06-16T17:00:00-08:00", "actor": "LSG", "notes":"I ran unzip from command line. Output: /workspaces/riverscapes-tools/SMA_WM.gdb. That wasn't a good place for it so mv to ~/GISData"}
+  ]
+}

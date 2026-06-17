@@ -1,0 +1,64 @@
+{
+  "$schema": "./step-catalog.schema.json",
+  "workflow_id": "blm_ownership",
+  "version": "1.0.0",
+  "description": "BLM ownership orchestration step catalog",
+  "steps": [
+    {
+      "step_id": "download_data",
+      "order": 1,
+      "name": "1a Download Data",
+      "depends_on": [],
+      "mode": "automated"
+    },
+    {
+      "step_id": "unzip_data",
+      "order": 2,
+      "name": "1b Unzip Data",
+      "depends_on": ["download_data"],
+      "mode": "automated"
+    },
+    {
+      "step_id": "extract_metadata",
+      "order": 3,
+      "name": "Extract Metadata",
+      "depends_on": ["unzip_data"],
+      "mode": "automated"
+    },
+    {
+      "step_id": "build_layer_definitions",
+      "order": 4,
+      "name": "Build Layer Definitions",
+      "depends_on": ["extract_metadata"],
+      "mode": "automated"
+    },
+    {
+      "step_id": "run_vector_prep",
+      "order": 5,
+      "name": "Run Vector Prep",
+      "depends_on": ["build_layer_definitions"],
+      "mode": "automated"
+    },
+    {
+      "step_id": "intersect_counties",
+      "order": 6,
+      "name": "Intersect With Counties",
+      "depends_on": ["run_vector_prep"],
+      "mode": "automated"
+    },
+    {
+      "step_id": "qa_report",
+      "order": 7,
+      "name": "QA and Report",
+      "depends_on": ["intersect_counties"],
+      "mode": "hybrid"
+    },
+    {
+      "step_id": "upload",
+      "order": 8,
+      "name": "Upload",
+      "depends_on": ["qa_report"],
+      "mode": "manual"
+    }
+  ]
+}
