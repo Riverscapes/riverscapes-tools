@@ -1,10 +1,10 @@
 {
     "$schema": "../../vector_prep_config.schema.json",
     "parameters": {
-        "input": "~/GISData/SMA_WM.gdb",
+        "input": "C:\\nardata\\datadownload\\blm\\blm_sma_polygons\\SMA_WM.gdb",
         "layer": "SurfaceManagementAgency",
-        "output": "~/GISData/SMA_WM_VP.gpkg",
-        "garbage": "~/GISData/SMA_WM_VP_GARBAGE.gpkg",
+        "output": "C:\\nardata\\pydataroot\\riverscapes-tools\\vector-data-prep\\blm_sma_polygons\\SMA_WM_VP.gpkg",
+        "garbage": "C:\\nardata\\pydataroot\\riverscapes-tools\\vector-data-prep\\blm_sma_polygons\\SMA_WM_VP_GARBAGE.gpkg",
         "tolerance": 2,
         "min_size": 1,
         "min_size_drop": false,

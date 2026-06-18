@@ -1,0 +1,13 @@
+{
+    "$schema": "../../vector_prep_config.schema.json",
+    "parameters": {
+        "input": "F:\\nardata\\datadownload\\usgs\\nhdplushr\\NHDPlus_H_National_Release_2_GDB\\NHDPlus_H_National_Release_2_GDB.gdb",
+        "layer": "WBDHU12",
+        "output": "C:\\nardata\\pydataroot\\riverscapes-tools\\vector-data-prep\\usgs_nhdplushrnr2_wbdhu12\\wbdhu12.gpkg",
+        "garbage": "C:\\nardata\\pydataroot\\riverscapes-tools\\vector-data-prep\\usgs_nhdplushrnr2_wbdhu12\\wbdhu12_GARBAGE.gpkg",
+        "tolerance": 2,
+        "min_size": 1,
+        "min_size_drop": false,
+        "layer_definitions": "./layer_definitions.json"
+    }
+}

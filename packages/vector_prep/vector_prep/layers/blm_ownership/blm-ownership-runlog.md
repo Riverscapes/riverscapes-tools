@@ -14,8 +14,14 @@ Also trying to build a more structured combination of code and json to capture w
 8. review output
 9. upload to athena
 
+## Download
+
+Published Date on the geodatabase is "April 24, 2026 at 12:00:00 AM PDT"
+
 ## 2B Review what we have
 
+The download is ~1.1 GB
+Unzipped about ~1.2 GB 
 
 * Main layer is `SurfaceManagementAgency` , Multipoloygon
 * Feature Count: 449531
@@ -77,7 +83,8 @@ Start with this config:
 Succeeded in about 2 hours. 
 The garbage gpkg wasn't written due to error in the config path (wasn't a writable path) - fixed for next time
 
-Open output in QGIS - select CONUS by dragging a rectangle around it
+Open output in QGIS - select CONUS by dragging a rectangle around it. This reduces the number of features by 90%!!
+
 Save as new geopackage layer, dropping unnecessary fields
 
 In QGIS, found I could not intersect. Got error "has invalid geometry".
@@ -101,3 +108,5 @@ Results:
 ## Upload
 
 upload to Athena
+
+Something wrong here - we started with 449531 records, we intersected with counties and now we have 1103 records -- should be more, not less? Starting over to see where this occured.

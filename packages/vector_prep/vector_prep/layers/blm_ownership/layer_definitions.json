@@ -2,15 +2,16 @@
   "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
   "tool_schema_name": "vector-prep-blm-ownership",
   "tool_schema_version": "0.0.1",
-  "source_title": "BLM National SMA Surface Management Agency Area Polygons",
-  "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about",
-  "snapshot_id": "2026-04-24",
+
   "layers": [
     {
       "layer_id": "blm_ownership",
       "layer_name": "BLM Ownership",
       "description": "BLM National Surface Management Agency Area Polygons",
       "layer_type": "Vector",
+      "source_title": "BLM National SMA Surface Management Agency Area Polygons",
+      "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about",
+      "data_product_version": "2026-04-24",
       "columns": [
         {
           "name": "SMA_ID",
