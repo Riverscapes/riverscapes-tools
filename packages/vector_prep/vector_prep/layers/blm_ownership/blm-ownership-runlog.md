@@ -83,3 +83,12 @@ Save as new geopackage layer, dropping unnecessary fields
 In QGIS, found I could not intersect. Got error "has invalid geometry".
 There are 30 errors, but these cover huge areas of the country - can't ignore them. 
 Errors are self-intersection and nested shells
+
+#### Fix 
+processing.run("native:fixgeometries", {'INPUT':'C:\\nardata\\temp\\SMA_WM_VP_conus.gpkg|layername=surfacemanagementagency_conus','METHOD':1,'OUTPUT':'ogr:dbname=\'C:/nardata/temp/SMA_WM_VP_conus.gpkg\' table="sma_conus_fixinq" (geom)'})
+Execution completed in 177.86 seconds (2 minutes 58 seconds)
+Results:
+  OUTPUT: C:/nardata/temp/SMA_WM_VP_conus.gpkg|layername=sma_conus_fixinq
+
+#### Intersect
+processing.run("native:intersection", {'INPUT':'C:/nardata/temp/SMA_WM_VP_conus.gpkg|layername=sma_conus_fixinq','OVERLAY':'C:/nardata/datadownload/riverscapes_athena/us_cens_county.gpkg|layername=us_cens_county','INPUT_FIELDS':[],'OVERLAY_FIELDS':['geoidfq','namelsad','stusps'],'OVERLAY_FIELDS_PREFIX':'','OUTPUT':'ogr:dbname=\'C:/nardata/temp/SMA_WM_VP_conus.gpkg\' table="sma_cens_ixn" (geom)','GRID_SIZE':None})
