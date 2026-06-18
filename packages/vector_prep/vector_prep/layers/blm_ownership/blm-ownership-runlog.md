@@ -77,4 +77,9 @@ Start with this config:
 Succeeded in about 2 hours. 
 The garbage gpkg wasn't written due to error in the config path (wasn't a writable path) - fixed for next time
 
-There were some 
+Open output in QGIS - select CONUS by dragging a rectangle around it
+Save as new geopackage layer, dropping unnecessary fields
+
+In QGIS, found I could not intersect. Got error "has invalid geometry".
+There are 30 errors, but these cover huge areas of the country - can't ignore them. 
+Errors are self-intersection and nested shells
