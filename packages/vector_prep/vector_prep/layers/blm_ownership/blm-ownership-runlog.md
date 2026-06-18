@@ -92,3 +92,12 @@ Results:
 
 #### Intersect
 processing.run("native:intersection", {'INPUT':'C:/nardata/temp/SMA_WM_VP_conus.gpkg|layername=sma_conus_fixinq','OVERLAY':'C:/nardata/datadownload/riverscapes_athena/us_cens_county.gpkg|layername=us_cens_county','INPUT_FIELDS':[],'OVERLAY_FIELDS':['geoidfq','namelsad','stusps'],'OVERLAY_FIELDS_PREFIX':'','OUTPUT':'ogr:dbname=\'C:/nardata/temp/SMA_WM_VP_conus.gpkg\' table="sma_cens_ixn" (geom)','GRID_SIZE':None})
+
+Calculating intersection
+Execution completed in 238.75 seconds (3 minutes 59 seconds)
+Results:
+  OUTPUT: C:/nardata/temp/SMA_WM_VP_conus.gpkg|layername=sma_cens_ixn
+
+## Upload
+
+upload to Athena
