@@ -14,13 +14,13 @@
           "friendly_name": "State FIPS",
           "description": "Current state FIPS code",
           "dtype": "STRING"
-        }
+        },
         {
           "name": "countyfp",
           "friendly_name": "County FIPS",
           "description": "Current county FIPS code",
           "dtype": "STRING"
-        }
+        },
         {
           "name": "countyns",
           "friendly_name": "County ANSI Feature Code",
