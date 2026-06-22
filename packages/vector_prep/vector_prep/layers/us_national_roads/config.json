@@ -4,31 +4,20 @@
     "input": "${NTD_ROADS_INPUT}",
     "output": "${NTD_ROADS_OUTPUT}",
     "garbage": "${NTD_ROADS_GARBAGE}",    
-    "tolerance": 20,
+    "layer": "Trans_RoadSegment",
+    "tolerance": 2,
     "min_size": 1,
     "min_size_drop": false,
     "layer_definitions": "./layer_definitions.json",
+    "filter": "",
     "field_map": {
       "name": "name",
-      "county_rou": "county_route",
-      "federal_la": "federal_la",
       "interstate": "interstate",
-      "intersta_1": "intersta_1",
-      "intersta_2": "intersta_2",
-      "intersta_3": "intersta_3",
+      "county_route": "county_route",
       "mtfcc_code": "mtfcc_code",
-      "source_dat": "source_dataset",
-      "source_ori": "source_originator",
-      "state_rout": "state_route",
-      "state_ro_1": "state_ro_1",
-      "state_ro_2": "state_ro_2",
-      "state_ro_3": "state_ro_3",
-      "stco_fipsc": "stco_fipsc",
+      "state_route": "state_route",
       "tnmfrc": "tnmfrc",
-      "us_route": "us_route",
-      "us_route_a": "us_route_a",
-      "us_route_b": "us_route_b",
-      "us_route_c": "us_route_c"
+      "us_route": "us_route"
     }
   }
 }

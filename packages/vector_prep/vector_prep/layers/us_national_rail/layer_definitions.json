@@ -4,22 +4,16 @@
   "tool_schema_version": "0.0.1",
   "layers": [
     {
-      "layer_id": "us-national-rail",
+      "layer_id": "us_ntd_rail",
       "layer_name": "US National Rail",
       "description": "The USGS Transportation downloadable data from The National Map (TNM) includes railroad features sourced from the Federal Railroad Administration (FRA) National Rail Network. Transportation data consists of active and inactive rail lines, rail yards, and related infrastructure associated with the transport of people or freight. The data include the name, ownership, classification, subdivision, and location of rail features. Railroad data support general mapping and geographic information system technology analysis for applications such as hazardous materials routing, emergency response planning, and infrastructure management.",
       "layer_type": "Vector",
       "columns": [
         {
-          "name": "fid",
-          "friendly_name": "Feature ID",
-          "dtype": "INTEGER",
-          "description": "The unique integer identifier assigned to each feature in the dataset."
-        },
-        {
           "name": "fcode",
           "friendly_name": "Feature Code",
           "dtype": "INTEGER",
-          "description": "The USGS National Map feature code that classifies the type of rail feature. Feature codes follow the USGS Feature Class Code (FCC) standard and indicate the specific category of transportation infrastructure."
+          "description": "This five-digit code has two parts: the first three digits encode the feature type (FType); the last two digits encode values for a unique set of characteristics associated with the feature type."
         },
         {
           "name": "name",
@@ -31,19 +25,19 @@
           "name": "rail_class",
           "friendly_name": "Rail Classification",
           "dtype": "INTEGER",
-          "description": "The Federal Railroad Administration (FRA) classification of the railroad, indicating the size and revenue level of the carrier. Class I railroads are the largest by revenue; Class II and III are regional and local carriers respectively."
+          "description": "A classification describing the area served by the rail feature. USGS NGTOC archives' Data Dictionary: Trans_v11.xls, draft copy 2013"
         },
         {
           "name": "rail_owner",
           "friendly_name": "Rail Owner",
           "dtype": "STRING",
-          "description": "The name of the organization or company that owns the rail line or infrastructure, as reported in the source dataset."
+          "description": "The person(s) or organization(s) that possess the rail line. USGS NGTOC archives' Data Dictionary: Trans_v11.xls, draft copy 2013"
         },
         {
           "name": "rail_owner_code",
           "friendly_name": "Rail Owner Code",
           "dtype": "STRING",
-          "description": "The abbreviated code (typically 2–4 characters) identifying the railroad owner, following the Association of American Railroads (AAR) or Surface Transportation Board (STB) reporting mark conventions."
+          "description": "The abbreviated code (typically 2-4 characters) identifying the railroad owner, following the Association of American Railroads (AAR) or Surface Transportation Board (STB) reporting mark conventions."
         },
         {
           "name": "rail_subdiv",
@@ -55,49 +49,13 @@
           "name": "rail_usage",
           "friendly_name": "Rail Usage",
           "dtype": "STRING",
-          "description": "A description of the current operational usage of the rail line, such as mainline, branch line, yard lead, or abandoned. May contain multiple values separated by commas if the segment serves more than one purpose."
+          "description": "The use(s) to which a railway is put as part of a transportation system. USGS NGTOC archives' Data Dictionary: Trans_v11.xls, draft copy 2013"
         },
         {
           "name": "length_km",
           "friendly_name": "Length (km)",
           "dtype": "FLOAT",
-          "description": "The calculated length of the rail feature in kilometers, as computed from the geometry of the feature in the source dataset."
-        },
-        {
-          "name": "load_date",
-          "friendly_name": "Load Date",
-          "dtype": "STRING",
-          "description": "The date the feature was loaded into The National Map database, formatted as an ISO 8601 datetime string. Useful for tracking data currency and identifying recently updated features."
-        },
-        {
-          "name": "permanent_id",
-          "friendly_name": "Permanent Identifier",
-          "dtype": "STRING",
-          "description": "A stable, globally unique identifier assigned to the feature by USGS for long-term tracking across dataset versions and updates. This identifier persists even when feature attributes are revised."
-        },
-        {
-          "name": "source_dataset",
-          "friendly_name": "Source Dataset",
-          "dtype": "STRING",
-          "description": "A brief narrative identifying the source dataset from which the rail feature was derived, such as the FRA National Rail Network or another authoritative transportation data source."
-        },
-        {
-          "name": "source_dataset_date",
-          "friendly_name": "Source Dataset Date",
-          "dtype": "STRING",
-          "description": "The date or version of the source dataset from which the feature was derived, helping to document the currency and lineage of the data."
-        },
-        {
-          "name": "source_feature_id",
-          "friendly_name": "Source Feature ID",
-          "dtype": "STRING",
-          "description": "The unique identifier of the feature in the original source dataset, allowing cross-referencing back to the authoritative source for verification or additional attribute lookup."
-        },
-        {
-          "name": "source_originator",
-          "friendly_name": "Source Originator",
-          "dtype": "STRING",
-          "description": "The organization or agency responsible for creating or maintaining the original source dataset, such as the Federal Railroad Administration (FRA) or U.S. Census Bureau."
+          "description": "Length of the rail segment in kilometers (km)."
         }
       ]
     }
