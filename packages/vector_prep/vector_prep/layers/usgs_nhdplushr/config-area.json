@@ -1,0 +1,14 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "F:\\nardata\\datadownload\\usgs\\nhdplushr\\NHDPlus_H_National_Release_2_GDB\\NHDPlus_H_National_Release_2_GDB.gdb",
+    "output": "C:\\nardata\\temp\\nhd-area.gpkg",
+    "garbage": "C:\\nardata\\temp\\nhd-area-garbage.gpkg",    
+    "layer": "NHDArea",
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "filter": "vpuid<'1900'"
+  }
+}

@@ -563,6 +563,85 @@
                     "description": "Bounding box struct (xmin/ymin/xmax/ymax, EPSG:4326, float32) for Athena spatial predicate push-down. Computed from original unsimplified geometry. Added in Riverscapes processing."
                 }
             ]
+        },
+        {
+            "layer_id": "usgs-nhdplushr-area",
+            "layer_name": "NHDArea",
+            "source_title": "USGS NHDPlus HR National Release 2",
+            "source_url": "https://www.sciencebase.gov/catalog/item/679d39cbd34eb38981c9c7a5",
+            "columns": [
+                {
+                    "name": "permanent_identifier",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "fdate",
+                    "dtype": "DATETIME"
+                },
+                {
+                    "name": "resolution",
+                    "dtype": "INTEGER",
+                    "description": "resolution (Resolution): 1=Local; 2=High; 3=Medium"
+                },
+                {
+                    "name": "gnis_id",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "gnis_name",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "areasqkm",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "elevation",
+                    "dtype": "FLOAT"
+                },
+                {
+                    "name": "ftype",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "fcode",
+                    "dtype": "INTEGER"
+                },
+                {
+                    "name": "visibilityfilter",
+                    "dtype": "INTEGER",
+                    "description": "visibilityfilter (VisibilityFilter): 0=Unspecified; 4800=Approximately 1:4,800 or Larger Scale; 12500=Approximately 1:12,500 or Larger Scale; 24000=Approximately 1:24,000 or Larger Scale; 50000=Approximately 1:50,000 or Larger Scale; 100000=Approximately 1:100,000 or Larger Scale; 150000=Approximately 1:150,000 or Larger Scale; 250000=Approximately 1:250,000 or Larger Scale; 500000=Approximately 1:500,000 or Larger Scale; 1000000=Approximately 1:1,000,000 or Larger Scale; 2000000=Approximately 1:2,000,000 or Larger Scale; 5000000=Approximately 1:5,000,000 or Larger Scale"
+                },
+                {
+                    "name": "nhdplusid",
+                    "friendly_name": "NHDPlusID",
+                    "dtype": "FLOAT",
+                    "description": "Nationally unique identifier"
+                },
+                {
+                    "name": "vpuid",
+                    "friendly_name": "VPUID",
+                    "dtype": "STRING",
+                    "description": "Vector processing-unit identifier"
+                },
+                {
+                    "name": "onoffnet",
+                    "friendly_name": "OnNetwork",
+                    "dtype": "INTEGER",
+                    "description": "OnNetwork (NoYes): 1=Yes; 0=No"
+                },
+                {
+                    "name": "purpcode",
+                    "friendly_name": "PurposeCode",
+                    "dtype": "STRING",
+                    "description": "Code describing purpose of feature"
+                },
+                {
+                    "name": "burn",
+                    "dtype": "INTEGER",
+                    "description": "burn (NoYes): 0=No; 1=Yes. Indicates whether feature will be hydroenforced."
+                }
+            ]
         }
     ]
 }
