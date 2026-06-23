@@ -3,12 +3,30 @@
   "parameters": {
     "input": "F:\\nardata\\datadownload\\usgs\\nhdplushr\\NHDPlus_H_National_Release_2_GDB\\NHDPlus_H_National_Release_2_GDB.gdb",
     "output": "C:\\nardata\\temp\\nhd-area.gpkg",
-    "garbage": "C:\\nardata\\temp\\nhd-area-garbage.gpkg",    
+    "garbage": "C:\\nardata\\temp\\nhd-area-garbage.gpkg",
     "layer": "NHDArea",
+    "layer_id": "usgs-nhdplushr-area",
     "tolerance": 2,
     "min_size": 1,
     "min_size_drop": false,
     "layer_definitions": "./layer_definitions.json",
-    "filter": "vpuid<'1900'"
+    "filter": "vpuid<'1900'",
+    "field_map": {
+      "permanent_identifier": "permanent_identifier",
+      "fdate": "fdate",
+      "resolution": "resolution",
+      "gnis_id": "gnis_id",
+      "gnis_name": "gnis_name",
+      "areasqkm": "areasqkm",
+      "elevation": "elevation",
+      "ftype": "ftype",
+      "fcode": "fcode",
+      "visibilityfilter": "visibilityfilter",
+      "nhdplusid": "nhdplusid",
+      "vpuid": "vpuid",
+      "onoffnet": "onoffnet",
+      "purpcode": "purpcode",
+      "burn": "burn"
+    }
   }
 }

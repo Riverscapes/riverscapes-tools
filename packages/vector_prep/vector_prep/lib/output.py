@@ -1,4 +1,5 @@
 """output_gdf: write a cleaned GeoDataFrame to GeoPackage in EPSG:4326."""
+
 from __future__ import annotations
 
 import os
@@ -9,6 +10,39 @@ from rsxml import Logger
 
 # This module always produces output in GeoPackage format
 OUTPUT_DRIVER = "GPKG"
+
+
+def _normalise_dtypes_for_gpkg(gdf: gpd.GeoDataFrame) -> gpd.GeoDataFrame:
+    """Normalise pandas extension-array dtypes before writing to GeoPackage.
+
+    pyogrio (used as the write engine) handles pandas nullable integer types
+    (``Int8`` … ``Int64``, ``UInt8`` … ``UInt64``) natively — they are written
+    as GeoPackage INTEGER with proper NULL support, so no conversion is needed.
+
+    The remaining two normalisation steps are still applied for safety:
+
+    * ``boolean`` (nullable bool) → ``object`` (Python bool / None).
+    * ``string`` (pandas StringDtype) → ``object``.
+
+    The geometry column is left untouched.
+    """
+    gdf = gdf.copy()
+    geom_col = gdf.geometry.name
+    for col in gdf.columns:
+        if col == geom_col:
+            continue
+        s = gdf[col]
+        dtype_name = getattr(s.dtype, "name", "")
+        # pandas nullable integers: pyogrio writes Int8/Int16/Int32/Int64 and
+        # their unsigned variants directly as GeoPackage INTEGER with NULL
+        # support — no conversion needed.
+        if dtype_name == "boolean":
+            # pandas nullable boolean -> object (True/False/None)
+            gdf[col] = s.astype(object).where(s.notna(), other=None)
+        elif dtype_name == "string":
+            # pandas StringDtype -> object
+            gdf[col] = s.astype(object).where(s.notna(), other=None)
+    return gdf
 
 
 def output_gdf_chunk(
@@ -44,10 +78,13 @@ def output_gdf_chunk(
                 os.remove(output_dataset)
                 log.info(f"Removed existing output file: {output_dataset}")
         except Exception:
-            log.debug("Could not remove existing output file prior to first chunk write.")
+            log.debug(
+                "Could not remove existing output file prior to first chunk write."
+            )
 
     # Reproject to EPSG:4326 for the output file.
     chunk_out = chunk_gdf.to_crs(epsg=4326)
+    chunk_out = _normalise_dtypes_for_gpkg(chunk_out)
 
     write_mode = "w" if first_chunk else "a"
     try:
@@ -56,12 +93,17 @@ def output_gdf_chunk(
             driver=OUTPUT_DRIVER,
             layer=layername,
             mode=write_mode,
+            engine="pyogrio",
         )
     except Exception as e:
-        raise Exception(f"Failed to write output chunk (first={first_chunk}): {e}") from e
+        raise Exception(
+            f"Failed to write output chunk (first={first_chunk}): {e}"
+        ) from e
 
 
-def output_gdf(gdf: gpd.GeoDataFrame, output_dataset: str, layer_name: str | None) -> None:
+def output_gdf(
+    gdf: gpd.GeoDataFrame, output_dataset: str, layer_name: str | None
+) -> None:
     """Save the GeoDataFrame to a GeoPackage in EPSG:4326.
 
     Args:

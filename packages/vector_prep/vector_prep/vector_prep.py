@@ -43,7 +43,12 @@ from rsxml import Logger, ProgressBar, dotenv
 
 from .lib.checks import run_checks
 from .lib.clean import clean_geometries
-from .lib.field_map import FieldMapConfig, apply_field_map, load_and_validate_field_map
+from .lib.field_map import (
+    FieldMapConfig,
+    apply_field_map,
+    list_layer_definitions,
+    load_and_validate_field_map,
+)
 from .lib.garbage import write_garbage_chunk
 from .lib.geometry_utils import _geom_type_str
 from .lib.output import output_gdf_chunk
@@ -92,6 +97,58 @@ def load_config(config_path: Path) -> dict:
     return {
         k: os.path.expandvars(v) if isinstance(v, str) else v for k, v in params.items()
     }
+
+
+def _resolve_layer_id_selection(
+    layer_defs_path: Path,
+    configured_layer_id: str | None,
+) -> str:
+    """Resolve the layer_id to use for a layer_definitions file.
+
+    If one layer exists, it is selected automatically. If multiple layers are
+    present and no layer_id is configured, prompt the user in interactive
+    terminals; otherwise raise a clear error.
+    """
+    available_layers = list_layer_definitions(layer_defs_path)
+    available_ids = [layer_id for layer_id, _ in available_layers]
+
+    if configured_layer_id:
+        if configured_layer_id not in available_ids:
+            raise ValueError(
+                f"Configured layer_id '{configured_layer_id}' not found in layer_definitions. "
+                f"Available layer_id values: {', '.join(available_ids)}"
+            )
+        return configured_layer_id
+
+    if len(available_layers) == 1:
+        return available_layers[0][0]
+
+    if not sys.stdin.isatty():
+        raise ValueError(
+            "layer_definitions contains multiple layers and no layer_id was provided. "
+            "Set 'layer_id' in config or pass --layer_id. "
+            f"Available layer_id values: {', '.join(available_ids)}"
+        )
+
+    print("Multiple layer_definitions entries found. Select a layer_id:")
+    for idx, (layer_id, layer_name) in enumerate(available_layers, start=1):
+        label = f" ({layer_name})" if layer_name else ""
+        print(f"  {idx}. {layer_id}{label}")
+
+    while True:
+        response = input("Enter number or layer_id: ").strip()
+        if not response:
+            print("Please enter a number or layer_id.")
+            continue
+        if response.isdigit():
+            selected_index = int(response)
+            if 1 <= selected_index <= len(available_layers):
+                return available_layers[selected_index - 1][0]
+            print("Selection out of range. Try again.")
+            continue
+        if response in available_ids:
+            return response
+        print("Invalid layer_id. Try again.")
 
 
 # ---------------------------------------------------------------------------
@@ -691,6 +748,15 @@ def main():
         action="store_true",
         default=False,
     )
+    parser.add_argument(
+        "--layer_id",
+        metavar="ID",
+        help=(
+            "Layer identifier from layer_definitions.json. "
+            "Used with field_map/layer_definitions configs; overrides config layer_id when provided."
+        ),
+        default=None,
+    )
 
     # ---- Direct-mode arguments (invalid when --config is supplied) ----
     direct = parser.add_argument_group(
@@ -847,6 +913,7 @@ def main():
     field_map_config = None
     raw_field_map = cfg_params.get("field_map")
     layer_defs_rel = cfg_params.get("layer_definitions")
+    cfg_layer_id = args.layer_id or cfg_params.get("layer_id")
 
     if raw_field_map is not None:
         if layer_defs_rel is None:
@@ -859,9 +926,13 @@ def main():
             sys.exit(1)
         layer_defs_path = (cfg_path.parent / layer_defs_rel).resolve()
         try:
-            field_map_config = load_and_validate_field_map(
-                raw_field_map, layer_defs_path
+            selected_layer_id = _resolve_layer_id_selection(
+                layer_defs_path, cfg_layer_id
             )
+            field_map_config = load_and_validate_field_map(
+                raw_field_map, layer_defs_path, layer_id=selected_layer_id
+            )
+            log.info(f"Using layer_id: {selected_layer_id}")
             log.info(f"Loaded field map: {len(raw_field_map)} field(s) mapped")
         except (ValueError, FileNotFoundError) as e:
             log.error(f"Field map error: {e}")

@@ -75,6 +75,10 @@
           "type": "string",
           "description": "Relative or absolute path to the layer_definitions.json file for this layer. Required when field_map is specified. Supports environment variable expansion."
         },
+        "layer_id": {
+          "type": "string",
+          "description": "Layer identifier inside layer_definitions.json to use when validating field_map. Required when layer_definitions contains multiple layers unless selected interactively."
+        },
         "field_map": {
           "type": "object",
           "description": "Mapping from source field names to output field names. Only the fields listed here are included in the output; all other source fields are dropped.",

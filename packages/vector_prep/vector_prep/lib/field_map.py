@@ -20,13 +20,14 @@ validate_field_map      — raise ValueError if output names missing from specs
 load_and_validate_field_map — convenience: load + validate → FieldMapConfig
 apply_field_map         — apply a FieldMapConfig to a GeoDataFrame chunk
 """
+
 from __future__ import annotations
 
 import json
 import logging
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, cast
 
 import geopandas as gpd
 import pandas as pd
@@ -40,17 +41,19 @@ log = logging.getLogger(__name__)
 # Maps the dtype strings used in layer_definitions.json to the pandas dtype
 # used when casting a Series.  The special value ``"str"`` is handled
 # procedurally in apply_field_map (None-safe string coercion).
-DTYPE_MAP: Dict[str, str] = {
+DTYPE_MAP: dict[str, str] = {
     "STRING": "string",  # key guards dtype presence; STRING branch handles casting manually
-    "INTEGER": "Int64",      # pandas nullable integer
+    "INTEGER": "Int64",  # pandas nullable integer
     "FLOAT": "float64",
-    "BOOLEAN": "boolean",    # pandas nullable boolean
+    "BOOLEAN": "boolean",  # pandas nullable boolean
+    "DATETIME": "datetime64[ns]",  # pandas datetime (timezone-naive)
 }
 
 
 # ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
+
 
 @dataclass
 class ColumnSpec:
@@ -59,14 +62,15 @@ class ColumnSpec:
     Attributes:
         name:          The canonical output column name.
         dtype:         The raw dtype string from layer_definitions
-                       (``"STRING"``, ``"INTEGER"``, ``"FLOAT"``, ``"BOOLEAN"``).
+                       (``"STRING"``, ``"INTEGER"``, ``"FLOAT"``, ``"BOOLEAN"``, ``"DATETIME"``).
         friendly_name: Optional human-readable label (informational only).
         description:   Optional description text (informational only).
     """
+
     name: str
     dtype: str
-    friendly_name: Optional[str] = None
-    description: Optional[str] = None
+    friendly_name: str | None = None
+    description: str | None = None
 
 
 @dataclass
@@ -79,15 +83,55 @@ class FieldMapConfig:
                       layer_definitions).  Every value in ``field_map``
                       is guaranteed to have an entry here.
     """
-    field_map: Dict[str, str]
-    column_specs: Dict[str, ColumnSpec] = field(default_factory=dict)
+
+    field_map: dict[str, str]
+    column_specs: dict[str, ColumnSpec] = field(default_factory=dict)
 
 
 # ---------------------------------------------------------------------------
 # Loading helpers
 # ---------------------------------------------------------------------------
 
-def load_layer_definitions(path: Path) -> Dict[str, ColumnSpec]:
+
+def _read_layers_array(path: Path) -> list[dict]:
+    """Read a layer_definitions file and return its ``layers`` array."""
+    path = Path(path).resolve()
+    if not path.exists():
+        raise FileNotFoundError(f"layer_definitions file not found: {path}")
+
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except json.JSONDecodeError as exc:
+        raise ValueError(
+            f"Could not parse layer_definitions JSON: {path}\n{exc}"
+        ) from exc
+
+    layers: list[dict] = data.get("layers", [])
+    if not layers:
+        raise ValueError(f"layer_definitions file has no 'layers' array: {path}")
+
+    return layers
+
+
+def list_layer_definitions(path: Path) -> list[tuple[str, str | None]]:
+    """Return available ``(layer_id, layer_name)`` entries from layer_definitions."""
+    layers = _read_layers_array(path)
+    summary: list[tuple[str, str | None]] = []
+    for idx, layer_obj in enumerate(layers, start=1):
+        layer_id = layer_obj.get("layer_id")
+        if not layer_id:
+            raise ValueError(
+                f"layer_definitions layer at index {idx} is missing required 'layer_id'."
+            )
+        summary.append((str(layer_id), layer_obj.get("layer_name")))
+    return summary
+
+
+def load_layer_definitions(
+    path: Path,
+    layer_id: str | None = None,
+) -> dict[str, ColumnSpec]:
     """Load a layer_definitions.json and return a flat column-spec dict.
 
     The file may contain multiple layer objects inside ``layers``.  All
@@ -106,48 +150,59 @@ def load_layer_definitions(path: Path) -> Dict[str, ColumnSpec]:
         ValueError:        If the file cannot be parsed or is missing required
                            fields.
     """
-    path = Path(path).resolve()
-    if not path.exists():
-        raise FileNotFoundError(f"layer_definitions file not found: {path}")
+    layers = _read_layers_array(path)
 
-    try:
-        with open(path, encoding="utf-8") as fh:
-            data = json.load(fh)
-    except json.JSONDecodeError as exc:
-        raise ValueError(f"Could not parse layer_definitions JSON: {path}\n{exc}") from exc
-
-    layers: List[dict] = data.get("layers", [])
-    if not layers:
-        raise ValueError(f"layer_definitions file has no 'layers' array: {path}")
-
-    column_specs: Dict[str, ColumnSpec] = {}
-
-    for layer_obj in layers:
-        layer_id = layer_obj.get("layer_id", "<unknown>")
-        columns: List[dict] = layer_obj.get("columns", [])
-        for col in columns:
-            col_name = col.get("name")
-            dtype = col.get("dtype")
-            if not col_name:
-                log.warning("layer_definitions layer '%s' has a column with no 'name'; skipping.", layer_id)
-                continue
-            if not dtype:
-                log.warning(
-                    "layer_definitions layer '%s' column '%s' has no 'dtype'; defaulting to STRING.",
-                    layer_id, col_name,
-                )
-                dtype = "STRING"
-            if col_name in column_specs:
-                log.warning(
-                    "Duplicate column name '%s' found in layer_definitions (layer '%s' overrides earlier definition).",
-                    col_name, layer_id,
-                )
-            column_specs[col_name] = ColumnSpec(
-                name=col_name,
-                dtype=dtype,
-                friendly_name=col.get("friendly_name"),
-                description=col.get("description"),
+    selected_layer: dict
+    if layer_id:
+        matching = [layer for layer in layers if layer.get("layer_id") == layer_id]
+        if not matching:
+            available = ", ".join(layer[0] for layer in list_layer_definitions(path))
+            raise ValueError(
+                f"layer_id '{layer_id}' not found in layer_definitions. "
+                f"Available layer_id values: {available}"
             )
+        selected_layer = matching[0]
+    elif len(layers) == 1:
+        selected_layer = layers[0]
+    else:
+        available = ", ".join(layer[0] for layer in list_layer_definitions(path))
+        raise ValueError(
+            "layer_definitions contains multiple layers. "
+            f"Specify layer_id. Available layer_id values: {available}"
+        )
+
+    column_specs: dict[str, ColumnSpec] = {}
+
+    selected_layer_id = selected_layer.get("layer_id", "<unknown>")
+    columns: list[dict] = selected_layer.get("columns", [])
+    for col in columns:
+        col_name = col.get("name")
+        dtype = col.get("dtype")
+        if not col_name:
+            log.warning(
+                "layer_definitions layer '%s' has a column with no 'name'; skipping.",
+                selected_layer_id,
+            )
+            continue
+        if not dtype:
+            log.warning(
+                "layer_definitions layer '%s' column '%s' has no 'dtype'; defaulting to STRING.",
+                selected_layer_id,
+                col_name,
+            )
+            dtype = "STRING"
+        if col_name in column_specs:
+            log.warning(
+                "Duplicate column name '%s' found in layer_definitions layer '%s'; later definition wins.",
+                col_name,
+                selected_layer_id,
+            )
+        column_specs[col_name] = ColumnSpec(
+            name=col_name,
+            dtype=dtype,
+            friendly_name=col.get("friendly_name"),
+            description=col.get("description"),
+        )
 
     return column_specs
 
@@ -156,9 +211,10 @@ def load_layer_definitions(path: Path) -> Dict[str, ColumnSpec]:
 # Validation
 # ---------------------------------------------------------------------------
 
+
 def validate_field_map(
-    field_map: Dict[str, str],
-    column_specs: Dict[str, ColumnSpec],
+    field_map: dict[str, str],
+    column_specs: dict[str, ColumnSpec],
 ) -> None:
     """Validate that every output name in *field_map* exists in *column_specs*.
 
@@ -197,9 +253,11 @@ def validate_field_map(
 # Convenience loader
 # ---------------------------------------------------------------------------
 
+
 def load_and_validate_field_map(
-    raw_field_map: Dict[str, str],
+    raw_field_map: dict[str, str],
     layer_defs_path: Path,
+    layer_id: str | None = None,
 ) -> FieldMapConfig:
     """Load layer_definitions, validate the field_map, and return a FieldMapConfig.
 
@@ -218,7 +276,7 @@ def load_and_validate_field_map(
         ValueError:        If any output name in *raw_field_map* is missing
                            from the layer_definitions schema.
     """
-    column_specs = load_layer_definitions(layer_defs_path)
+    column_specs = load_layer_definitions(layer_defs_path, layer_id=layer_id)
     validate_field_map(raw_field_map, column_specs)
     # Keep only the specs that are actually referenced as output names in the
     # field_map — every other column in the layer_definitions file is irrelevant
@@ -247,6 +305,7 @@ def load_and_validate_field_map(
 # Per-chunk application
 # ---------------------------------------------------------------------------
 
+
 def _cast_column(series: pd.Series, dtype: str) -> pd.Series:
     """Cast *series* to the pandas dtype corresponding to the given *dtype* string.
 
@@ -257,7 +316,7 @@ def _cast_column(series: pd.Series, dtype: str) -> pd.Series:
     Args:
         series: The column to cast.
         dtype:  Layer-definitions dtype string: ``"STRING"``, ``"INTEGER"``,
-                ``"FLOAT"``, or ``"BOOLEAN"``.
+            ``"FLOAT"``, ``"BOOLEAN"``, or ``"DATETIME"``.
 
     Returns:
         The cast Series (a new object; the original is not mutated).
@@ -275,11 +334,11 @@ def _cast_column(series: pd.Series, dtype: str) -> pd.Series:
         # Convert to str first, then replace sentinel "None"/"nan"/"<NA>"
         # strings and empty strings with actual None (pd.NA), then cast to
         # pandas nullable StringDtype so the return type is always consistent.
-        def _to_clean_str(val: object) -> Optional[str]:
+        def _to_clean_str(val: object) -> str | None:
             if val is None or (isinstance(val, float) and pd.isna(val)):
                 return None
             try:
-                if pd.isna(val):
+                if pd.isna(cast(Any, val)):
                     return None
             except (TypeError, ValueError):
                 pass
@@ -291,13 +350,13 @@ def _cast_column(series: pd.Series, dtype: str) -> pd.Series:
         return series.apply(_to_clean_str).astype("string")
 
     if dtype == "BOOLEAN":
-        pandas_dtype = DTYPE_MAP[dtype]
+        pandas_dtype = cast(Any, DTYPE_MAP[dtype])
 
-        def _to_bool(val: object) -> Optional[bool]:
+        def _to_bool(val: object) -> bool | None:
             if val is None:
                 return None
             try:
-                if pd.isna(val):
+                if pd.isna(cast(Any, val)):
                     return None
             except (TypeError, ValueError):
                 pass
@@ -308,10 +367,20 @@ def _cast_column(series: pd.Series, dtype: str) -> pd.Series:
         # (possibly non-contiguous) index, preventing row misalignment when the
         # GeoDataFrame has had features dropped earlier in the pipeline.
         bool_list = [_to_bool(v) for v in series]
-        return pd.Series(pd.array(bool_list, dtype=pandas_dtype), dtype=pandas_dtype, index=series.index)
+        return pd.Series(
+            pd.array(bool_list, dtype=pandas_dtype),
+            dtype=pandas_dtype,
+            index=series.index,
+        )
+
+    if dtype == "DATETIME":
+        # Parse to UTC to handle mixed timezone / naive inputs consistently,
+        # then drop timezone so GeoPackage writers receive datetime64[ns].
+        parsed = pd.to_datetime(series, errors="coerce", utc=True)
+        return pd.Series(parsed.dt.tz_localize(None), index=series.index)
 
     # INTEGER and FLOAT — simple numeric coerce + astype driven by DTYPE_MAP.
-    pandas_dtype = DTYPE_MAP[dtype]
+    pandas_dtype = cast(Any, DTYPE_MAP[dtype])
     return pd.to_numeric(series, errors="coerce").astype(pandas_dtype)
 
 
@@ -346,7 +415,7 @@ def apply_field_map(
                     ``chunk_gdf.columns``.
     """
     # Step 1 — verify all source fields are present in the chunk.
-    geom_col = chunk_gdf.geometry.name
+    geom_col = str(chunk_gdf.geometry.name)
     data_cols = set(chunk_gdf.columns) - {geom_col}
     missing_src = [src for src in fmc.field_map if src not in data_cols]
     if missing_src:

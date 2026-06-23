@@ -22,7 +22,7 @@ from rsxml import Logger, dotenv
 import questionary
 
 from .vector_prep import vector_prep, load_config
-from .lib.field_map import load_and_validate_field_map
+from .lib.field_map import list_layer_definitions, load_and_validate_field_map
 from .lib.report import write_markdown_report
 
 
@@ -107,7 +107,7 @@ def _validate_absolute(val: str) -> bool | str:
     )
 
 
-def _resolve_params(params: dict, config_path: Path) -> dict:
+def _resolve_params(params: dict) -> dict:
     """Display config-supplied values and prompt for any missing I/O paths."""
     log = Logger("vector-prep-cli")
     log.title("Parameter review")
@@ -160,6 +160,51 @@ def _resolve_params(params: dict, config_path: Path) -> dict:
     return params
 
 
+def _resolve_layer_id_for_field_map(params: dict, config_path: Path) -> str | None:
+    """Resolve layer_id for field-map validation against layer_definitions.
+
+    If layer_definitions has multiple layers and layer_id is not provided in
+    config, prompt the user to choose one.
+    """
+    raw_field_map = params.get("field_map")
+    layer_defs_rel = params.get("layer_definitions")
+    if raw_field_map is None or layer_defs_rel is None:
+        return None
+
+    layer_defs_path = (config_path.parent / layer_defs_rel).resolve()
+    available_layers = list_layer_definitions(layer_defs_path)
+    available_ids = [layer_id for layer_id, _ in available_layers]
+
+    configured_layer_id = params.get("layer_id")
+    if configured_layer_id:
+        if configured_layer_id not in available_ids:
+            raise ValueError(
+                f"Configured layer_id '{configured_layer_id}' not found. "
+                f"Available layer_id values: {', '.join(available_ids)}"
+            )
+        return configured_layer_id
+
+    if len(available_layers) == 1:
+        return available_layers[0][0]
+
+    choices = [
+        questionary.Choice(
+            title=(f"{layer_id} ({layer_name})" if layer_name else layer_id),
+            value=layer_id,
+        )
+        for layer_id, layer_name in available_layers
+    ]
+    selected_layer_id = questionary.select(
+        "Choose layer_id from layer_definitions:",
+        choices=choices,
+        instruction="(↑/↓ to move, Enter to confirm)",
+    ).ask()
+    if selected_layer_id is None:
+        raise ValueError("Layer selection aborted.")
+
+    return selected_layer_id
+
+
 # ---------------------------------------------------------------------------
 # Run
 # ---------------------------------------------------------------------------
@@ -209,9 +254,14 @@ def _run(params: dict, config_path: Path) -> None:
             sys.exit(1)
         layer_defs_path = (cfg_dir / layer_defs_rel).resolve()
         try:
+            selected_layer_id = _resolve_layer_id_for_field_map(params, config_path)
             field_map_config = load_and_validate_field_map(
-                raw_field_map, layer_defs_path
+                raw_field_map,
+                layer_defs_path,
+                layer_id=selected_layer_id,
             )
+            if selected_layer_id:
+                log.info(f"Using layer_id: {selected_layer_id}")
             log.info(f"Loaded field map: {len(raw_field_map)} field(s)")
         except (ValueError, FileNotFoundError) as exc:
             log.error(f"Field map error: {exc}")
@@ -293,7 +343,7 @@ def main() -> None:
         log.error(str(exc))
         sys.exit(1)
 
-    params = _resolve_params(params, config_path)
+    params = _resolve_params(params)
     _run(params, config_path)
 
 

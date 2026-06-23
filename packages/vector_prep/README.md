@@ -194,7 +194,7 @@ Defines the expected output schema — column names, data types, and human-reada
 }
 ```
 
-Supported `dtype` values: `STRING`, `INTEGER`, `FLOAT`, `BOOLEAN`.
+Supported `dtype` values: `STRING`, `INTEGER`, `FLOAT`, `BOOLEAN`, `DATETIME`.
 
 ### `field_map` in `config.json`
 
