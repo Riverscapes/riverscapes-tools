@@ -1,0 +1,22 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${ALLOTMENTS_INPUT}",
+    "output": "${ALLOTMENTS_OUTPUT}",
+    "garbage": "${ALLOTMENTS_GARBAGE}",    
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "ALLOT_NO": "allotment_number",
+      "ALLOT_NAME": "allotment_name",
+      "GIS_ACRES": "gis_acres",
+      "ADMIN_ST": "admin_state",
+      "ADM_OFC_CD": "admin_office_code",
+      "ADM_UNIT_CD": "admin_unit_code",
+      "ST_ALLOT": "state_allotment",
+      "ACTIVE_DT": "active_date"
+    }
+  }
+}

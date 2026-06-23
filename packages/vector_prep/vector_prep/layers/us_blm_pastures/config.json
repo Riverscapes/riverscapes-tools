@@ -1,0 +1,23 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "parameters": {
+    "input": "${PASTURES_INPUT}",
+    "output": "${PASTURES_OUTPUT}",
+    "garbage": "${PASTURES_GARBAGE}",    
+    "tolerance": 2,
+    "min_size": 1,
+    "min_size_drop": false,
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "ALLOT_NO": "allotment_number",
+      "ALLOT_NAME": "allotment_name",
+      "PAST_NO": "pasture_number",
+      "PAST_NAME": "pasture_name",
+      "GIS_ACRES": "gis_acres",
+      "ADMIN_ST": "admin_state",
+      "ADM_OFC_CD": "admin_office_code",
+      "ADM_UNIT_CD": "admin_unit_code",
+      "ST_ALLOT_PAST": "state_allotment_pasture"
+    }
+  }
+}

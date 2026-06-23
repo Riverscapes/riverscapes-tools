@@ -1,0 +1,57 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "vector-prep-us-blm_allotments",
+  "tool_schema_version": "0.0.1",
+  "layers": [
+    {
+      "layer_id": "us_blm_allotments",
+      "layer_name": "US BLM Allotments",
+      "description": "The purpose of this polygon feature class is to show BLM Grazing Allotments, which are areas of land designated and managed for livestock grazing. In addition to public lands under the jurisdiction of the Bureau of Land Management, allotments may include private lands, State lands, and lands under the jurisdiction of other federal agencies. This geospatial dataset is supplemental to the Rangeland Administration System (RAS), which is authoritative for BLM grazing allotments (except Alaska). Rangeland Administration System Reports can be accessed from the BLM public reporting application website at reports.blm.gov.",
+      "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/0882acf7eada4b3bafee4dd673fbe8a0_1/explore?location=43.105971%2C-117.676999%2C8",
+      "layer_type": "Vector",
+      "columns": [
+        {
+          "name": "allotment_number",
+          "friendly_name": "Allotment Number",
+          "dtype": "STRING"
+        },
+        {
+          "name": "allotment_name",
+          "friendly_name": "Allotment Name",
+          "dtype": "STRING"
+        },
+        {
+          "name": "gis_acres",
+          "friendly_name": "GIS Acres",
+          "dtype": "FLOAT",
+          "description": "Area in acres"
+        },
+        {
+          "name": "admin_state",
+          "friendly_name": "Administrative State Code",
+          "dtype": "STRING"
+        },
+        {
+          "name": "admin_office_code",
+          "friendly_name": "Administrative Office Code",
+          "dtype": "STRING"
+        },
+        {
+          "name": "admin_unit_code",
+          "friendly_name": "Administrative Unit Code",
+          "dtype": "STRING"
+        },
+        {
+          "name": "state_allotment",
+          "friendly_name": "Managing State Allotment Number",
+          "dtype": "STRING"
+        },
+        {
+          "name": "active_date",
+          "friendly_name": "Active Date",
+          "dtype": "STRING"
+        }
+      ]
+    }
+  ]
+}
