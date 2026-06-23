@@ -19,13 +19,15 @@ What we need to do:
 
 * Clip/filter to CONUS in going from ext_raw to ext_rpt
 
+OLD WAY: 
+
 ```sql
 CREATE TABLE ext_rpt.us_cens_county
 WITH (
   table_type = 'ICEBERG',
   format = 'PARQUET',
   is_external = false,
-  location = 's3://riverscapes-athena/ext-rpt/us_cens_county/'
+  location = 's3://riverscapes-athena/ext_rpt/us_cens_county/'
 ) AS
 WITH src AS (
   SELECT
@@ -65,3 +67,7 @@ WHERE geoid5 IS NOT NULL
   -- exclude AK, HI, territories; keep DC
   AND substr(geoid5, 1, 2) NOT IN ('02','15','60','66','69','72','78');
 ```
+
+NEW WAY: 
+
+Join with the cartographic boundary version that has already been selected for conus.
