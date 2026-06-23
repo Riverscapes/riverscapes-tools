@@ -610,7 +610,7 @@
                 {
                     "name": "visibilityfilter",
                     "dtype": "INTEGER",
-                    "description": "visibilityfilter (VisibilityFilter): 0=Unspecified; 4800=Approximately 1:4,800 or Larger Scale; 12500=Approximately 1:12,500 or Larger Scale; 24000=Approximately 1:24,000 or Larger Scale; 50000=Approximately 1:50,000 or Larger Scale; 100000=Approximately 1:100,000 or Larger Scale; 150000=Approximately 1:150,000 or Larger Scale; 250000=Approximately 1:250,000 or Larger Scale; 500000=Approximately 1:500,000 or Larger Scale; 1000000=Approximately 1:1,000,000 or Larger Scale; 2000000=Approximately 1:2,000,000 or Larger Scale; 5000000=Approximately 1:5,000,000 or Larger Scale"
+                    "description": "VisibilityFilter: 0=Unspecified; 4800 to  5000000=Approximately 1:X or Larger Scale"
                 },
                 {
                     "name": "nhdplusid",
