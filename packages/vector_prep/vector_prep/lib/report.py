@@ -24,6 +24,22 @@ def build_markdown_report(stats: dict, garbage_path: str | None) -> str:
     filtered_input_count = stats.get(
         "filtered_input_count", stats.get("initial_count", 0)
     )
+    normalized_columns_stats = stats.get("normalized_columns_stats", {})
+
+    schema_issue_details: list[dict[str, str]] = list(
+        stats.get("schema_issue_details", [])
+    )
+
+    # Compact repeated per-chunk schema findings into unique rows with counts.
+    schema_issue_counts: dict[tuple[str, str, str], int] = {}
+    for item in schema_issue_details:
+        col = str(item.get("column", ""))
+        issue = str(item.get("issue", ""))
+        dtype_name = str(item.get("dtype", ""))
+        if not col or not issue:
+            continue
+        key = (col, issue, dtype_name)
+        schema_issue_counts[key] = schema_issue_counts.get(key, 0) + 1
 
     lines = [
         "## Vector Prep Report",
@@ -55,6 +71,30 @@ def build_markdown_report(stats: dict, garbage_path: str | None) -> str:
         f"| String cells normalized | {stats.get('string_cells_normalized', 0):,} |",
         f"| Schema inconsistencies detected | {stats.get('schema_inconsistencies', 0):,} |",
         f"| Mixed geometry types detected | {'YES' if stats.get('mixed_types_detected') else 'NO'} |",
+        "",
+        "### Column Data Diagnostics",
+        "",
+        "| Column | Observation | Status | Occurrences |",
+        "| --- | --- | --- | ---: |",
+    ]
+
+    if normalized_columns_stats:
+        for col_name, count in sorted(normalized_columns_stats.items()):
+            lines.append(
+                f"| {col_name} | String values were normalized | changed | {count:,} |"
+            )
+
+    if schema_issue_counts:
+        for (col, issue, dtype_name), count in sorted(
+            schema_issue_counts.items(), key=lambda x: (x[0][0], x[0][1])
+        ):
+            dtype_text = f" (dtype: {dtype_name})" if dtype_name else ""
+            lines.append(f"| {col} | {issue}{dtype_text} | needs review |  |")
+
+    if not normalized_columns_stats and not schema_issue_counts:
+        lines.append("| (none) | No column diagnostics recorded | n/a | 0 |")
+
+    lines += [
         "",
         "### Dropped Features",
         "",

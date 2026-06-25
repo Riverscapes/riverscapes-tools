@@ -18,6 +18,16 @@
             "args": "${command:pickArgs}"
         },
         {
+            "name": "Debug Vector Prep (Module)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "vector_prep",
+            "args": "${command:pickArgs}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true
+        },
+        {
             "name": "NHDPlusHR: orchestrate --skip-data",
             "type": "debugpy",
             "request": "launch",

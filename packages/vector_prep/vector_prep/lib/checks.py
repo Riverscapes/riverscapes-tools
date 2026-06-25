@@ -1,10 +1,13 @@
 """run_checks: geometry and attribute quality checks A–M for vector_prep."""
+
 from __future__ import annotations
 
 import hashlib
 import math
 import re
-from typing import Dict, List, Optional, Set, Tuple
+import unicodedata
+from pathlib import Path
+from typing import cast, Any
 
 import geopandas as gpd
 import pandas as pd
@@ -21,17 +24,36 @@ from .geometry_utils import (
 )
 
 
+def _get_geometry(gdf: gpd.GeoDataFrame, idx: int) -> BaseGeometry | None:
+    """Get geometry from gdf at index, clearly casted to geometry"""
+    value = gdf.at[idx, "geometry"]
+    return value if isinstance(value, BaseGeometry) else None
+
+
+def _set_geometry(gdf: gpd.GeoDataFrame, idx: int, geom: BaseGeometry):
+    """set geometry at in gdf at idx to supplied value, with clear type cast"""
+    gdf.at[idx, "geometry"] = cast(Any, geom)
+
+
 def run_checks(
     gdf_proc: gpd.GeoDataFrame,
     min_size: float,
-    duplicate_geom_hashes: Optional[Set[str]] = None,
-    duplicate_row_hashes: Optional[Set[str]] = None,
-    processed_geom_hashes: Optional[Set[str]] = None,
-    processed_row_hashes: Optional[Set[str]] = None,
-    dominant_type: Optional[str] = None,
+    duplicate_geom_hashes: set[str] | None = None,
+    duplicate_row_hashes: set[str] | None = None,
+    processed_geom_hashes: set[str] | None = None,
+    processed_row_hashes: set[str] | None = None,
+    dominant_type: str | None = None,
     min_size_drop: bool = False,
-) -> Tuple[gpd.GeoDataFrame, Dict, List[Tuple[int, str, str]], List[Tuple[int, str, BaseGeometry]]]:
-    """Run geometry and attribute quality checks A–M on gdf_proc.
+    skip_geometry_dedup: bool = False,
+    known_string_columns: set[str] = set(),
+    target_schema: dict[str, str] | None = None,
+) -> tuple[
+    gpd.GeoDataFrame,
+    dict,
+    list[tuple[int, str, str]],
+    list[tuple[int, str, BaseGeometry]],
+]:
+    """Run geometry and attribute quality checks A to M on gdf_proc.
 
     Args:
         gdf_proc: GeoDataFrame to check and fix (modified in-place for step D).
@@ -48,6 +70,9 @@ def run_checks(
         dominant_type: Pre-computed dominant geometry type from pass 1 (optional).  When
             provided, step D uses this value instead of re-deriving it per chunk, ensuring
             consistent GeometryCollection resolution across all chunks.
+        skip_geometry_dedup: If True, step J is skipped and geometry-only duplicates are kept.
+            Step K (full row duplicate removal) still runs.
+        target_schema: column, dtype from layer_definitions
 
     Returns:
         gdf_proc: DataFrame with in-place fixes applied (Z stripped, strings normalised,
@@ -59,11 +84,11 @@ def run_checks(
     log = Logger("Vector Prep")
 
     # (orig_idx, operation, reason) — operation is always "DROPPED" here
-    dropped_list: List[Tuple[int, str, str]] = []
+    dropped_list: list[tuple[int, str, str]] = []
     # (orig_idx, reason, new_geom) — geometry that changed but stays in output
-    changed_list: List[Tuple[int, str, BaseGeometry]] = []
+    changed_list: list[tuple[int, str, BaseGeometry]] = []
 
-    extra_stats: Dict = {
+    extra_stats: dict = {
         "zm_stripped": 0,
         "multipart_detected": 0,
         "geocollection_detected": 0,
@@ -78,6 +103,8 @@ def run_checks(
         "below_min_size_dropped": 0,
         "below_min_size_detected": 0,
         "slivers_dropped": 0,
+        "normalized_columns_stats": {},
+        "schema_issue_details": [],
     }
 
     # ------------------------------------------------------------------ #
@@ -86,9 +113,9 @@ def run_checks(
     log.info("A. Stripping Z/M coordinates...")
     zm_count = 0
     for idx in gdf_proc.index:
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is not None and _has_z(geom):
-            gdf_proc.at[idx, "geometry"] = _strip_z(geom)
+            _set_geometry(gdf_proc, idx, _strip_z(geom))
             zm_count += 1
     extra_stats["zm_stripped"] = zm_count
     log.info(f"   Z-stripped: {zm_count:,} features")
@@ -167,13 +194,17 @@ def run_checks(
     # more lines than polygons).  Fall back to deriving it from this chunk
     # in legacy / single-pass mode.
     if dominant_type is None:
-        _valid_type_mask = gdf_proc.geometry.notna() & (gdf_proc.geom_type != "GeometryCollection")
-        _type_counts = gdf_proc.loc[_valid_type_mask, "geometry"].geom_type.value_counts()
+        _valid_type_mask = gdf_proc.geometry.notna() & (
+            gdf_proc.geom_type != "GeometryCollection"
+        )
+        _type_counts = gdf_proc.loc[
+            _valid_type_mask, "geometry"
+        ].geom_type.value_counts()
         dominant_type = _type_counts.index[0] if len(_type_counts) > 0 else None
 
     self_touching_fixed = 0
     for idx in gdf_proc.index:
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is None:
             continue
         try:
@@ -212,12 +243,16 @@ def run_checks(
                         # (stray lines/points at former self-intersection sites).  Unwrap
                         # it to get back a clean polygon (or whichever type dominates).
                         fixed = _extract_dominant_from_collection(fixed, dominant_type)
-                        fix_reason = "Invalid polygon repaired (GeometryCollection unwrapped)"
+                        fix_reason = (
+                            "Invalid polygon repaired (GeometryCollection unwrapped)"
+                        )
                     if not geom.equals(fixed):
                         changed_list.append((idx, fix_reason, fixed))
                         self_touching_fixed += 1
             except Exception as exc:
-                log.debug(f"Geometry repair post-processing failed for feature {idx}: {exc}")
+                log.debug(
+                    f"Geometry repair post-processing failed for feature {idx}: {exc}"
+                )
 
     extra_stats["self_touching_fixed"] = self_touching_fixed
     log.info(f"   Invalid geometries repaired: {self_touching_fixed:,}")
@@ -225,7 +260,7 @@ def run_checks(
     # Apply Step D geometry changes immediately so that subsequent checks
     # (I–M) operate on the fixed geometries.
     for _d_idx, _d_reason, _d_geom in changed_list:
-        gdf_proc.at[_d_idx, "geometry"] = _d_geom
+        _set_geometry(gdf_proc, _d_idx, _d_geom)
 
     # ------------------------------------------------------------------ #
     # E. Detect unclosed rings (log only)
@@ -233,7 +268,7 @@ def run_checks(
     log.info("E. Detecting unclosed rings...")
     unclosed_count = 0
     for idx in gdf_proc.index:
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is not None and _has_unclosed_rings(geom):
             unclosed_count += 1
     extra_stats["unclosed_rings_detected"] = unclosed_count
@@ -245,7 +280,7 @@ def run_checks(
     log.info("F. Detecting duplicate vertices...")
     dup_vert_count = 0
     for idx in gdf_proc.index:
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is not None and _has_duplicate_vertices(geom):
             dup_vert_count += 1
     extra_stats["duplicate_vertices_detected"] = dup_vert_count
@@ -255,31 +290,68 @@ def run_checks(
     # G. Normalize string fields (in-place fix, no garbage entry)
     # ------------------------------------------------------------------ #
     log.info("G. Normalizing string fields...")
-    _non_print_re = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
 
-    def _normalize_str(val: object) -> object:
-        if not isinstance(val, str):
-            return val
-        cleaned = _non_print_re.sub("", val.strip())
-        return None if cleaned == "" else cleaned
+    # Upgraded regex catches:
+    # 1. ASCII unprintables (\x00-\x1f except Tab, LF, CR)
+    # 2. Latin-1 C1 control anomalies (\x7f-\x9f)
+    # 3. Unicode invisible Gremlins: Zero-width spaces (\u200b-\u200d) and Byte Order Marks (\ufeff)
+    _evil_chars_re = re.compile(
+        r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f\u200b-\u200d\ufeff]"
+    )
+
+    def clean_string_series(series: pd.Series) -> pd.Series:
+        """Vectorized cleanup of a single text Series."""
+        # 0. Fill nulls with blank strings BEFORE casting to avoid the "nan" string trap
+        clean = series.fillna("").astype(str)
+
+        # 1. Force canonical Unicode composition
+        clean = clean.map(lambda v: unicodedata.normalize("NFC", v))
+
+        # 2. Strip whitespaces and wipe regex anomalies in fast C-space
+        clean = clean.str.replace(_evil_chars_re, "", regex=True).str.strip()
+
+        # 3. Coerce blanks back to true DB Nulls
+        return clean.replace("", None)
 
     string_cells_modified = 0
-    for col in gdf_proc.select_dtypes(include=["object"]).columns:
-        original_col = gdf_proc[col].copy()
-        gdf_proc[col] = gdf_proc[col].apply(_normalize_str)
+    normalized_columns_stats: dict[str, int] = {}
+    for col in known_string_columns:
+        if col not in gdf_proc.columns:
+            continue
+
+        orig_series = gdf_proc[col].fillna("")
+        gdf_proc[col] = clean_string_series(gdf_proc[col])
+
+        new_series = gdf_proc[col].fillna("")
+
         # Count cells that actually changed (handle None carefully)
-        null_to_val = original_col.isna() & gdf_proc[col].notna()
-        val_to_null = original_col.notna() & gdf_proc[col].isna()
-        val_changed = (
-            original_col.notna() & gdf_proc[col].notna() & (original_col != gdf_proc[col])
-        )
-        string_cells_modified += int((null_to_val | val_to_null | val_changed).sum())
+        # Create a boolean mask of exactly which rows changed
+        changed_mask = orig_series != new_series
+        changed_count = int(changed_mask.sum())
+
+        if changed_count > 0:
+            string_cells_modified += changed_count
+            normalized_columns_stats[col] = changed_count
+
+            # --- DEBUG EXPORT BLOCK ---
+            debug_df = pd.DataFrame(
+                {
+                    "column_name": col,
+                    "original": orig_series[changed_mask],
+                    "cleaned": new_series[changed_mask],
+                }
+            )
+            # Write header only if the file doesn't exist yet
+            csv_path = Path("debug_step_G_changes.csv")
+            write_header = not csv_path.exists()
+            debug_df.to_csv(csv_path, mode="a", header=write_header, index=False)
 
     extra_stats["string_cells_normalized"] = string_cells_modified
+    extra_stats["normalized_columns_stats"] = normalized_columns_stats
     log.info(f"   String cells normalized: {string_cells_modified:,}")
 
     # ------------------------------------------------------------------ #
-    # H. Detect schema inconsistencies (log only)
+    # H. Detect schema inconsistencies (Hybrid: Defined + Inferred) LOG ONLY
     #
     # We look for two patterns:
     #   1. Columns whose name suggests they hold integers (e.g. year) but
@@ -307,66 +379,162 @@ def run_checks(
     # Column name fragments that indicate the column holds identifier /
     # code values that legitimately look numeric but must stay as strings.
     IDENTIFIER_HINTS = (
-        "route", "rout",      # road / trail route numbers
-        "fips", "fipsc",      # FIPS codes (leading zeros matter)
-        "huc",                # hydrologic unit codes
-        "zip",                # postal codes (leading zeros matter)
-        "code", "cod",        # generic code columns
-        "guid", "uuid",       # globally unique identifiers
-        "interstate",         # interstate highway identifiers
-        "intersta",           # truncated interstate column names
+        "route",
+        "rout",  # road / trail route numbers
+        "fips",
+        "fipsc",  # FIPS codes (leading zeros matter)
+        "huc",  # hydrologic unit codes
+        "zip",  # postal codes (leading zeros matter)
+        "code",
+        "cod",  # generic code columns
+        "guid",
+        "uuid",  # globally unique identifiers
+        "interstate",  # interstate highway identifiers
+        "intersta",  # truncated interstate column names
     )
 
     # Column name fragments that suggest a column *should* hold a numeric
     # measurement.  We intentionally exclude "id" and "num" here because
     # they are too ambiguous: "road_id" or "feature_num" are often string
     # identifiers, not quantities.
-    NUMERIC_HINTS = ("area", "length", "count")
+    NUMERIC_HINTS = (
+        "area",
+        "length",
+        "count",
+    )
+    # however county is an expected column that is not numeric - example of Scunthorpe's problem
+    NUMERIC_EXCLUDE = ("county", "account", "country")
 
     schema_issues = 0
+    schema_issue_details: list[dict[str, str]] = []
+
+    def _record_schema_issue(column: str, issue: str, dtype_name: str) -> None:
+        schema_issue_details.append(
+            {
+                "column": column,
+                "issue": issue,
+                "dtype": dtype_name,
+            }
+        )
+
+    target_schema_safe = target_schema or {}
+
     for col in gdf_proc.columns:
         if col == "geometry":
             continue
         col_lower = col.lower()
-        dtype = gdf_proc[col].dtype
-        non_null = gdf_proc[col].dropna()
-        already_flagged = False
+        current_series = gdf_proc[col]
+        dtype = current_series.dtype
+        non_null = current_series.dropna()
 
-        # Check 1: columns suggesting year/integer but stored as float.
-        # Shapefiles in particular store all numbers as double, so year
-        # columns come back as 2024.0 instead of 2024.
-        if any(hint in col_lower for hint in ("year", "yr")):
-            if pd.api.types.is_float_dtype(dtype):
-                log.warning(f"   Schema: column '{col}' suggests integer (year) but has float dtype")
-                schema_issues += 1
-                already_flagged = True
+        target_dtype = target_schema_safe.get(col_lower, "").strip().upper()
 
-        # Check 2: columns whose name strongly implies a numeric measurement
-        # but are stored as object (string).
-        if not already_flagged and any(hint in col_lower for hint in NUMERIC_HINTS):
-            if pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
-                log.warning(f"   Schema: column '{col}' suggests numeric measurement but has object dtype")
-                schema_issues += 1
-                already_flagged = True
+        # ==========================================
+        # PATH A: STRICT MODE (Defined in layer_defs)
+        # ==========================================
+        if target_dtype:
+            if target_dtype in ("INTEGER", "FLOAT") and pd.api.types.is_object_dtype(
+                dtype
+            ):
+                coerced = pd.to_numeric(current_series, errors="coerce")
+                failed = current_series.notna().sum() - coerced.notna().sum()
 
-        # Check 3: object columns whose sampled values are overwhelmingly
-        # numeric-looking — but skip known identifier/code columns because
-        # those legitimately contain numeric-looking strings (route numbers,
-        # FIPS codes, etc.) that must not be converted.
-        is_identifier = any(hint in col_lower for hint in IDENTIFIER_HINTS)
-        if not already_flagged and not is_identifier and pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
-            try:
-                sample = non_null.head(20)
-                coerced = pd.to_numeric(sample, errors="coerce")
-                if len(coerced) > 0 and coerced.notna().sum() / len(coerced) > 0.8:
-                    log.warning(
-                        f"   Schema: column '{col}' values appear numeric but dtype is object"
+                if failed > 0:
+                    _record_schema_issue(
+                        str(col),
+                        f"[Defined] Target is {target_dtype}, but {failed} text values failed coercion.",
+                        str(dtype),
                     )
                     schema_issues += 1
-            except Exception:
-                pass
+                else:
+                    # SUCCESS: Apply the coercion to the dataframe!
+                    if target_dtype == "INTEGER":
+                        gdf_proc[col] = coerced.astype(
+                            "Int64"
+                        )  # Pandas nullable integer
+                    else:
+                        gdf_proc[col] = coerced.astype("float64")
+
+            elif target_dtype in ("DATETIME", "DATE") and pd.api.types.is_object_dtype(
+                dtype
+            ):
+                coerced = pd.to_datetime(current_series, errors="coerce")
+                failed = current_series.notna().sum() - coerced.notna().sum()
+
+                if failed > 0:
+                    _record_schema_issue(
+                        str(col),
+                        f"[Defined] Target is {target_dtype}, but {failed} values failed datetime coercion.",
+                        str(dtype),
+                    )
+                    schema_issues += 1
+                else:
+                    # SUCCESS: Apply the coercion
+                    if target_dtype == "DATE":
+                        gdf_proc[col] = coerced.dt.date
+                    else:
+                        gdf_proc[col] = coerced
+
+        # ==========================================
+        # PATH B: INFERRED MODE (Not in layer_defs)
+        # ==========================================
+        else:
+            already_flagged = False
+
+            # Check 1: columns suggesting year/integer but stored as float.
+            # Shapefiles in particular store all numbers as double, so year
+            # columns come back as 2024.0 instead of 2024.
+            if any(hint in col_lower for hint in ("year", "yr")):
+                if pd.api.types.is_float_dtype(dtype):
+                    _record_schema_issue(
+                        str(col),
+                        "[Inferred] suggests integer (year) but has float dtype",
+                        str(dtype),
+                    )
+                    schema_issues += 1
+                    already_flagged = True
+
+            # Check 2: columns whose name strongly implies a numeric measurement
+            # but are stored as object (string).
+            if not already_flagged:
+                is_numeric_hint = any(hint in col_lower for hint in NUMERIC_HINTS)
+                is_false_alarm = (hint in col_lower for hint in NUMERIC_EXCLUDE)
+                if is_numeric_hint and not is_false_alarm:
+                    if pd.api.types.is_object_dtype(dtype) and len(non_null) > 0:
+                        _record_schema_issue(
+                            str(col),
+                            "suggests numeric measurement but has object dtype",
+                            str(dtype),
+                        )
+                        schema_issues += 1
+                        already_flagged = True
+
+            # Check 3: object columns whose sampled values are overwhelmingly
+            # numeric-looking — but skip known identifier/code columns because
+            # those legitimately contain numeric-looking strings (route numbers,
+            # FIPS codes, etc.) that must not be converted.
+            is_identifier = any(hint in col_lower for hint in IDENTIFIER_HINTS)
+            if (
+                not already_flagged
+                and not is_identifier
+                and pd.api.types.is_object_dtype(dtype)
+                and len(non_null) > 0
+            ):
+                try:
+                    sample = non_null.head(20)
+                    coerced = pd.to_numeric(sample, errors="coerce")
+                    if len(coerced) > 0 and coerced.notna().sum() / len(coerced) > 0.8:
+                        _record_schema_issue(
+                            str(col),
+                            "values appear numeric but dtype is object",
+                            str(dtype),
+                        )
+                        schema_issues += 1
+                except Exception:
+                    pass
 
     extra_stats["schema_inconsistencies"] = schema_issues
+    extra_stats["schema_issue_details"] = schema_issue_details
     log.info(f"   Schema inconsistencies detected: {schema_issues:,}")
 
     # Set of already-dropped indices (updated incrementally below)
@@ -380,7 +548,7 @@ def run_checks(
     for idx in gdf_proc.index:
         if idx in already_dropped:
             continue
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is None:
             continue
         try:
@@ -411,46 +579,51 @@ def run_checks(
     #     current feature is the first occurrence.
     #   - Legacy / single-pass: fall back to a local WKT dict as before.
     # ------------------------------------------------------------------ #
-    log.info("J. Dropping duplicate geometries...")
+    if skip_geometry_dedup:
+        log.info("J. Skipping geometry-only dedup (skip_geometry_dedup=true)...")
+        extra_stats["geometry_duplicates_dropped"] = 0
+    else:
+        log.info("J. Dropping duplicate geometries...")
     geom_dup_count = 0
 
-    if duplicate_geom_hashes is not None and processed_geom_hashes is not None:
-        # Cross-chunk dedup using SHA1 of WKB bytes.
-        for idx in gdf_proc.index:
-            if idx in already_dropped:
-                continue
-            geom = gdf_proc.at[idx, "geometry"]
-            if geom is None:
-                continue
-            try:
-                geom_hash = hashlib.sha1(geom.wkb).hexdigest()
-            except Exception:
-                continue
-            if geom_hash in duplicate_geom_hashes:
-                if geom_hash in processed_geom_hashes:
-                    # A previous chunk (or earlier feature in this chunk) already kept
-                    # the first occurrence — this is a duplicate.
+    if not skip_geometry_dedup:
+        if duplicate_geom_hashes is not None and processed_geom_hashes is not None:
+            # Cross-chunk dedup using SHA1 of WKB bytes.
+            for idx in gdf_proc.index:
+                if idx in already_dropped:
+                    continue
+                geom = _get_geometry(gdf_proc, idx)
+                if geom is None:
+                    continue
+                try:
+                    geom_hash = hashlib.sha1(geom.wkb).hexdigest()
+                except Exception:
+                    continue
+                if geom_hash in duplicate_geom_hashes:
+                    if geom_hash in processed_geom_hashes:
+                        # A previous chunk (or earlier feature in this chunk) already kept
+                        # the first occurrence — this is a duplicate.
+                        dropped_list.append((idx, "DROPPED", "Duplicate geometry"))
+                        already_dropped.add(idx)
+                        geom_dup_count += 1
+                    else:
+                        # First occurrence of this duplicated geometry — keep it and record.
+                        processed_geom_hashes.add(geom_hash)
+                # else: hash is unique globally — no tracking needed.
+        else:
+            # Legacy single-pass: local WKT dict (original behaviour).
+            _seen_wkt: dict[str, int] = {}
+            for idx in gdf_proc.index:
+                if idx in already_dropped:
+                    continue
+                geom = _get_geometry(gdf_proc, idx)
+                wkt = geom.wkt if geom is not None else "__null__"
+                if wkt in _seen_wkt:
                     dropped_list.append((idx, "DROPPED", "Duplicate geometry"))
                     already_dropped.add(idx)
                     geom_dup_count += 1
                 else:
-                    # First occurrence of this duplicated geometry — keep it and record.
-                    processed_geom_hashes.add(geom_hash)
-            # else: hash is unique globally — no tracking needed.
-    else:
-        # Legacy single-pass: local WKT dict (original behaviour).
-        _seen_wkt: Dict[str, int] = {}
-        for idx in gdf_proc.index:
-            if idx in already_dropped:
-                continue
-            geom = gdf_proc.at[idx, "geometry"]
-            wkt = geom.wkt if geom is not None else "__null__"
-            if wkt in _seen_wkt:
-                dropped_list.append((idx, "DROPPED", "Duplicate geometry"))
-                already_dropped.add(idx)
-                geom_dup_count += 1
-            else:
-                _seen_wkt[wkt] = idx
+                    _seen_wkt[wkt] = idx
 
     extra_stats["geometry_duplicates_dropped"] = geom_dup_count
     log.info(f"   Duplicate geometries dropped: {geom_dup_count:,}")
@@ -470,7 +643,7 @@ def run_checks(
         for idx in gdf_proc.index:
             if idx in already_dropped:
                 continue
-            geom = gdf_proc.at[idx, "geometry"]
+            geom = _get_geometry(gdf_proc, idx)
             if geom is None:
                 continue
             try:
@@ -481,7 +654,9 @@ def run_checks(
             row_hash = hashlib.sha1(wkb + repr(attr_vals).encode()).hexdigest()
             if row_hash in duplicate_row_hashes:
                 if row_hash in processed_row_hashes:
-                    dropped_list.append((idx, "DROPPED", "Duplicate row (attributes + geometry)"))
+                    dropped_list.append(
+                        (idx, "DROPPED", "Duplicate row (attributes + geometry)")
+                    )
                     already_dropped.add(idx)
                     row_dup_count += 1
                 else:
@@ -489,16 +664,18 @@ def run_checks(
             # else: unique row globally — no tracking needed.
     else:
         # Legacy single-pass: local dict (original behaviour).
-        _seen_rows: Dict[tuple, int] = {}
+        _seen_rows: dict[tuple, int] = {}
         for idx in gdf_proc.index:
             if idx in already_dropped:
                 continue
-            geom = gdf_proc.at[idx, "geometry"]
+            geom = _get_geometry(gdf_proc, idx)
             wkt = geom.wkt if geom is not None else "__null__"
             attr_vals = tuple(str(gdf_proc.at[idx, c]) for c in _attr_cols)
             row_key = (attr_vals, wkt)
             if row_key in _seen_rows:
-                dropped_list.append((idx, "DROPPED", "Duplicate row (attributes + geometry)"))
+                dropped_list.append(
+                    (idx, "DROPPED", "Duplicate row (attributes + geometry)")
+                )
                 already_dropped.add(idx)
                 row_dup_count += 1
             else:
@@ -519,7 +696,7 @@ def run_checks(
         for idx in gdf_proc.index:
             if idx in already_dropped:
                 continue
-            geom = gdf_proc.at[idx, "geometry"]
+            geom = _get_geometry(gdf_proc, idx)
             if geom is None:
                 continue
             try:
@@ -538,7 +715,9 @@ def run_checks(
                         below = True
                 if below:
                     if min_size_drop:
-                        dropped_list.append((idx, "DROPPED", "Below minimum size threshold"))
+                        dropped_list.append(
+                            (idx, "DROPPED", "Below minimum size threshold")
+                        )
                         already_dropped.add(idx)
                     min_size_count += 1
             except Exception:
@@ -598,7 +777,9 @@ def run_checks(
     #     The buffer offset is half this (0.5 m) because the negative buffer
     #     shrinks from *both* sides simultaneously.
     # ------------------------------------------------------------------ #
-    log.info("M. Dropping sliver polygons (two-phase: IQ pre-filter + negative buffer)...")
+    log.info(
+        "M. Dropping sliver polygons (two-phase: IQ pre-filter + negative buffer)..."
+    )
 
     # Phase 1 threshold: features with IQ above this are immediately kept.
     # Deliberately loose — we prefer false positives (extra buffer calls) over
@@ -616,7 +797,7 @@ def run_checks(
     for idx in gdf_proc.index:
         if idx in already_dropped:
             continue
-        geom = gdf_proc.at[idx, "geometry"]
+        geom = _get_geometry(gdf_proc, idx)
         if geom is None:
             continue
         try:
@@ -640,7 +821,7 @@ def run_checks(
             # IQ is O(1) — just arithmetic on cached area/perimeter values.
             # Features above the threshold are provably not slivers and cost
             # nothing further.
-            iq = 4.0 * math.pi * area / (perimeter ** 2)
+            iq = 4.0 * math.pi * area / (perimeter**2)
             if iq > IQ_CANDIDATE_THRESHOLD:
                 # Compact enough that no sliver check is required.
                 continue

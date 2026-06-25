@@ -31,6 +31,7 @@ import os
 import re
 import sys
 import traceback
+import warnings
 import json
 from pathlib import Path
 
@@ -53,6 +54,45 @@ from .lib.garbage import write_garbage_chunk
 from .lib.geometry_utils import _geom_type_str
 from .lib.output import output_gdf_chunk
 from .lib.report import write_markdown_report
+
+
+# ---------------------------------------------------------------------------
+# Datetime-warning helper
+# ---------------------------------------------------------------------------
+
+# Strips "at position N" from a warning message so that the same underlying
+# issue in different chunks is logged only once per run.
+_datetime_pos_re = re.compile(r",?\s*at position \d+")
+# Module-level dedup set — cleared on each call to vector_prep().
+_seen_datetime_warnings: set[str] = set()
+
+
+def _read_dataframe_warn(
+    path: str,
+    log: "Logger | None" = None,
+    **kwargs,
+) -> gpd.GeoDataFrame:
+    """Wrap pyogrio.read_dataframe, routing datetime-parsing UserWarnings
+    through the Logger as data-quality issues rather than printing to stderr.
+    The same underlying message is reported only once per run (duplicate
+    occurrences across chunks are counted but not re-logged).
+    """
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        gdf = pyogrio.read_dataframe(path, **kwargs)
+    _log = log or Logger("Vector Prep")
+    for w in caught:
+        msg = str(w.message)
+        if issubclass(w.category, UserWarning) and "Error parsing datetimes" in msg:
+            dedup_key = _datetime_pos_re.sub("", msg).strip()
+            if dedup_key not in _seen_datetime_warnings:
+                _seen_datetime_warnings.add(dedup_key)
+                _log.warning(
+                    f"Data quality - datetime out of range in source data: {msg}"
+                )
+        else:
+            warnings.warn_explicit(w.message, w.category, w.filename, w.lineno)
+    return gdf
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +249,7 @@ def _build_duplicate_hash_sets(
     layer_name: str | None,
     epsg: int | None,
     sql_filter: str | None = None,
-) -> tuple[int, set[str], set[str], str | None]:
+) -> tuple[int, set[str], set[str], str | None, set[str]]:
     """Iterate all features with pyogrio and build sets of duplicate hashes.
 
     Geometries are reprojected to *epsg* before hashing so that the WKB bytes
@@ -228,6 +268,7 @@ def _build_duplicate_hash_sets(
         duplicate_row_hashes: SHA1-of-(WKB + repr(attrs)) hashes appearing 2+ times.
         dominant_type: Most common non-GeometryCollection base geometry type,
             or None if the dataset is empty.
+        known_string_columns: set of column names that are stored as strings
     """
     geom_hash_counts: dict[str, int] = {}
     row_hash_counts: dict[str, int] = {}
@@ -240,6 +281,14 @@ def _build_duplicate_hash_sets(
     info = pyogrio.read_info(
         input_path, **({"layer": layer_name} if layer_name else {})
     )
+
+    # Pyogrio returns 'fields' and 'dtypes' as arrays in the info dict
+    known_string_columns = {
+        str(field)
+        for field, dtype in zip(info["fields"], info["dtypes"])
+        if dtype in ("object", "string")
+    }
+
     estimated_total_features = info["features"]
     # attr_cols: sorted field names (no geometry) — canonical order for row hashing.
     attr_cols = sorted(info["fields"])
@@ -266,7 +315,7 @@ def _build_duplicate_hash_sets(
     features_hashed = 0
     offset = 0
     while True:
-        chunk = pyogrio.read_dataframe(
+        chunk = _read_dataframe_warn(
             input_path,
             skip_features=offset,
             max_features=_P1_CHUNK,
@@ -334,7 +383,13 @@ def _build_duplicate_hash_sets(
         else None
     )
 
-    return features_hashed, duplicate_geom_hashes, duplicate_row_hashes, dominant_type
+    return (
+        features_hashed,
+        duplicate_geom_hashes,
+        duplicate_row_hashes,
+        dominant_type,
+        known_string_columns,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -353,7 +408,7 @@ def _read_chunk(
     layer_kwargs = {"layer": layer_name} if layer_name else {}
     if sql_filter:
         layer_kwargs["where"] = sql_filter
-    return pyogrio.read_dataframe(
+    return _read_dataframe_warn(
         input_path,
         skip_features=offset,
         max_features=chunk_size,
@@ -378,6 +433,7 @@ def vector_prep(
     chunk_size: int = 10_000,
     field_map_config: FieldMapConfig | None = None,
     sql_filter: str | None = None,
+    skip_geometry_dedup: bool = False,
 ) -> dict:
     """Vector Prep: clean, validate, and optionally simplify a vector dataset.
 
@@ -405,11 +461,17 @@ def vector_prep(
         sql_filter: Optional SQL WHERE clause to pre-filter features on read
             (e.g. ``"state_code = 'CA'"``).  Applied by pyogrio at read time so
             only matching features are loaded into memory.
+        skip_geometry_dedup: If True, geometry-only duplicate dropping (step J)
+            is skipped. Full duplicate dropping (step K) still applies.
 
     Returns:
         stats dict (suitable for print_report).
     """
     log = Logger("Vector Prep")
+
+    # Reset per-run dedup set so repeated calls in the same process each report
+    # their own datetime-parse issues rather than inheriting a stale seen-set.
+    _seen_datetime_warnings.clear()
 
     # Validate that all I/O paths are absolute before doing anything else.
     _path_errors: list[str] = []
@@ -469,10 +531,14 @@ def vector_prep(
     if sql_filter:
         log.info(f"SQL filter applied: {sql_filter}")
     log.info(f"Pass 1: scanning all features for duplicate hashes: {input_dataset}")
-    total_features, duplicate_geom_hashes, duplicate_row_hashes, dominant_type = (
-        _build_duplicate_hash_sets(
-            input_dataset, layer_name, epsg, sql_filter=sql_filter
-        )
+    (
+        total_features,
+        duplicate_geom_hashes,
+        duplicate_row_hashes,
+        dominant_type,
+        known_string_columns,
+    ) = _build_duplicate_hash_sets(
+        input_dataset, layer_name, epsg, sql_filter=sql_filter
     )
     log.info(
         f"Pass 1 complete — {total_features:,} features scanned; "
@@ -518,6 +584,8 @@ def vector_prep(
         "duplicate_vertices_detected": 0,
         "string_cells_normalized": 0,
         "schema_inconsistencies": 0,
+        "normalized_columns_stats": {},
+        "schema_issue_details": [],
         "zero_area_bbox_dropped": 0,
         "geometry_duplicates_dropped": 0,
         "row_duplicates_dropped": 0,
@@ -601,6 +669,15 @@ def vector_prep(
         # Snapshot before any modifications (needed for garbage output).
         original_chunk = chunk_gdf.copy()
 
+        target_schema: dict[str, str] = {}
+        if field_map_config is not None:
+            for src_name, out_name in field_map_config.field_map.items():
+                if out_name in field_map_config.column_specs:
+                    # Key must be lowercase to match step H's lookup logic
+                    target_schema[src_name.lower()] = field_map_config.column_specs[
+                        out_name
+                    ].dtype
+
         # ---- Run checks A–M ------------------------------------
         chunk_gdf, extra_stats, dropped_list, changed_list = run_checks(
             chunk_gdf,
@@ -611,6 +688,9 @@ def vector_prep(
             processed_row_hashes=processed_row_hashes,
             dominant_type=dominant_type,
             min_size_drop=min_size_drop,
+            skip_geometry_dedup=skip_geometry_dedup,
+            known_string_columns=known_string_columns,
+            target_schema=target_schema,
         )
 
         # If a feature was both changed (Step D) and later dropped (Steps I–M),
@@ -636,6 +716,15 @@ def vector_prep(
                 total_stats[key] = total_stats.get(key, False) or val
             elif isinstance(val, int):
                 total_stats[key] = total_stats.get(key, 0) + val
+            elif key == "normalized_columns_stats" and isinstance(val, dict):
+                existing = total_stats.get("normalized_columns_stats", {})
+                for col_name, count in val.items():
+                    existing[col_name] = existing.get(col_name, 0) + count
+                total_stats["normalized_columns_stats"] = existing
+            elif key == "schema_issue_details" and isinstance(val, list):
+                existing_details = list(total_stats.get("schema_issue_details", []))
+                existing_details.extend(v for v in val if isinstance(v, dict))
+                total_stats["schema_issue_details"] = existing_details
 
         for key, val in clean_stats.items():
             if key == "input_count":
@@ -834,6 +923,15 @@ def main():
         default=False,
     )
     direct.add_argument(
+        "--skip_geometry_dedup",
+        help=(
+            "Skip dropping geometry-only duplicates (check J). "
+            "Full duplicate rows (check K) are still dropped."
+        ),
+        action="store_true",
+        default=False,
+    )
+    direct.add_argument(
         "--log_file",
         help=(
             "Path to a log file. When provided, logging output will be written to this file."
@@ -865,6 +963,7 @@ def main():
         "epsg",
         "min_size",
         "min_size_drop",
+        "skip_geometry_dedup",
         "chunk_size",
     ]
     if args.config is not None:
@@ -962,6 +1061,9 @@ def main():
     min_size_drop_val = args.min_size_drop or bool(
         cfg_params.get("min_size_drop", False)
     )
+    skip_geometry_dedup_val = args.skip_geometry_dedup or bool(
+        cfg_params.get("skip_geometry_dedup", False)
+    )
 
     input_path = args.input or cfg_params.get("input") or None
     output_path_val = args.output or cfg_params.get("output") or None
@@ -1024,6 +1126,7 @@ def main():
             chunk_size=effective_chunk_size,
             field_map_config=field_map_config,
             sql_filter=effective_filter,
+            skip_geometry_dedup=skip_geometry_dedup_val,
         )
         if not output_path_val:
             log.info("No --output path provided; skipping output write.")

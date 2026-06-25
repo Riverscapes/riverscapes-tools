@@ -1,0 +1,609 @@
+{
+  "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+  "tool_schema_name": "vector-prep-usace-nid",
+  "tool_schema_version": "0.0.1",
+  "layers": [
+    {
+      "layer_id": "usace-nid",
+      "layer_name": "National Inventory of Dams",
+      "description": "The National Inventory of Dams (NID) is a congressionally authorized database that documents more than 91,000 dams across the U.S. and its territories. It is maintained and published by the U.S. Army Corps of Engineers, in cooperation with the Association of State Dam Safety Officials, the states, territories, and federal agencies.",
+      "layer_type": "Vector",
+      "columns": [
+        {
+          "name": "name",
+          "dtype": "STRING",
+          "friendly_name": "Dam Name",
+          "description": "The official name of the dam. For dams that do not have an official name, the popular name is used.",
+          "theme": "Description"
+        },
+        {
+          "name": "other_names",
+          "dtype": "STRING",
+          "friendly_name": "Other Names",
+          "theme": "Description"
+        },
+        {
+          "name": "former_names",
+          "dtype": "STRING",
+          "friendly_name": "Former Names",
+          "theme": "Description"
+        },
+        {
+          "name": "nidid",
+          "dtype": "STRING",
+          "friendly_name": "NID ID",
+          "description": "The official NID identification number for the dam, known formerly as the National ID.",
+          "theme": "Description"
+        },
+        {
+          "name": "other_structure_id",
+          "dtype": "STRING",
+          "friendly_name": "Other Structure ID",
+          "description": "The identification number (S001, S002, etc.) of a separate structure, such as a saddle dam or dike, associated with the dam project. This field applies only to saddle dams, dikes or other separate structures associated with a primary dam. This field is blank for all other dams.",
+          "theme": "Description"
+        },
+        {
+          "name": "federal_id",
+          "dtype": "STRING",
+          "friendly_name": "Federal ID",
+          "description": "The unique identifier for each dam record. For saddle dams, dikes or other separate structures associated with the dam project, it is a concatenation of the primary dam’s NID ID and the Other Structure ID. For all other dams, it is the NID ID.",
+          "theme": "Description"
+        },
+        {
+          "name": "owner_names",
+          "dtype": "STRING",
+          "friendly_name": "Owner Names",
+          "description": "Name(s) of the dam owner. If multiple owners, different owners are separated by a semicolon.",
+          "theme": "Description"
+        },
+        {
+          "name": "owner_types",
+          "dtype": "STRING",
+          "friendly_name": "Owner Types",
+          "description": "Category describing the dam owner(s). If multiple categories, they are separated by a semicolon.",
+          "theme": "Description"
+        },
+        {
+          "name": "primary_owner_type",
+          "dtype": "STRING",
+          "friendly_name": "Primary Owner Type",
+          "theme": "Description"
+        },
+        {
+          "name": "number_associated_structures",
+          "dtype": "INTEGER",
+          "friendly_name": "Number of Associated Structures",
+          "theme": "Description"
+        },
+        {
+          "name": "is_associated_structure",
+          "dtype": "STRING",
+          "friendly_name": "Is Associated Structure?",
+          "theme": "Description"
+        },
+        {
+          "name": "designer_names",
+          "dtype": "STRING",
+          "friendly_name": "Designer Names",
+          "theme": "Description"
+        },
+        {
+          "name": "non_fed_on_fed",
+          "dtype": "STRING",
+          "friendly_name": "Non-Federal Dam on Federal Property",
+          "theme": "Description"
+        },
+        {
+          "name": "primary_purpose",
+          "dtype": "STRING",
+          "friendly_name": "Primary Purpose",
+          "description": "Category describing the main purpose for which the reservoir is used. If more than one purpose, the most important is used.",
+          "theme": "Description"
+        },
+        {
+          "name": "purposes",
+          "dtype": "STRING",
+          "friendly_name": "Purposes",
+          "description": "Category describing the current purpose(s) for which the reservoir is used.",
+          "theme": "Description"
+        },
+        {
+          "name": "primary_source_agency",
+          "dtype": "STRING",
+          "friendly_name": "Source Agency",
+          "theme": "Description"
+        },
+        {
+          "name": "state_fed_agency",
+          "dtype": "STRING",
+          "friendly_name": "State or Federal Agency ID",
+          "theme": "Description"
+        },
+        {
+          "name": "latitude",
+          "dtype": "FLOAT",
+          "friendly_name": "Latitude",
+          "description": "Latitude at dam centerline as a single value in decimal degrees, NAD83.",
+          "theme": "Description"
+        },
+        {
+          "name": "longitude",
+          "dtype": "FLOAT",
+          "friendly_name": "Longitude",
+          "description": "Longitude at dam centerline as a single value in decimal degrees, NAD83.",
+          "theme": "Description"
+        },
+        {
+          "name": "state",
+          "dtype": "STRING",
+          "friendly_name": "State",
+          "theme": "Description"
+        },
+        {
+          "name": "county",
+          "dtype": "STRING",
+          "friendly_name": "County",
+          "theme": "Description"
+        },
+        {
+          "name": "countystate",
+          "dtype": "STRING",
+          "friendly_name": "County, State",
+          "theme": "Description"
+        },
+        {
+          "name": "city",
+          "dtype": "STRING",
+          "friendly_name": "City",
+          "theme": "Description"
+        },
+        {
+          "name": "distance",
+          "dtype": "FLOAT",
+          "friendly_name": "Distance to Nearest City",
+          "data_unit": "mile",
+          "theme": "Description"
+        },
+        {
+          "name": "river_or_stream",
+          "dtype": "STRING",
+          "friendly_name": "River or Stream Name",
+          "description": "River or Stream Standard Entry: The official name of the river or stream on which the dam is built. If the stream is unnamed, identify it as a tributary to a named river.",
+          "theme": "Description"
+        },
+        {
+          "name": "congdist",
+          "dtype": "STRING",
+          "friendly_name": "Congressional District",
+          "theme": "Description"
+        },
+        {
+          "name": "aiannh",
+          "dtype": "STRING",
+          "friendly_name": "American Indian/Alaska Native/Native Hawaiian",
+          "theme": "Description",
+          "description": "Calculated Field: Name of federally recognized American Indian reservations and off-erservation trust land areas, state-recognized American Indian reservations, or Hawaiian home lands (HHLs)."
+        },
+        {
+          "name": "state_regulated",
+          "dtype": "STRING",
+          "friendly_name": "State Regulated Dam",
+          "description": "Calculated field based on State Permitting Authority, State Inspection Authority, State Enforcement Authority, and State Jurisdictional Dam. If Yes to all four authority criteria, then the dam is considered state regulated and listed as Yes. If the state regulatory organization does not have all four authorities for this dam, then it is considered not state regulated and listed as No.",
+          "theme": "Description"
+        },
+        {
+          "name": "state_jurisdiction",
+          "dtype": "STRING",
+          "friendly_name": "State Jurisdictional Dam",
+          "theme": "Description"
+        },
+        {
+          "name": "state_regulatory_agency",
+          "dtype": "STRING",
+          "friendly_name": "State Regulatory Agency",
+          "theme": "Description"
+        },
+        {
+          "name": "state_permitting",
+          "dtype": "STRING",
+          "friendly_name": "State Permitting Authority",
+          "theme": "Description"
+        },
+        {
+          "name": "state_inspection",
+          "dtype": "STRING",
+          "friendly_name": "State Inspection Authority",
+          "theme": "Description"
+        },
+        {
+          "name": "state_enforcement",
+          "dtype": "STRING",
+          "friendly_name": "State Enforcement Authority",
+          "theme": "Description"
+        },
+        {
+          "name": "federally_regulated_dam",
+          "dtype": "STRING",
+          "friendly_name": "Federally Regulated Dam",
+          "description": "Calculated field based on the data field “Federal Agency Involvement Regulatory”. If a Federal Agency is listed as being involved in the regulatory aspects of the dam, then the dam is listed as Yes, federally regulated.",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_owners",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Owners",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_fundings",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Funding",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_designers",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Design",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_constructions",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Construction",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_regulatories",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Regulatory",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_inspections",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Inspection",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_operations",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Operation",
+          "theme": "Description"
+        },
+        {
+          "name": "fed_agency_others",
+          "dtype": "STRING",
+          "friendly_name": "Federal Agency Involvement Other",
+          "theme": "Description"
+        },
+        {
+          "name": "built_under_sec_of_ag_auth",
+          "dtype": "STRING",
+          "friendly_name": "Built Under the Authority of the Secretary of Agriculture",
+          "theme": "Description"
+        },
+        {
+          "name": "nrcs_watershed_dam_auth",
+          "dtype": "STRING",
+          "friendly_name": "NRCS Watershed Dam Authorization",
+          "theme": "Description"
+        },
+        {
+          "name": "primary_dam_type",
+          "dtype": "STRING",
+          "friendly_name": "Primary Dam Type",
+          "description": "Category describing the main type of dam. If more than one type, the most dominant is used.",
+          "theme": "Structure"
+        },
+        {
+          "name": "dam_types",
+          "dtype": "STRING",
+          "friendly_name": "Dam Types",
+          "description": "Category describing the type of dam.",
+          "theme": "Structure"
+        },
+        {
+          "name": "core_types",
+          "dtype": "STRING",
+          "friendly_name": "Core Types",
+          "theme": "Structure"
+        },
+        {
+          "name": "foundations",
+          "dtype": "STRING",
+          "friendly_name": "Foundation",
+          "theme": "Structure"
+        },
+        {
+          "name": "dam_height",
+          "dtype": "FLOAT",
+          "friendly_name": "Dam Height",
+          "data_unit": "ft",
+          "description": "Height of the dam, which is defined as the vertical distance between the lowest point on the crest of the dam and the lowest point in the original streambed.",
+          "theme": "Structure"
+        },
+        {
+          "name": "hydraulic_height",
+          "dtype": "FLOAT",
+          "friendly_name": "Hydraulic Height",
+          "data_unit": "ft",
+          "description": "Hydraulic height of the dam, which is defined as the vertical difference between the maximum design water level and the lowest point in the original streambed.",
+          "theme": "Structure"
+        },
+        {
+          "name": "structural_height",
+          "dtype": "FLOAT",
+          "friendly_name": "Structural Height",
+          "data_unit": "ft",
+          "description": "Structural height of the dam, which is defined as the vertical distance from the lowest point of the excavated foundation to the top of the dam. Top of dam refers to the parapet wall and not the crest.",
+          "theme": "Structure"
+        },
+        {
+          "name": "nid_height",
+          "dtype": "FLOAT",
+          "friendly_name": "NID Height",
+          "data_unit": "ft",
+          "description": "Calculated field: Maximum value of dam height, structural height, and hydraulic height. Accepted as the general height of the dam.",
+          "theme": "Structure"
+        },
+        {
+          "name": "nid_height_category",
+          "dtype": "STRING",
+          "friendly_name": "NID Height Category",
+          "description": "Calculated field: Based on the NID Height, grouped into categories: less than 25 feet, 25–49 feet, 50–100 feet, and greater than 100 feet.",
+          "theme": "Structure"
+        },
+        {
+          "name": "dam_length",
+          "dtype": "FLOAT",
+          "friendly_name": "Dam Length",
+          "data_unit": "ft",
+          "description": "Length of the dam, which is defined as the length along the top of the dam. This also includes the spillway, powerplant, navigation lock, fish pass, etc., where these form part of the length of the dam. If detached from the dam, these structures should not be included.",
+          "theme": "Structure"
+        },
+        {
+          "name": "dam_volume",
+          "dtype": "FLOAT",
+          "friendly_name": "Volume",
+          "data_unit": "cubic yards",
+          "description": "Total volume occupied by the materials used in the dam structure. Portions of powerhouse, locks, and spillways are included only if they are an integral part of the dam and required for structural stability.",
+          "theme": "Structure"
+        },
+        {
+          "name": "year_completed",
+          "dtype": "INTEGER",
+          "friendly_name": "Year Completed",
+          "description": "Year (four digits) when the original main dam structure was completed. If unknown, and reasonable estimate is unavailable, the value will be blank.",
+          "theme": "Structure"
+        },
+        {
+          "name": "year_completed_category",
+          "dtype": "STRING",
+          "friendly_name": "Year Completed Category",
+          "description": "Calculated field: Based on the Year Completed Date, grouped into categories: before 1900, 1900–1909, 1910–1919, 1920–1929, 1930–1939, 1940–1949, 1950–1959, 1960–1969, 1970–1979, 1980–1989, 1900–1999, Since 2000, and Undetermined.",
+          "theme": "Structure"
+        },
+        {
+          "name": "years_modified",
+          "friendly_name": "Years Modified",
+          "theme": "Structure",
+          "dtype": "STRING"
+        },
+        {
+          "name": "nid_storage",
+          "dtype": "FLOAT",
+          "friendly_name": "NID Storage",
+          "data_unit": "acre * ft",
+          "description": "Calculated field: Maximum value of normal storage and maximum storage. Accepted as the general storage of the dam.",
+          "theme": "Structure"
+        },
+        {
+          "name": "max_storage",
+          "dtype": "FLOAT",
+          "friendly_name": "Max Storage",
+          "data_unit": "acre * ft",
+          "description": "Maximum storage, which is defined as the total storage space in a reservoir below the maximum attainable water surface elevation, including any surcharge storage.",
+          "theme": "Structure"
+        },
+        {
+          "name": "normal_storage",
+          "dtype": "FLOAT",
+          "friendly_name": "Normal Storage",
+          "data_unit": "acre * ft",
+          "description": "Normal storage, which is defined as the total storage space in a reservoir below the normal retention level, including dead and inactive storage and excluding any flood control or surcharge storage. For normally dry dams, the normal storage will be a zero value. If unknown, the value will be blank and not zero.",
+          "theme": "Structure"
+        },
+        {
+          "name": "surface_area",
+          "dtype": "FLOAT",
+          "friendly_name": "Surface Area",
+          "data_unit": "acres",
+          "description": "Surface area of the impoundment at its normal retention level.",
+          "theme": "Structure"
+        },
+        {
+          "name": "drainage_area",
+          "dtype": "FLOAT",
+          "friendly_name": "Drainage Area",
+          "data_unit": "square miles",
+          "description": "Drainage area of the dam, which is defined as the area that drains to a particular point (in this case, the dam) on a river or stream.",
+          "theme": "Structure"
+        },
+        {
+          "name": "max_discharge",
+          "dtype": "FLOAT",
+          "friendly_name": "Max Discharge",
+          "data_unit": "ft**3/s",
+          "description": "Volume per time which the spillway is capable of discharging when the reservoir is at its maximum designed water surface elevation",
+          "theme": "Structure"
+        },
+        {
+          "name": "spillway_type",
+          "dtype": "STRING",
+          "friendly_name": "Spillway Type",
+          "description": "Category describing the type of spillway. (Controlled, Uncontrolled, None)",
+          "theme": "Structure"
+        },
+        {
+          "name": "spillway_width",
+          "dtype": "FLOAT",
+          "friendly_name": "Spillway Width",
+          "data_unit": "ft",
+          "description": "The width of the spillway, available for discharge when the reservoir is at its maximum designed water surface elevation. Typically for an open channel spillway, this is the bottom width. For pipe spillways or drop inlets that have diameters, use the diameter of the pipe.",
+          "theme": "Structure"
+        },
+        {
+          "name": "number_of_locks",
+          "friendly_name": "Number of Locks",
+          "dtype": "INTEGER",
+          "data_unit": "count",
+          "theme": "Structure"
+        },
+        {
+          "name": "length_of_locks",
+          "dtype": "FLOAT",
+          "friendly_name": "Length of Locks",
+          "data_unit": "ft",
+          "theme": "Structure"
+        },
+        {
+          "name": "width_of_locks",
+          "dtype": "FLOAT",
+          "friendly_name": "Lock Width",
+          "data_unit": "ft",
+          "theme": "Structure"
+        },
+        {
+          "name": "length_secondary_lock",
+          "friendly_name": "Length of Secondary Lock",
+          "data_unit": "ft",
+          "theme": "Structure",
+          "dtype": "INTEGER"
+        },
+        {
+          "name": "secondary_lock_width",
+          "friendly_name": "Secondary Lock Width",
+          "data_unit": "ft",
+          "theme": "Structure",
+          "dtype": "INTEGER"
+        },
+        {
+          "name": "outlet_gates",
+          "dtype": "STRING",
+          "friendly_name": "Outlet Gate Type",
+          "theme": "Structure"
+        },
+        {
+          "name": "data_updated",
+          "friendly_name": "Data Last Updated",
+          "theme": "Inspection and Evaluation",
+          "dtype": "DATETIME",
+          "description": "Note: in the geodatabase retrieved June 2026, all values appear to be corrupted ('NaN/NaN/NaN')"
+        },
+        {
+          "name": "last_inspection_date",
+          "friendly_name": "Last Inspection Date",
+          "theme": "Inspection and Evaluation",
+          "dtype": "STRING",
+          "description": "Date of the msot recent periodic or comprehensive inspection of the dam prior to the NID data transmital by the submitting agency. Note: in the GeoPackage retrieved June 2026, all values appear to be corrupted ('NaN/NaN/NaN')"
+        },
+        {
+          "name": "inspection_frequency",
+          "friendly_name": "Inspection Frequency",
+          "theme": "Inspection and Evaluation",
+          "data_unit": "Years",
+          "dtype": "FLOAT",
+          "description": "The scheduled frequency interval for periodic or comprehensive inspections, in years."
+        },
+        {
+          "name": "hazard_potential",
+          "dtype": "STRING",
+          "friendly_name": "Hazard Potential Classification",
+          "description": "Category to indicate the potential hazard to the downstream area resulting from failure or mis-operation of the dam or facilities. It reflects probable loss of human life and impacts on economic, environmental, and lifeline interests. The hazard potential does not speak to the condition of the dam or the risk of the dam failing. Low / Significant / High / Undetermined",
+          "theme": "Inspection and Evaluation"
+        },
+        {
+          "name": "condition_assessment",
+          "dtype": "STRING",
+          "friendly_name": "Condition Assessment",
+          "description": "Assessment that best describes the condition of the dam based on available information. Satisfactory / Fair / Poor / Unsatisfactory / Not Rated / Not Available",
+          "theme": "Inspection and Evaluation"
+        },
+        {
+          "name": "condition_assess_date",
+          "friendly_name": "Condition Assessment Date",
+          "theme": "Inspection and Evaluation",
+          "dtype": "DATETIME",
+          "description": "Date of the most recent assessment of the dam prior to the NID data transmittal by the submitting agency."
+        },
+        {
+          "name": "operational_status",
+          "dtype": "STRING",
+          "friendly_name": "Operational Status",
+          "description": "Category that best describes the operational or remediation activities of the dam based on available information. (Normal Operations / Under Investigation, Planning, Permitting, or Design for Remediation / Under Remediation / Enforcement Pending/Ongoing / Not Applicable)",
+          "theme": "Inspection and Evaluation"
+        },
+        {
+          "name": "operational_status_date",
+          "friendly_name": "Operational Status Date",
+          "theme": "Inspection and Evaluation",
+          "dtype": "DATETIME"
+        },
+        {
+          "name": "eap_prepared",
+          "friendly_name": "EAP Prepared",
+          "theme": "Response Preparedness",
+          "dtype": "STRING",
+          "description": "Indicating whether this dam has an Emergency Action Plan (EAP) developed by the dam owner."
+
+        },
+        {
+          "name": "eap_last_rev_date",
+          "friendly_name": "EAP Last Revision Date",
+          "theme": "Response Preparedness",
+          "dtype": "DATETIME",
+          "description": "Date of the most recent revision of the Emergency Action Plan (including update and verification of the contact lists) prior to the NID data transmittal by the submiting agency."
+        },
+        {
+          "name": "inundation_maps_added_to_nid",
+          "friendly_name": "Inundation Maps Added to NID?",
+          "theme": "Response Preparedness"
+        },
+        {
+          "name": "website_url",
+          "dtype": "STRING",
+          "friendly_name": "Website URL",
+          "description": "Web Site for more information on specific dam or regulatory agency.",
+          "theme": "Other"
+        },
+        {
+          "name": "objectid",
+          "description": "(not present in CSV or Data Dictionary)",
+          "theme": "Other"
+        },
+        {
+          "name": "cong_represntative",
+          "description": "(not present in CSV or Data Dictionary)",
+          "theme": "Description"
+        },
+        {
+          "name": "associated_structures",
+          "description": "Comma separated list of other dams that meet the NID inclusion and size criteria that assist this dam in either impounding or controlling water",
+          "theme": "Description",
+          "dtype": "STRING"
+        },
+        {
+          "name": "se_anno_cad_data",
+          "description": "(not present in CSV or Data Dictionary)",
+          "theme": "Other"
+        },
+        {"name":"has_dam_photo",
+        "dtype":"STRING"},
+        {"name":"section_seven_authority"},{
+          "name":"usace_district", "friendly_name": "USACE District"
+        },{"name":"usace_division", "friendly_name": "USACE Division"},
+        {"name":"zipcode"}
+      ]
+    }
+  ]
+}
