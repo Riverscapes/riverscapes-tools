@@ -1,0 +1,21 @@
+{
+    "$schema": "../../vector_prep_config.schema.json",
+    "parameters": {
+        "input": "C:/nardata/work/2026_BLM_SRAs_Phase2/data_from_blm/ELVA_BND_AOI.gdb",
+        "layer": "ELVA_BND_PAS_C_Area",
+        "output": "C:/nardata/work/2026_BLM_SRAs_Phase2/processed/ELVA_BND_PAS_C_Area.gpkg",
+        "garbage": "C:/nardata/work/2026_BLM_SRAs_Phase2/processed/ELVA_BND_PAS_C_Area_Garbage.gpkg",
+        "verbose": true,
+        "tolerance": 1.5,
+        "min_size": 1,
+        "min_size_drop": false,
+        "layer_definitions": "./layer_definitions.json",
+        "field_map": {
+            "PAST_NO": "past_no",
+            "PAST_NAME": "past_name",
+            "ALLOT_NO": "allot_no",
+            "ALLOT_NAME": "allot_name",
+            "ST_ALLOT_PAST": "st_allot_past"
+        }
+    }
+}

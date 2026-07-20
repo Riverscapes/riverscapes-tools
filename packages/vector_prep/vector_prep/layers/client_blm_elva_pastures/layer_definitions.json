@@ -1,0 +1,48 @@
+{
+	"$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+	"tool_schema_name": "vector-prep-blm-client_blm_elva_pastures",
+	"tool_schema_version": "0.0.1",
+	"layers": [
+		{
+			"layer_id": "ELVA_BND_PAS_C_Area",
+			"layer_name": "Client (BLM) supplied Pasture layer for ELVA SRA",
+			"columns": [
+				{
+					"name": "OBJECTID",
+					"friendly_name": "OBJECTID",
+					"dtype": "INTEGER"
+				},
+				{
+					"name": "past_no",
+					"friendly_name": "Pasture Number",
+					"dtype": "STRING"
+				},
+				{
+					"name": "past_name",
+					"friendly_name": "Pasture Name",
+					"dtype": "STRING"
+				},
+				{
+					"name": "allot_no",
+					"friendly_name": "FIRST_ALLOT_NO",
+					"dtype": "STRING"
+				},
+				{
+					"name": "allot_name",
+					"friendly_name": "FIRST_ALLOT_NAME",
+					"dtype": "STRING"
+				},
+				{
+					"name": "GIS_ACRES",
+					"friendly_name": "SUM_GIS_ACRES",
+					"dtype": "FLOAT"
+				},
+				{
+					"name": "st_allot_past",
+					"friendly_name": "FIRST_ST_ALLOT_PAST",
+					"dtype": "STRING"
+				}
+			]
+		}
+	]
+}
