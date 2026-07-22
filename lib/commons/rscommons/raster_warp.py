@@ -60,24 +60,67 @@ def raster_vrt_stitch(inrasters, outraster, epsg, clip=None, clean=False, warp_o
     """
     log = Logger('Raster Stitch')
 
-    # Build a virtual dataset that points to all the rasters then mosaic them together
-    # clipping out the HUC boundary and reprojecting to the output spatial reference
-    path_vrt = get_unique_file_path(os.path.dirname(outraster), os.path.basename(outraster).split('.')[0] + '.vrt')
+    # Reproject each tile first so projection differences cannot cause sources to be dropped or mislocated.
+    warped_rasters = []
+    source_folder = os.path.dirname(outraster)
+    target_srs = 'EPSG:{}'.format(epsg)
 
+    for raster_path in inrasters:
+        warped_raster = get_unique_file_path(
+            source_folder,
+            os.path.basename(raster_path).rsplit('.', 1)[0] + '_warped.vrt'
+        )
+        log.info(f'Warping source tile to output SRS: {raster_path}')
+        tile_warp_options = dict(dstSRS=target_srs, format='vrt', **warp_options)
+        warped_tile_ds = gdal.Warp(warped_raster, raster_path, options=gdal.WarpOptions(**tile_warp_options))
+        if warped_tile_ds is None:
+            raise RuntimeError(f'Error running GDAL Warp for source raster {raster_path}')
+        warped_rasters.append(warped_raster)
+
+    path_vrt = get_unique_file_path(source_folder, os.path.basename(outraster).split('.')[0] + '.vrt')
     log.info(f'Building temporary vrt: {path_vrt}')
     vrt_options = gdal.BuildVRTOptions()
-    gdal.BuildVRT(path_vrt, inrasters, options=vrt_options)
+    ds = gdal.BuildVRT(path_vrt, warped_rasters, options=vrt_options)
 
-    raster_warp(path_vrt, outraster, epsg, clip, warp_options)
+    if ds is None:
+        raise RuntimeError('Error running GDAL BuildVRT while building mosaicked VRT')
+
+    if clip:
+        log.info('Clipping to polygons using {}'.format(clip))
+        clip_ds, clip_layer = VectorBase.path_sorter(clip)
+        clipped_vrt = os.path.join(source_folder, 'temp_gdal_warp_output.vrt')
+        warp_kwargs = {
+            'cutlineDSName': clip_ds,
+            'cutlineLayer': clip_layer,
+            'cropToCutline': True,
+            'format': 'vrt',
+        }
+        warp_kwargs.update(warp_options)
+        log.info('Warping mosaicked vrt with clip geometry')
+        warped_ds = gdal.Warp(clipped_vrt, ds, options=gdal.WarpOptions(**warp_kwargs))
+        if warped_ds is None:
+            raise RuntimeError('Error running GDAL Warp while clipping mosaicked VRT')
+        source_ds = warped_ds
+    else:
+        source_ds = ds
+
+    log.info('Using GDAL translate to convert VRT to compressed raster format.')
+    translateoptions = gdal.TranslateOptions(gdal.ParseCommandLine('-of Gtiff -co COMPRESS=DEFLATE'))
+    gdal.Translate(outraster, source_ds, options=translateoptions)
 
     if clean:
         for rpath in inrasters:
             safe_remove_file(rpath)
 
-    # Clean up the VRT
-    # if os.path.isfile(path_vrt):
-    #     log.info('Cleaning up VRT file: {}'.format(path_vrt))
-    #     os.remove(path_vrt)
+    for warped_raster in warped_rasters:
+        if os.path.isfile(warped_raster):
+            safe_remove_file(warped_raster)
+
+    if clip and os.path.isfile(clipped_vrt):
+        safe_remove_file(clipped_vrt)
+
+    if os.path.isfile(path_vrt):
+        safe_remove_file(path_vrt)
 
 
 def raster_warp(inraster: str, outraster: str, epsg, clip=None, warp_options: dict = {}, raster_compression: str = " -co COMPRESS=DEFLATE"):
