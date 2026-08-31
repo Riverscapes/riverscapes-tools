@@ -402,7 +402,7 @@ def confinement(huc: str, flowlines_orig: Path, channel_area_orig: Path, confini
                     log.warning(f'Gaps in flowline for level path: {level_path}, attempting to fill')
                     geom_flowline = continuous_line(geom_flowline)
 
-            if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0 or geom_flowline.geom_type == 'MultiLineString':
+            if not geom_flowline.is_valid or geom_flowline.is_empty or geom_flowline.length == 0 or geom_flowline.geom_type != 'LineString':
                 progbar.erase()
                 log.warning(f"Invalid flowline with level path: {level_path}")
                 dbg_err_lines_lyr.create_feature(geom_flowline, {
