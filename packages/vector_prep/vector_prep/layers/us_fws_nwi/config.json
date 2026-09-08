@@ -1,0 +1,7 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "metadata": {},
+  "parameters": {
+    "input": ""
+  }
+}

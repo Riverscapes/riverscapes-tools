@@ -2,38 +2,140 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "vector_prep_config.schema.json",
   "title": "Vector Prep Config",
-  "description": "Schema for a layer-specific configuration file used by vector_prep. Controls all processing parameters including I/O paths, simplification, field mapping, and logging.",
+  "description": "Schema for a layer-specific configuration file used by vector_prep and orchestrate. Defines metadata, core processing parameters, and optional step-specific settings.",
   "type": "object",
-  "required": ["parameters"],
+  "required": ["$schema", "metadata", "parameters"],
   "additionalProperties": false,
+  "definitions": {
+    "nonEmptyString": {
+      "type": "string",
+      "minLength": 1
+    },
+    "pathString": {
+      "type": "string",
+      "minLength": 1,
+      "description": "File path string. Supports environment variable expansion (for example ${VAR} and $VAR)."
+    },
+    "metadata": {
+      "type": "object",
+      "description": "Descriptive metadata used by orchestrate and reporting workflows.",
+      "additionalProperties": false,
+      "required": [
+        "layer_id",
+        "source_url",
+        "source_title",
+        "source_category",
+        "snapshot_id"
+      ],
+      "properties": {
+        "layer_id": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Stable layer identifier. Kebab-case is recommended.",
+          "pattern": "^[a-z0-9][a-z0-9-]*$"
+        },
+        "source_url": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Canonical source URL for the dataset."
+        },
+        "source_title": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Human-readable source title."
+        },
+        "source_category": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Source category used for output routing (for example usgov, state, custom).",
+          "pattern": "^[a-z0-9_\\-]+$"
+        },
+        "snapshot_id": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Snapshot/version identifier for the source ingest. Typically YYYY-MM-DD or latest.",
+          "pattern": "^(\\d{4}-\\d{2}-\\d{2}|latest)$"
+        },
+        "special_notes": {
+          "type": "string",
+          "description": "Optional operator notes about data caveats, assumptions, or preparation details."
+        },
+        "data_prep_operator": {
+          "type": "string",
+          "description": "Optional operator name or handle for provenance."
+        }
+      }
+    },
+    "addUniqueIdAndName": {
+      "type": "object",
+      "description": "Parameters for the add_unique_id_and_name step.",
+      "additionalProperties": false,
+      "required": ["row_id_source", "row_name_source"],
+      "properties": {
+        "row_id_source": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Source field name used to derive deterministic rs_reports_rowid UUID5 values."
+        },
+        "row_name_source": {
+          "$ref": "#/definitions/nonEmptyString",
+          "description": "Python format string used to build rs_reports_rowname (for example: {HMA_NAME} ({HMA_ID}))."
+        },
+        "name_uniqueness": {
+          "type": "string",
+          "description": "How duplicate generated row names are handled.",
+          "enum": ["warn", "error"],
+          "default": "warn"
+        }
+      }
+    },
+    "stepName": {
+      "type": "string",
+      "enum": [
+        "fetch_metadata",
+        "dissolve_duplicates",
+        "vector_prep",
+        "add_unique_id_and_name",
+        "upload_instructions",
+        "build_legacy_ddl"
+      ]
+    }
+  },
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "JSON Schema reference URI."
+      "description": "JSON Schema reference URI.",
+      "pattern": "vector_prep_config\\.schema\\.json$"
+    },
+    "metadata": {
+      "$ref": "#/definitions/metadata"
     },
     "parameters": {
       "type": "object",
-      "description": "Processing parameters for vector_prep. All path values support environment variable expansion (e.g. ${HOME}/data/input.gpkg).",
+      "description": "Processing parameters for vector_prep/orchestrate. All path values support environment variable expansion (e.g. ${HOME}/data/input.gpkg).",
       "additionalProperties": false,
+      "required": [
+        "input",
+        "output",
+        "garbage",
+        "tolerance",
+        "min_size",
+        "min_size_drop",
+        "layer_definitions"
+      ],
       "properties": {
         "input": {
-          "type": "string",
+          "$ref": "#/definitions/pathString",
           "description": "Absolute path to the input vector dataset (shapefile, GeoPackage, etc.). Equivalent to --input on the command line. Supports environment variable expansion."
         },
         "output": {
-          "type": "string",
+          "$ref": "#/definitions/pathString",
           "description": "Absolute path to write the cleaned output GeoPackage. Equivalent to --output on the command line. Supports environment variable expansion."
         },
         "garbage": {
-          "type": "string",
+          "$ref": "#/definitions/pathString",
           "description": "Absolute path to write a GeoPackage of dropped/changed features. Must be a .gpkg file. Equivalent to --garbage on the command line. Supports environment variable expansion."
         },
         "layer": {
-          "type": "string",
+          "$ref": "#/definitions/nonEmptyString",
           "description": "Layer name for GeoPackage inputs. Defaults to the first layer if omitted. Equivalent to --layer on the command line."
         },
         "filter": {
-          "type": "string",
+          "$ref": "#/definitions/nonEmptyString",
           "description": "SQL WHERE clause used to pre-filter features when reading the input dataset (e.g. \"state_code = 'CA'\"). Only matching features are loaded and processed; non-matching features are silently skipped. Equivalent to --filter on the command line."
         },
         "tolerance": {
@@ -73,26 +175,78 @@
           "default": false
         },
         "log_file": {
-          "type": "string",
+          "$ref": "#/definitions/pathString",
           "description": "Path to a log file. When provided, logging output is written to this file instead of the default location beside the output. Equivalent to --log_file on the command line. Supports environment variable expansion."
         },
         "layer_definitions": {
-          "type": "string",
+          "$ref": "#/definitions/pathString",
           "description": "Relative or absolute path to the layer_definitions.json file for this layer. Required when field_map is specified. Supports environment variable expansion."
         },
         "layer_id": {
-          "type": "string",
+          "$ref": "#/definitions/nonEmptyString",
           "description": "Layer identifier inside layer_definitions.json to use when validating field_map. Required when layer_definitions contains multiple layers unless selected interactively."
         },
         "field_map": {
           "type": "object",
           "description": "Mapping from source field names to output field names. Only the fields listed here are included in the output; all other source fields are dropped.",
+          "minProperties": 1,
           "additionalProperties": {
-            "type": "string",
+            "$ref": "#/definitions/nonEmptyString",
             "description": "Output field name for this source field."
+          }
+        },
+        "dissolve_exclude_columns": {
+          "type": "array",
+          "description": "Optional list of source columns to exclude from dissolve grouping keys (for example OBJECTID, GlobalID). Case-insensitive.",
+          "items": {
+            "$ref": "#/definitions/nonEmptyString"
+          },
+          "uniqueItems": true
+        },
+        "steps": {
+          "type": "array",
+          "description": "Optional ordered subset of orchestrator steps to enable for this layer. Steps run in canonical orchestrator order.",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/definitions/stepName"
+          },
+          "uniqueItems": true
+        },
+        "orchestrate_report": {
+          "$ref": "#/definitions/pathString",
+          "description": "Optional path for consolidated orchestrate markdown report. Defaults to dist output folder with suffix _orchestrate_report.md."
+        },
+        "add_unique_id_and_name": {
+          "$ref": "#/definitions/addUniqueIdAndName"
+        },
+        "enrich": {
+          "$ref": "#/definitions/addUniqueIdAndName",
+          "description": "Deprecated alias for add_unique_id_and_name. Prefer add_unique_id_and_name for new configs."
+        }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": {
+          "parameters": {
+            "properties": {
+              "field_map": {
+                "type": "object"
+              }
+            },
+            "required": ["field_map"]
+          }
+        }
+      },
+      "then": {
+        "properties": {
+          "parameters": {
+            "required": ["layer_definitions"]
           }
         }
       }
     }
-  }
+  ]
 }

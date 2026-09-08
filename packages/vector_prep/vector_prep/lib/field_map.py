@@ -215,6 +215,7 @@ def load_layer_definitions(
 def validate_field_map(
     field_map: dict[str, str],
     column_specs: dict[str, ColumnSpec],
+    allow_missing_output_names: set[str] | None = None,
 ) -> None:
     """Validate that every output name in *field_map* exists in *column_specs*.
 
@@ -225,6 +226,10 @@ def validate_field_map(
         field_map:    Mapping of source_name → output_name.
         column_specs: Dict of output_name → :class:`ColumnSpec` (from
                       :func:`load_layer_definitions`).
+        allow_missing_output_names: Optional output column names that may be
+                      absent from ``column_specs``. This is used for
+                      passthrough fields that should be preserved in output
+                      without dtype coercion from layer_definitions.
 
     Raises:
         ValueError: If any output name is absent from *column_specs*, listing
@@ -237,10 +242,11 @@ def validate_field_map(
             f"field_map maps multiple source fields to the same output name(s): {', '.join(duplicates)}"
         )
 
+    allowed_missing = allow_missing_output_names or set()
     missing = [
         output_name
         for output_name in field_map.values()
-        if output_name not in column_specs
+        if output_name not in column_specs and output_name not in allowed_missing
     ]
     if missing:
         missing_str = ", ".join(sorted(missing))
@@ -258,6 +264,7 @@ def load_and_validate_field_map(
     raw_field_map: dict[str, str],
     layer_defs_path: Path,
     layer_id: str | None = None,
+    allow_missing_output_names: set[str] | None = None,
 ) -> FieldMapConfig:
     """Load layer_definitions, validate the field_map, and return a FieldMapConfig.
 
@@ -277,10 +284,15 @@ def load_and_validate_field_map(
                            from the layer_definitions schema.
     """
     column_specs = load_layer_definitions(layer_defs_path, layer_id=layer_id)
-    validate_field_map(raw_field_map, column_specs)
+    validate_field_map(
+        raw_field_map,
+        column_specs,
+        allow_missing_output_names=allow_missing_output_names,
+    )
     # Keep only the specs that are actually referenced as output names in the
     # field_map — every other column in the layer_definitions file is irrelevant
     # to this run and would waste memory / cause confusion during casting.
+    allowed_missing = allow_missing_output_names or set()
     relevant = set(raw_field_map.values())
     # Restrict column_specs to only what the field_map references before the
     # dtype check so that the error message only mentions relevant columns.
@@ -288,6 +300,7 @@ def load_and_validate_field_map(
     bad_dtypes = [
         f"{output_name!r} (dtype={filtered_specs[output_name].dtype!r})"
         for output_name in raw_field_map.values()
+        if output_name not in allowed_missing
         if filtered_specs[output_name].dtype not in DTYPE_MAP
     ]
     if bad_dtypes:

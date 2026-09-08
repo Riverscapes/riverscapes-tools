@@ -1,0 +1,47 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "metadata": {
+    "layer_id": "us-blm-natl-wild-horse-burro",
+    "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-wild-horse-and-burro-herd-mgmt-area-polygons/about",
+    "source_title": "BLM National Wild Horse and Burro Herd Management Areas",
+    "source_category": "usgov",
+    "snapshot_id": "2026-07-22"
+  },
+  "parameters": {
+    "input": "C:\\nardata\\datadownload\\blm\\blm-natl-wild-horse-and-burro-herd-mgmt-area-polygons\\BLM_Natl_Wild_Horse_and_Burro_Heard_Mgmt_Area_Polygons_3718532132626397346.gpkg",
+    "output": "C:\\nardata\\datadownload\\blm\\blm-natl-wild-horse-and-burro-herd-mgmt-area-polygons\\nar-processed\\BLM_Natl_Wild_Horse_and_Burro_Heard_Mgmt_Area_Polygons_3718532132626397346.gpkg",
+    "garbage": "C:\\nardata\\datadownload\\blm\\blm-natl-wild-horse-and-burro-herd-mgmt-area-polygons\\nar-processed\\BLM_Natl_Wild_Horse_and_Burro_Heard_Mgmt_Area_Polygons_3718532132626397346_garbage.gpkg",
+    "tolerance": 2.0,
+    "min_size": 1.0,
+    "min_size_drop": false,
+    "dissolve_exclude_columns": [
+      "fid",
+      "OBJECTID",
+      "GlobalID",
+      "BLM_ACRES",
+      "Original_GlobalID"
+    ],
+    "steps": [
+      "fetch_metadata",
+      "dissolve_duplicates",
+      "vector_prep",
+      "add_unique_id_and_name",
+      "upload_instructions"
+    ],
+    "layer_definitions": "./layer_definitions.json",
+    "field_map": {
+      "HMA_ID": "hma_id",
+      "HMA_NAME": "hma_name",
+      "ADMIN_ST": "admin_state",
+      "ADM_UNIT_CD": "admin_unit_code",
+      "ADMIN_AGCY": "administrative_agency",
+      "HERD_TYPE": "herd_type",
+      "BLM_ACRES": "blm_acres"
+    },
+    "add_unique_id_and_name": {
+      "row_id_source": "GlobalID",
+      "row_name_source": "{HMA_NAME} ({HMA_ID} {ADMIN_AGCY})",
+      "name_uniqueness": "warn"
+    }
+  }
+}

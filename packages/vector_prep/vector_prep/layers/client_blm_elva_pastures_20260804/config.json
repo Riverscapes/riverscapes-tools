@@ -1,0 +1,32 @@
+{
+    "$schema": "../../vector_prep_config.schema.json",
+    "parameters": {
+        "input": "C:/nardata/work/2026_BLM_SRAs_Phase2/data_from_blm/2026-08-04/ELVA_BND_AOI.gdb",
+        "layer": "ELVA_BND_PAS_C_Area",
+        "output": "C:/nardata/work/2026_BLM_SRAs_Phase2/processed/ELVA_BND_PAS_C_Area_20260804.gpkg",
+        "garbage": "C:/nardata/work/2026_BLM_SRAs_Phase2/processed/ELVA_BND_PAS_C_Area_20260804_Garbage.gpkg",
+        "verbose": true,
+        "tolerance": 1.5,
+        "min_size": 1.0,
+        "min_size_drop": false,
+        "layer_definitions": "./layer_definitions.json",
+        "field_map": {
+            "PAS_NO": "pasture_number",
+            "PAST_NAME": "pasture_name",
+            "ALLOT_NO": "allotment_number",
+            "ALLOT_NAME": "allotment_name",
+            "ADMIN_ST": "admin_state",
+            "ADM_UNIT_CD": "adm_unit_cd",
+            "Pasture_ID": "pasture_id",
+            "Pasture_Lat": "pasture_lat",
+            "Pasture_Long": "pasture_lon"
+        },
+        "steps": [
+            "vector_prep"
+        ]
+    },
+    "metadata": {
+        "snapshot_id": "20260804",
+        "data_prep_operator": "Lorin Gaertner"
+    }
+}

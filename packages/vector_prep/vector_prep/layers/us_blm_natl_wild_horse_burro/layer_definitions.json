@@ -1,0 +1,69 @@
+{
+    "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+    "tool_schema_name": "vector-prep-us-blm-natl-wild-horse-burro",
+    "tool_schema_version": "0.1.0",
+    "layers": [
+        {
+            "layer_id": "us-blm-natl-wild-horse-burro",
+            "layer_name": "us-blm-natl-wild-horse-burro",
+            "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-wild-horse-and-burro-herd-mgmt-area-polygons/about",
+            "source_title": "BLM National Wild Horse and Burro Herd Management Areas",
+            "columns": [
+                {
+                    "name": "hma_name",
+                    "friendly_name": "Herd Mangement Area Name",
+                    "dtype": "STRING",
+                    "description": "Herd Management Area Name: The name of the Herd Management Area or Forest Service Wild Horse Territory by which it is known to the business. A Congressionally designated area of land to which specific laws and regulations pertaining to the management of wild horses and burros are applied. The Bureau uses the term Herd Management Area; the Forest Service uses the term Wild Horse Territory."
+                },
+                {
+                    "name": "hma_id",
+                    "friendly_name": "Herd Management Area Identifier",
+                    "dtype": "STRING",
+                    "description": "Herd Management Area Identifier:The six character code number assigned to the Herd Management Area. The code consists of the two character administrative state abbreviation, followed by an assigned four digit code. This field is used to connect this spatial dataset to the current WHB system, and should match that number"
+                },
+                {
+                    "name": "admin_state",
+                    "friendly_name": "Administrative State Code",
+                    "dtype": "STRING",
+                    "description": "Administrative State Code: An alphabetic abbreviation that represents each of the 50 states of the United States, the District of Columbia, the outlying areas of the United States, and associated areas. FIPS PUB 5-2"
+                },
+                {
+                    "name": "admin_unit_code",
+                    "friendly_name": "Administrative Unit Code",
+                    "dtype": "STRING",
+                    "description": "Administrative Unit Code: The code that indicates the formal grouping of positions at into designated units and the assignment of functions and responsibilities to those units based on the DOI FPPS structure. (Source name = ADMIN_UNIT_CD)"
+                },
+                {
+                    "name": "administrative_agency",
+                    "friendly_name": "Administrative Agency Code",
+                    "dtype": "STRING",
+                    "description": "Administrative Agency Code: The official name by which the organization is known. An organization may include businesses, agencies, or corporations, but not individual persons. (Source name = ADMIN_AGCY)"
+                },
+                {
+                    "name": "herd_type",
+                    "friendly_name": "Herd Type",
+                    "dtype": "STRING",
+                    "description": "Herd Type:The type of animals historically in the Herd Area. Valid values: HORSE, BURRO, BOTH, UNK."
+                },
+                {
+                    "name": "blm_acres",
+                    "friendly_name": "BLM Acres",
+                    "dtype": "FLOAT",
+                    "description": "BLM Acres: The amount of acreage in the Herd Management Area that is under BLM jurisdiction."
+                },
+                {
+                    "name": "rs_reports_rowid",
+                    "friendly_name": "Riverscapes Reports Unique Row ID",
+                    "dtype": "STRING",
+                    "description": "Deterministic UUID5 derived from 'GlobalID' using Riverscapes OID namespace."
+                },
+                {
+                    "name": "rs_reports_rowname",
+                    "friendly_name": "Riverscapes Reports Unique Row Name",
+                    "dtype": "STRING",
+                    "description": "Display name formatted as: {HMA_NAME} ({HMA_ID} {ADMIN_AGCY})"
+                }
+            ]
+        }
+    ]
+}

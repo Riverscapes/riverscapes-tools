@@ -45,6 +45,18 @@
             ]
         },
         {
+            "name": "🎯 Orchestrate (module, pick args)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "vector_prep.orchestrate",
+            "python": "${command:python.interpreterPath}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/.env",
+            "args": "${command:pickArgs}"
+        },
+        {
             "name": "🗂️ Vector Prep CLI (interactive layer selector)",
             "type": "debugpy",
             "request": "launch",
