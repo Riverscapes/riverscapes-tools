@@ -5,7 +5,7 @@ schema.
 
 Background
 ----------
-ArcGIS publishes FGDC CSDGM metadata alongside each hosted item at a stable URL::
+ArcGIS publishes FGDC CSDGM metadata (https://www.fgdc.gov/metadata/csdgm/) alongside each hosted item at a stable URL::
 
     https://www.arcgis.com/sharing/rest/content/items/{itemId}/info/metadata/metadata.xml
 

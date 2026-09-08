@@ -19,6 +19,9 @@
     {
       "name": "🏠 Git Root",
       "path": ".."
+    },
+    {
+      "path": "../../athena"
     }
   ],
   "settings": {
