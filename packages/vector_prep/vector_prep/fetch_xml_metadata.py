@@ -76,8 +76,6 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
-from typing import Optional
-from urllib.request import urlopen
 
 import requests
 
@@ -117,14 +115,14 @@ class DatasetInfo:
     purpose: str = ""
     pub_date: str = ""
     originator: str = ""
-    west: Optional[float] = None
-    east: Optional[float] = None
-    north: Optional[float] = None
-    south: Optional[float] = None
+    west: float | None = None
+    east: float | None = None
+    north: float | None = None
+    south: float | None = None
     keywords: list[str] = field(default_factory=list)
     update_frequency: str = ""
-    entity_name: str = ""        # <enttypl> — the layer / entity name
-    entity_description: str = "" # <enttypd>
+    entity_name: str = ""  # <enttypl> — the layer / entity name
+    entity_description: str = ""  # <enttypd>
 
 
 # ---------------------------------------------------------------------------
@@ -155,14 +153,14 @@ def _fetch_xml_root(url: str) -> ET.Element:
 # ---------------------------------------------------------------------------
 # Dataset-level metadata
 # ---------------------------------------------------------------------------
-def _text(el: Optional[ET.Element]) -> str:
+def _text(el: ET.Element | None) -> str:
     """Return stripped text of *el*, or empty string if None or empty."""
     if el is None or not el.text:
         return ""
     return el.text.strip()
 
 
-def _first(root: ET.Element, *paths: str) -> Optional[ET.Element]:
+def _first(root: ET.Element, *paths: str) -> ET.Element | None:
     """Return the first element matching any of the given ElementPath expressions."""
     for path in paths:
         el = root.find(path)
@@ -176,48 +174,64 @@ def parse_dataset_info(root: ET.Element) -> DatasetInfo:
     info = DatasetInfo()
 
     # Title — ISO/FGDC hybrid as published by ArcGIS
-    info.title = _text(_first(root,
-        "idinfo/citation/citeinfo/title",  # classic FGDC
-        "dataIdInfo/idCitation/resTitle",  # ISO profile used by ArcGIS
-        ".//resTitle",
-    ))
+    info.title = _text(
+        _first(
+            root,
+            "idinfo/citation/citeinfo/title",  # classic FGDC
+            "dataIdInfo/idCitation/resTitle",  # ISO profile used by ArcGIS
+            ".//resTitle",
+        )
+    )
 
     # Abstract
-    info.abstract = _text(_first(root,
-        "idinfo/descript/abstract",
-        "dataIdInfo/idAbs",
-        ".//idAbs",
-    ))
+    info.abstract = _text(
+        _first(
+            root,
+            "idinfo/descript/abstract",
+            "dataIdInfo/idAbs",
+            ".//idAbs",
+        )
+    )
 
     # Purpose
-    info.purpose = _text(_first(root,
-        "idinfo/descript/purpose",
-        "dataIdInfo/idPurp",
-        ".//idPurp",
-    ))
+    info.purpose = _text(
+        _first(
+            root,
+            "idinfo/descript/purpose",
+            "dataIdInfo/idPurp",
+            ".//idPurp",
+        )
+    )
 
     # Publication date
-    info.pub_date = _text(_first(root,
-        "idinfo/citation/citeinfo/pubdate",
-        ".//pubDate",
-    ))
+    info.pub_date = _text(
+        _first(
+            root,
+            "idinfo/citation/citeinfo/pubdate",
+            ".//pubDate",
+        )
+    )
 
     # Originator / publisher
-    info.originator = _text(_first(root,
-        "idinfo/citation/citeinfo/origin",
-        ".//rpIndName",
-        ".//rpOrgName",
-    ))
+    info.originator = _text(
+        _first(
+            root,
+            "idinfo/citation/citeinfo/origin",
+            ".//rpIndName",
+            ".//rpOrgName",
+        )
+    )
 
     # Bounding box
-    bbox = _first(root,
-        "idinfo/spdom/bounding",          # classic FGDC
-        ".//GeoBndBox",                   # ISO/FGDC ArcGIS hybrid
+    bbox = _first(
+        root,
+        "idinfo/spdom/bounding",  # classic FGDC
+        ".//GeoBndBox",  # ISO/FGDC ArcGIS hybrid
     )
     if bbox is not None:
         try:
-            info.west  = float(_text(bbox.find("westbc")  or bbox.find("westBL") ))
-            info.east  = float(_text(bbox.find("eastbc")  or bbox.find("eastBL") ))
+            info.west = float(_text(bbox.find("westbc") or bbox.find("westBL")))
+            info.east = float(_text(bbox.find("eastbc") or bbox.find("eastBL")))
             info.north = float(_text(bbox.find("northbc") or bbox.find("northBL")))
             info.south = float(_text(bbox.find("southbc") or bbox.find("southBL")))
         except (TypeError, ValueError):
@@ -225,9 +239,7 @@ def parse_dataset_info(root: ET.Element) -> DatasetInfo:
 
     # Keywords
     info.keywords = [
-        kw.text.strip()
-        for kw in root.iter("keyword")
-        if kw.text and kw.text.strip()
+        kw.text.strip() for kw in root.iter("keyword") if kw.text and kw.text.strip()
     ]
 
     # Entity (layer) name and description
@@ -261,7 +273,9 @@ def _build_domain_description(entries: list[dict]) -> str:
     )
 
 
-def parse_field_attrs(root: ET.Element, include_system_fields: bool = False) -> list[dict]:
+def parse_field_attrs(
+    root: ET.Element, include_system_fields: bool = False
+) -> list[dict]:
     """Extract field-level metadata from ``<eainfo>/<detailed>/<attr>`` elements.
 
     Returns a list of column dicts conforming to the layer_definitions schema:
@@ -411,11 +425,13 @@ def compare_columns(
             va = ca.get(key, "")
             vb = cb.get(key, "")
             if va != vb:
-                diffs_for_field.append({
-                    "field": key,
-                    f"{label_a}": va,
-                    f"{label_b}": vb,
-                })
+                diffs_for_field.append(
+                    {
+                        "field": key,
+                        f"{label_a}": va,
+                        f"{label_b}": vb,
+                    }
+                )
         if diffs_for_field:
             differences.append({"name": name, "diffs": diffs_for_field})
         else:
@@ -503,7 +519,10 @@ def main() -> None:
         print(f"  Title       : {info.title}", file=sys.stderr)
         print(f"  Pub date    : {info.pub_date}", file=sys.stderr)
         print(f"  Originator  : {info.originator}", file=sys.stderr)
-        print(f"  Entity      : {info.entity_name} — {info.entity_description}", file=sys.stderr)
+        print(
+            f"  Entity      : {info.entity_name} — {info.entity_description}",
+            file=sys.stderr,
+        )
         if info.west is not None:
             print(
                 f"  Bounding box: W={info.west} E={info.east} "
