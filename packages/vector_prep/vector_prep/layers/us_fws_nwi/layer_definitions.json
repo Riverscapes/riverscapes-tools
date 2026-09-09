@@ -1,0 +1,147 @@
+{
+    "$schema": "https://xml.riverscapes.net/riverscapes_metadata/schema/layer_definitions.schema.json",
+    "tool_schema_name": "vector-prep-us_fws_nwi",
+    "tool_schema_version": "0.0.1",
+    "layers": [
+        {
+            "layer_id": "us-fws-nwi-code-definitions",
+            "layer_name": "NWI Code Definitions Table",
+            "source_title": "U.S. Fish and Wildlife Service Wetland Classification Codes",
+            "source_url": "https://www.fws.gov/program/national-wetlands-inventory/classification-codes",
+            "description": "This table provides a crosswalk from U.S. Fish and Wildlife Service, National Wetlands Inventory (NWI) wetlands data, as defined by the Federal Wetland Mapping Standard, to the complete wetland definitions, as defined by the Federal Wetlands Classification Standard. The table should be joined with the NWI wetlands data using the 'Attribute' field. This will provide users with a full wetland or deepwater habitat description for each polygon.",
+            "summary": "NWI_Code_Definitions_Table — Cowardin Wetland Classification definitions for corresponding NWI Map Codes. This table provides a crosswalk from the National Wetlands Inventory wetlands data, as defined by the Federal Wetland Mapping Standard, to the complete wetland definitions, as defined by the Federal Wetlands Classification Standard.",
+            "citation": "U.S. Fish and Wildlife Service, National Standards and Support Team, October 2024.",
+            "layer_type": "DataTable",
+            "columns": [
+                {
+                    "name": "ATTRIBUTE",
+                    "dtype": "STRING",
+                    "description": "Alphanumeric code identifying the wetland or deepwater classification of the polygon."
+                },
+                {
+                    "name": "SYSTEM_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to a complex of wetlands and deepwater habitats that share the influence of similar hydrologic, geomorphologic, chemical or biological factors."
+                },
+                {
+                    "name": "SYSTEM_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Definintion of the System  - a complex of wetlands and deepwater habitats that share the influence of similar hydrologic, geomorphologic, chemical or biological factors."
+                },
+                {
+                    "name": "SUBSYSTEM_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to subdivide System designations into more specific categories."
+                },
+                {
+                    "name": "SUBSYSTEM_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Definitions in terms of water permanence, gradient, substrate, and the extent of floodplain development, or tidal influence."
+                },
+                {
+                    "name": "CLASS_NAME",
+                    "dtype": "STRING",
+                    "description": "The highest taxonomic unit below the Subsystem level, usually describing either the dominant life form of the vegetation or the physiography and composition of the substrate."
+                },
+                {
+                    "name": "CLASS_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Describes the general appearance of the habitat in terms of either the dominant life form of the vegetation, or the physiography and composition of the substrate."
+                },
+                {
+                    "name": "SUBCLASS_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to further define life forms or substrate type."
+                },
+                {
+                    "name": "SUBCLASS_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Definition assigned to define the specific life form, or substrate with the greatest areal coverage present."
+                },
+                {
+                    "name": "SPLIT_CLASS_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to a wetland that contains two equally distinct cover (class) types."
+                },
+                {
+                    "name": "SPLIT_CLASS_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Used when a wetland contains two equally distinct cover types (classes) that each encompasses at least 30% areal coverage.  This split class definition is used to describe the second class of either the wetlands dominant life form of the vegetation or the physiography and composition of the substrate."
+                },
+                {
+                    "name": "SPLIT_SUBCLASS_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to a wetland that contains two equally distinct life forms or substrates (subclasses)."
+                },
+                {
+                    "name": "SPLIT_SUBCLASS_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Used when a wetland contains two equally distinct life forms or substrates (subclass).  This split subclass definition is used to describe the second subclass of either the wetlands distinct life form or substrate."
+                },
+                {
+                    "name": "WATER_REGIME_NAME",
+                    "dtype": "STRING",
+                    "description": "Name assigned to add description to wetlands and deepwater habitats to indicate duration of flooding or saturation."
+                },
+                {
+                    "name": "WATER_REGIME_SUBGROUP",
+                    "dtype": "STRING",
+                    "description": "Applied to define whether a wetlands hydrologic characteristics are controlled by groundwater, nontidal flooding, freshwater tidal or saltwater tidal factors."
+                },
+                {
+                    "name": "WATER_REGIME_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Description of water duration within a wetland habitat."
+                },
+                {
+                    "name": "FIRST_MODIFIER_NAME",
+                    "dtype": "STRING",
+                    "description": "Modifier name is assigned to further describe wetlands and deepwater habitats within the classification hierarchy."
+                },
+                {
+                    "name": "FIRST_MODIFIER_GROUP",
+                    "dtype": "STRING",
+                    "description": "Modifier assigned to further describe wetlands and deepwater habitats within the classification hierarchy."
+                },
+                {
+                    "name": "FIRST_MODIFIER_SUBGROUP",
+                    "dtype": "STRING",
+                    "description": "The type of first modifier applied; which include special modifier, water chemistry or soil."
+                },
+                {
+                    "name": "FIRST_MODIFIER_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Modifier assigned to further describe wetlands and deepwater habitats within the classification hierarchy based on water chemistry or ph, wetland or deepwater alteration, or soil type."
+                },
+                {
+                    "name": "SECOND_MODIFIER_NAME",
+                    "dtype": "STRING",
+                    "description": "Modifier name assigned to further describe wetlands and deepwater habitats within the classification hierarchy."
+                },
+                {
+                    "name": "SECOND_MODIFIER_GROUP",
+                    "dtype": "STRING",
+                    "description": "Second modifier assigned to further describe wetlands and deepwater habitats within the classification hierarchy."
+                },
+                {
+                    "name": "SECOND_MODIFIER_SUBGROUP",
+                    "dtype": "STRING",
+                    "description": "The type of second modifier applied; which include special modifier, water chemistry or soil."
+                },
+                {
+                    "name": "SECOND_MODIFIER_DEFINITION",
+                    "dtype": "STRING",
+                    "description": "Modifier assigned to further describe wetlands and deepwater habitats within the classification hierarchy based on water chemistry or ph, wetland or deepwater alteration, or soil type."
+                }
+            ]
+        },
+        {
+            "layer_id": "us-fws-nwi-wetlands",
+            "layer_name": "NWI Wetlands"
+        },
+        {
+            "layer_id": "us-fws-nwi-riparian",
+            "layer_name": "NWI Riparian"
+        }
+    ]
+}

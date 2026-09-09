@@ -76,6 +76,7 @@ import re
 import sys
 import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import requests
 
@@ -148,6 +149,21 @@ def _fetch_xml_root(url: str) -> ET.Element:
     resp = requests.get(url, timeout=30)
     resp.raise_for_status()
     return ET.fromstring(resp.content)
+
+
+def _get_xml_root(file_url_or_id: str) -> ET.Element:
+    """Parse file_url_or_id to see if
+    a) is is a valid local path - if so, load it
+    b) is a 32-hex-char AGOL id, in which case build the URL
+    c) a URL
+    No error handling - assumes input is valid...
+    Returns root of the XML tree
+    """
+    if Path(file_url_or_id).exists():
+        tree = ET.parse(file_url_or_id)
+        return tree.getroot()
+    url = _resolve_url(file_url_or_id)
+    return _fetch_xml_root(url)
 
 
 # ---------------------------------------------------------------------------
@@ -230,10 +246,10 @@ def parse_dataset_info(root: ET.Element) -> DatasetInfo:
     )
     if bbox is not None:
         try:
-            info.west = float(_text(bbox.find("westbc") or bbox.find("westBL")))
-            info.east = float(_text(bbox.find("eastbc") or bbox.find("eastBL")))
-            info.north = float(_text(bbox.find("northbc") or bbox.find("northBL")))
-            info.south = float(_text(bbox.find("southbc") or bbox.find("southBL")))
+            info.west = float(_text(_first(bbox, "westbc", "westBL")))
+            info.east = float(_text(_first(bbox, "eastbc", "eastBL")))
+            info.north = float(_text(_first(bbox, "northbc", "northBL")))
+            info.south = float(_text(_first(bbox, "southbc", "southBL")))
         except (TypeError, ValueError):
             pass
 
@@ -329,13 +345,13 @@ def parse_field_attrs(
 # Top-level fetch functions
 # ---------------------------------------------------------------------------
 def fetch_columns_from_xml_url(
-    url_or_id: str,
+    file_url_or_id: str,
     include_system_fields: bool = False,
 ) -> list[dict]:
     """Fetch column definitions from an FGDC CSDGM XML URL or AGOL item ID.
 
     Args:
-        url_or_id: Either a full metadata XML URL or a 32-char AGOL item ID.
+        url_or_id: Either a full metadata XML File Path, URL or a 32-char AGOL item ID.
         include_system_fields: If True, include system-generated fields such as
             ``OBJECTID``, ``Shape_Length``, etc.
 
@@ -344,15 +360,13 @@ def fetch_columns_from_xml_url(
         ``dtype`` is always ``"STRING"`` — merge with typed source (FGDB or
         Feature Service) to get accurate types.
     """
-    url = _resolve_url(url_or_id)
-    root = _fetch_xml_root(url)
+    root = _get_xml_root(file_url_or_id)
     return parse_field_attrs(root, include_system_fields=include_system_fields)
 
 
-def fetch_dataset_info_from_xml_url(url_or_id: str) -> DatasetInfo:
-    """Fetch dataset-level metadata from an FGDC CSDGM XML URL or AGOL item ID."""
-    url = _resolve_url(url_or_id)
-    root = _fetch_xml_root(url)
+def fetch_dataset_info_from_xml_url(file_url_or_id: str) -> DatasetInfo:
+    """Fetch dataset-level metadata from an FGDC CSDGM XML File Path, URL or AGOL item ID."""
+    root = _get_xml_root(file_url_or_id)
     return parse_dataset_info(root)
 
 
@@ -476,7 +490,7 @@ def main() -> None:
     parser.add_argument(
         "url_or_id",
         help=(
-            "Full metadata XML URL or a 32-char AGOL item ID. "
+            "Full metadata XML file Path, URL or a 32-char AGOL item ID. "
             "Example item ID: 6bf2e737c59d4111be92420ee5ab0b46"
         ),
     )
@@ -541,7 +555,7 @@ def main() -> None:
 
     if args.compare_fgdb:
         # Import here to avoid hard dependency when not comparing
-        from vector_prep.fetch_fgdb_metadata import fetch_columns_from_fgdb  # noqa: PLC0415
+        from .fetch_fgdb_metadata import fetch_columns_from_fgdb  # noqa: PLC0415
 
         gdb_path, layer_name = args.compare_fgdb
         fgdb_columns = fetch_columns_from_fgdb(

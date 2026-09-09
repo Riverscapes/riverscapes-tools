@@ -6,17 +6,27 @@
 
 ## Table of Contents
 
-1. [How it works](#how-it-works)
-2. [Setup](#setup)
-3. [Running the tool](#running-the-tool)
-   - [Direct mode (quick one-off)](#direct-mode-quick-one-off)
-   - [Config mode (repeatable / per-layer)](#config-mode-repeatable--per-layer)
-   - [Interactive CLI](#interactive-cli)
-4. [Config file reference](#config-file-reference)
-5. [Field map and layer definitions](#field-map-and-layer-definitions)
-6. [Processing pipeline — checks A–M](#processing-pipeline--checks-am)
-7. [Output files](#output-files)
-8. [Adding a new layer](#adding-a-new-layer)
+- [Vector Prep Tool](#vector-prep-tool)
+  - [Table of Contents](#table-of-contents)
+  - [How it works](#how-it-works)
+  - [Setup](#setup)
+    - [Osgeo requirements](#osgeo-requirements)
+      - [On Linux / WSL](#on-linux--wsl)
+      - [On Windows](#on-windows)
+  - [Running the tool](#running-the-tool)
+    - [Direct mode (quick one-off)](#direct-mode-quick-one-off)
+    - [Config mode (repeatable / per-layer)](#config-mode-repeatable--per-layer)
+    - [Interactive CLI](#interactive-cli)
+  - [Config file reference](#config-file-reference)
+  - [Field map and layer definitions](#field-map-and-layer-definitions)
+    - [`layer_definitions.json`](#layer_definitionsjson)
+    - [`field_map` in `config.json`](#field_map-in-configjson)
+  - [Processing pipeline — checks A–M](#processing-pipeline--checks-am)
+  - [Output files](#output-files)
+    - [Cleaned output GeoPackage (`--output`)](#cleaned-output-geopackage---output)
+    - [Garbage GeoPackage (`--garbage`)](#garbage-geopackage---garbage)
+    - [Log file](#log-file)
+  - [Adding a new layer](#adding-a-new-layer)
 
 ---
 
@@ -51,6 +61,40 @@ MY_LAYER_INPUT=/Volumes/data/raw/my_layer.gpkg
 MY_LAYER_OUTPUT=/Volumes/data/clean/my_layer_CLEAN.gpkg
 MY_LAYER_GARBAGE=/Volumes/data/clean/my_layer_GARBAGE.gpkg
 ```
+
+### Osgeo requirements
+
+Some tools use osgeo (GDAL Python bindings), which are NOT installed in the uv venv. 
+
+#### On Linux / WSL
+
+They are system-installed at:
+
+  /usr/local/lib/python3.12/dist-packages
+
+Set PYTHONPATH before running so Python can find them:
+  export PYTHONPATH=/usr/local/lib/python3.12/dist-packages:$PYTHONPATH
+
+Then run normally from the repo root:
+  uv run --extra geoparquet vector_prep/orchestrate-nhdplushr.py --vpuids 1707,1708
+
+Or one-liner without exporting:
+  PYTHONPATH=/usr/local/lib/python3.12/dist-packages uv run --extra geoparquet python orchestrate-nhdplushr.py --vpuids 1707,1708
+
+#### On Windows
+
+I usually install vis OSGeo4W and this worked for me.
+
+```cmd
+$env:PATH = "C:\OSGeo4W\bin;C:\OSGeo4W\apps\Python312;C:\OSGeo4W\apps\Python312\Scripts;$env:PATH"
+$env:PYTHONPATH = "C:\OSGeo4W\apps\Python312\Lib\site-packages;$env:PYTHONPATH"
+$env:GDAL_DATA = "C:\OSGeo4W\share\gdal"
+$env:PROJ_LIB = "C:\OSGeo4W\share\proj"
+```
+
+To verify
+
+`uv run python -c "from osgeo import ogr, gdal; print('ogr ok', ogr.GetDriverCount()); print('gdal ok', gdal.VersionInfo())"`
 
 ---
 
