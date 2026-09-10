@@ -215,11 +215,74 @@
         },
         {
             "layer_id": "us-fws-nwi-wetlands",
-            "layer_name": "NWI Wetlands"
+            "layer_name": "NWI Wetlands",
+            "description": "This data set represents the extent, approximate location and type of wetlands and deepwater habitats in the United States and its Territories. These data delineate the areal extent of wetlands and surface waters as defined by Cowardin et al. (1979), which represents a biological definition of wetlands and deepwater habitats. There is no attempt to define the limits of proprietary jurisdiction of any Federal, State, or local government, or to establish the geographical scope of the regulatory programs of government agencies. Some wetland habitats may be under represented or excluded in certain areas because of the limitations of aerial imagery as the primary data source used to detect wetlands. These habitats include seagrasses or submerged aquatic vegetation that are found in the intertidal and subtidal zones of estuaries and near shore coastal waters and also some deepwater reef communities (coral or tuberficid worm reefs). These habitats, because of their depth and water clarity, go undetected by most aerial imagery. By policy, the Service also excludes certain types of "farmed wetlands" as may be defined by the Food Security Act or that do not coincide with the Cowardin et al. definition. Contact the Service's Regional Wetland Coordinator for additional information on what types of farmed wetlands are included on wetland maps. This dataset should be used in conjunction with the Wetlands_Project_Metadata layer, which contains project boundaries, specific wetlands mapping procedures and information on dates, scales and emulsion of imagery used to map the wetlands within specific project boundaries.",
+            "citation": "U.S. Fish and Wildlife Service. 20240501. USFWS National Wetlands Inventory.",
+            "columns": [
+                {
+                    "name": "attribute",
+                    "dtype": "STRING",
+                    "friendly_name": "Attribute",
+                    "description": "Alphanumeric code identifying the wetland classification of the polygon. AKA Cowardin Wetland Classification Code. Join with NWI_Code_Definitions_Table."
+                },
+                {
+                    "name": "wetland_type",
+                    "dtype": "STRING",
+                    "friendly_name": "Wetland Type",
+                    "description": "General description of the wetland based on the Cowardin wetland classification."
+                },
+                {
+                    "name": "acres",
+                    "dtype": "FLOAT",
+                    "friendly_name": "Area of polygon",
+                    "data_unit": "acre",
+                    "description": "Calculated in an Albers Equal Area projection using ESRI's geometry calculator."
+                },
+                {
+                    "name": "nwi_id",
+                    "friendly_name": "NWI ID",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "huc8",
+                    "description": "Watershed file from which the data were extracted. Added as part of processing by NAR."
+                }
+            ]
         },
         {
             "layer_id": "us-fws-nwi-riparian",
-            "layer_name": "NWI Riparian"
+            "layer_name": "NWI Riparian",
+            "description": "This data set represents the extent, approximate location and type of riparian habitats in the western United States. These data delineate the areal extent of riparian habitats as defined by A System For Mapping Riparian Areas in the United States (USFWS 2009). Certain riparian habitats may be excluded from the National mapping program because of the limitations of aerial imagery as the primary data source used to detect riparian habitats. This dataset should be used in conjuction with the Riparian Mapping Areas layer, which identifies the extent and location of Riparian mapping projects.",
+            "source_url": "https://www.fws.gov/program/national-wetlands-inventory/riparian-data",
+            "source_title": "Riparian Habitat Classification and Mapping",
+            "columns": [{
+                    "name": "attribute",
+                    "dtype": "STRING",
+                    "friendly_name": "Attribute",
+                    "description": "Alphanumeric code identifying the riparian classification of the polygon. Join with NWI_Code_Definitions_Table."
+                },
+                {
+                    "name": "wetland_type",
+                    "dtype": "STRING",
+                    "friendly_name": "Wetland Type",
+                    "description": "General description of the riparian classification."
+                },
+                {
+                    "name": "acres",
+                    "dtype": "FLOAT",
+                    "friendly_name": "Area of polygon",
+                    "data_unit": "acre",
+                    "description": "Calculated in Albers Equal Area projection using ESRI's geometry calculator."
+                },
+                {
+                    "name": "nwi_id",
+                    "friendly_name": "NWI ID",
+                    "dtype": "STRING"
+                },
+                {
+                    "name": "huc8",
+                    "description": "Watershed file from which the data were extracted. Added as part of processing by NAR."
+                }]
         }
     ]
 }
