@@ -49,7 +49,7 @@ For each HUC8:
 
 ### Ledger design (GeoPackage-backed)
 
-Use a GeoPackage as the run ledger, for example:
+Use a GeoPackage as the run ledger:
 
 1. nwi_processing_ledger.gpkg
 
@@ -70,12 +70,12 @@ Recommended columns:
 Recommended columns:
 
 1. huc8 TEXT NOT NULL
-2. zip_path TEXT NOT NULL
-3. zip_exists INTEGER NOT NULL (0/1)
+2. zip_path TEXT NOT NULL - NO this can be built from formula 
+3. zip_exists INTEGER NOT NULL (0/1) - NO redundant with download_status
 4. zip_mtime_utc TEXT
 5. download_status TEXT (downloaded, failed, missing, unknown)
 6. download_last_checked_utc TEXT
-7. fgdb_path_in_zip TEXT
+7. fgdb_path_in_zip TEXT - can be built from formula
 8. wetlands_status TEXT (pending, source_missing, prepped, uploaded, failed)
 9. wetlands_rows_prepped INTEGER
 10. wetlands_rows_uploaded INTEGER
@@ -86,8 +86,8 @@ Recommended columns:
 15. riparian_rows_uploaded INTEGER
 16. riparian_last_error TEXT
 17. riparian_updated_utc TEXT
-18. retry_count INTEGER DEFAULT 0
-19. run_id TEXT
+18. retry_count INTEGER DEFAULT 0 - retry for which step? doesn't make sense
+19. last_run_id TEXT - when we run multiple times not sure how helpful this is
 
 Suggested key/indexes:
 
