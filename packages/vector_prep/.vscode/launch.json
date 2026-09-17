@@ -10,10 +10,26 @@
             "request": "launch",
             "program": "${file}",
             "python": "${command:python.interpreterPath}",
-            "cwd": "${fileDirname}",
+            "cwd": "${workspaceFolder}",
             "console": "integratedTerminal",
+            "envFile": "${workspaceFolder}/.env",
             "env": {
-                "PYTHONPATH": "/usr/local/lib/python3.12/dist-packages:${env:PYTHONPATH}"
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${workspaceFolder}/../../lib/commons${pathSeparator}${env:PYTHONPATH}"
+            },
+            "args": "${command:pickArgs}"
+        },
+        {
+            "name": "NWI: process_nwi.py (module, pick args)",
+            "type": "debugpy",
+            "request": "launch",
+            "module": "vector_prep.layers.us_fws_nwi.process_nwi",
+            "python": "${command:python.interpreterPath}",
+            "cwd": "${workspaceFolder}",
+            "console": "integratedTerminal",
+            "justMyCode": true,
+            "envFile": "${workspaceFolder}/.env",
+            "env": {
+                "PYTHONPATH": "${workspaceFolder}${pathSeparator}${workspaceFolder}/../../lib/commons${pathSeparator}${env:PYTHONPATH}"
             },
             "args": "${command:pickArgs}"
         },

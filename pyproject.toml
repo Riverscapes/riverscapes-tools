@@ -65,7 +65,7 @@ py-version = "3.12"
 jobs = 1
 persistent = false
 ignored-modules = ["osgeo"]
-init-hook = "import sys, types, importlib; from pathlib import Path; ROOT = Path(__file__).resolve().parent; sys.path.extend([str(ROOT / 'packages'), str(ROOT / 'lib' / 'commons')]);\nimportlib.invalidate_caches();\ntry:\n    importlib.import_module('osgeo')\nexcept ModuleNotFoundError:\n    osgeo = types.ModuleType('osgeo')\n    ogr = types.ModuleType('ogr')\n    osgeo.ogr = ogr\n    sys.modules['osgeo'] = osgeo\n    sys.modules['osgeo.ogr'] = ogr"
+init-hook = "import sys, types, importlib; from pathlib import Path; CWD = Path.cwd().resolve(); ROOT = next((p for p in [CWD, *CWD.parents] if (p / 'packages').is_dir() and (p / 'lib').is_dir()), CWD); PKG_ROOT = ROOT / 'packages'; pkg_paths = [str(p) for p in PKG_ROOT.iterdir() if p.is_dir()] if PKG_ROOT.is_dir() else []; sys.path.extend([str(PKG_ROOT), str(ROOT / 'lib' / 'commons'), *pkg_paths]);\nimportlib.invalidate_caches();\ntry:\n    importlib.import_module('osgeo')\nexcept ModuleNotFoundError:\n    osgeo = types.ModuleType('osgeo')\n    ogr = types.ModuleType('ogr')\n    osgeo.ogr = ogr\n    sys.modules['osgeo'] = osgeo\n    sys.modules['osgeo.ogr'] = ogr"
 
 [tool.pylint."MESSAGES CONTROL"]
 disable = [

@@ -1,0 +1,25 @@
+{
+  "$schema": "../../vector_prep_config.schema.json",
+  "metadata": {
+    "layer_id": "us-fws-nwi-riparian",
+    "source_title": "NWI Riparian",
+    "source_category": "usgov"
+  },
+  "parameters": {
+    "layer_id": "us-fws-nwi-riparian",
+    "layer_definitions": "./layer_definitions.json",
+    "tolerance": 0.0,
+    "epsg": 5070,
+    "min_size": 1.0,
+    "min_size_drop": false,
+    "chunk_size": 10000,
+    "skip_geometry_dedup": true,
+    "verbose": true,
+    "field_map": {
+      "ATTRIBUTE": "attribute",
+      "WETLAND_TYPE": "wetland_type",
+      "ACRES": "acres",
+      "NWI_ID": "nwi_id"
+    }
+  }
+}
