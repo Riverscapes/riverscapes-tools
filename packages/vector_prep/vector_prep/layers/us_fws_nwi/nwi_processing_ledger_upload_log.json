@@ -1,0 +1,14 @@
+[
+  {
+    "run_at": "2026-09-23T15:52:25.451125+00:00",
+    "gpkg_path": "C:\\nardata\\localcode\\riverscapes-tools\\packages\\vector_prep\\vector_prep\\layers\\us_fws_nwi\\nwi_processing_ledger.gpkg",
+    "layer_name": "ledger_huc8_status",
+    "target_crs": null,
+    "destination": "athena",
+    "table": "ext_raw.us_fws_nwi_nar_ledger_huc8_status",
+    "s3_location": "s3://riverscapes-athena/ext_raw/us_fws_nwi_nar_ledger_huc8_status/",
+    "row_count": 2189,
+    "table_action": "create",
+    "layer_definitions": null
+  }
+]
