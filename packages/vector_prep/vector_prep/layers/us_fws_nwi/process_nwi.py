@@ -27,10 +27,12 @@ python -m vector_prep.layers.us_fws_nwi.process_nwi --zip-dir F:/nardata/datadow
 Pilot run on first 25 zips:
 python -m vector_prep.layers.us_fws_nwi.process_nwi --zip-dir F:/nardata/datadownload/fws/nwi --limit 25
 
-Note:
+NOTE:
 * a separate script downloads the zip files.
 * this calls athena functions and requires the uv environment for it ie:
 uv pip install boto3 pyarrow pyiceberg pyiceberg_core
+* this script primary report on success/failures etc is a local geopackage (nwi_processing_ledger.gpkg). After it was done I uploaded the main table to Athena Iceberg
+TODO: change script to use the Athena Iceberg table for logs?
 """
 
 from __future__ import annotations
