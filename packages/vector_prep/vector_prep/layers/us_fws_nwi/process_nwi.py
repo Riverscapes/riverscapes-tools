@@ -43,6 +43,7 @@ import os
 import shutil
 import sqlite3
 import time
+import traceback
 import uuid
 import zipfile
 from dataclasses import dataclass
@@ -965,6 +966,7 @@ def process_one_huc8_layer(
     layer_cfg = layer_runtime_cfg.layer_cfg
     huc8 = extract_huc8_from_zip_name(zip_path)
     current_step = STEP_UNZIP
+    fgdb_path: Path | None = None
 
     try:
         fgdb_path = extract_filegdb_from_zip(zip_path, extract_root)
@@ -1058,7 +1060,18 @@ def process_one_huc8_layer(
 
     except Exception as exc:
         err = str(exc)
-        log.error(f"HUC8 {huc8} {layer_cfg.key} failed: {err}")
+        exc_type = type(exc).__name__
+        trace = traceback.format_exc()
+        log.error(f"HUC8 {huc8} {layer_cfg.key} failed at step={current_step}: {err}")
+        log.error(
+            "Failure context: "
+            f"zip={zip_path}; "
+            f"fgdb_path={fgdb_path if fgdb_path is not None else 'None'}; "
+            f"layer_key={layer_cfg.key}; "
+            f"exception_type={exc_type}; "
+            f"exception_repr={exc!r}"
+        )
+        log.error(f"Traceback follows:\n{trace}")
         update_layer_status(
             conn,
             huc8,
@@ -1454,7 +1467,7 @@ def main() -> None:
                 )
                 cleaned_zip_count += 1
                 log.info(
-                    f"[{idx}/{len(zip_paths)}] Cleanup complete for HUC8 {huc8}: "
+                    f"[{idx}/{len(zip_paths)}] Local file cleanup complete for HUC8 {huc8}: "
                     f"removed={removed}, missing={missing}"
                 )
 
