@@ -1,9 +1,9 @@
 {
   "$schema": "../../vector_prep_config.schema.json",
   "parameters": {
-    "input": "${PASTURES_INPUT}",
-    "output": "${PASTURES_OUTPUT}",
-    "garbage": "${PASTURES_GARBAGE}",    
+    "input": "C:\\nardata\\datadownload\\blm\\pasture_polygons_2026-10-07\\BLM_Natl_Grazing_Pasture_Polygons_-8966613281500283125.gpkg",
+    "output": "C:\\nardata\\datadownload\\blm\\pasture_polygons_2026-10-07\\BLM_Natl_Grazing_Pasture_Polygons-vectorprep.gpkg",
+    "garbage": "C:\\nardata\\datadownload\\blm\\pasture_polygons_2026-10-07\\BLM_Natl_Grazing_Pasture_Polygons-vectorprep-garbage.gpkg",    
     "tolerance": 2,
     "min_size": 1,
     "min_size_drop": false,
@@ -17,7 +17,20 @@
       "ADMIN_ST": "admin_state",
       "ADM_OFC_CD": "admin_office_code",
       "ADM_UNIT_CD": "admin_unit_code",
-      "ST_ALLOT_PAST": "state_allotment_pasture"
+      "ST_ALLOT_PAST": "state_allotment_pasture",
+      "GlobalID": "globalid"
+    },
+  "add_unique_id_and_name": {
+      "row_id_source": "GlobalID",
+      "row_name_source": "{PAST_NAME} ({ST_ALLOT_PAST})",
+      "name_uniqueness": "warn"
     }
+  },
+  "metadata": {
+    "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/BLM-EGIS::blm-natl-grazing-pasture-polygons/about",
+    "snapshot_id": "20260921",
+    "layer_id": "us-blm-natl-grazing-pasture-polygons",
+    "source_title": "BLM Natl Grazing Pasture Polygons",
+    "source_category": "ext_raw"
   }
 }
