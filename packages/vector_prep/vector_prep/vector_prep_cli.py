@@ -13,18 +13,15 @@ from __future__ import annotations
 
 import os
 import sys
-from pathlib import Path
-from typing import Optional
 import traceback
-
-from rsxml import Logger, dotenv
+from pathlib import Path
 
 import questionary
+from rsxml import Logger, dotenv
 
-from .vector_prep import vector_prep, load_config
 from .lib.field_map import list_layer_definitions, load_and_validate_field_map
 from .lib.report import write_markdown_report
-
+from .vector_prep import load_config, vector_prep
 
 # ---------------------------------------------------------------------------
 # Layer discovery
@@ -216,7 +213,7 @@ def _run(params: dict, config_path: Path) -> None:
 
     cfg_dir = config_path.parent
 
-    def _abs_optional(val: Optional[str]) -> Optional[str]:
+    def _abs_optional(val: str | None) -> str | None:
         """Resolve log_file (only non-I/O path that may still be relative)."""
         if not val:
             return None
@@ -235,9 +232,10 @@ def _run(params: dict, config_path: Path) -> None:
     # Log file default
     if not log_file_path:
         if output_path:
-            base = os.path.splitext(os.path.basename(output_path))[0]
-            log_dir = os.path.dirname(output_path) or "."
-            log_file_path = os.path.join(log_dir, f"{base}_vector_prep.log")
+            output_file = Path(output_path)
+            base = output_file.stem
+            log_dir = output_file.parent
+            log_file_path = str(log_dir / f"{base}_vector_prep.log")
         else:
             log_file_path = "vector_prep.log"
 
@@ -268,14 +266,14 @@ def _run(params: dict, config_path: Path) -> None:
             sys.exit(1)
 
     tolerance: float = float(params.get("tolerance", 0.0))
-    min_size: Optional[float] = (
+    min_size: float | None = (
         float(params["min_size"]) if params.get("min_size") is not None else None
     )
     min_size_drop: bool = bool(params.get("min_size_drop", False))
     epsg: int = int(params.get("epsg", 5070))
     chunk_size: int = int(params.get("chunk_size", 10_000))
-    layer_name: Optional[str] = params.get("layer") or None
-    sql_filter: Optional[str] = params.get("filter") or None
+    layer_name: str | None = params.get("layer") or None
+    sql_filter: str | None = params.get("filter") or None
 
     log.title("Running vector_prep")
     log.info(f"    input    : {input_path}")
