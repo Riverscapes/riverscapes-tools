@@ -117,12 +117,6 @@ uv run python packages\vector_prep\vector_prep\layers\surface_management_agency\
   --output-layer sma_conus_h3_l3
 ```
 
-Intersecting step takes a while. Total is about 15-20 minutes. 
-Output file is 22 GB !! despite only 5741 records
-vacuum took 8 minutes, did not reduce size. 
-Is it super detailed?
+Intersecting step takes a while. Total is about 15-20 minutes.
+A couple of iterations of code to get this working but seems good now.
 
-Looking at the sma_x_h3_temp_work.gpkg that has the input layers
-* it is only 
-* is missing a couple of h3 grids on west coast for complete coverage 832819fffffffff, 83281dfffffffff
-* otherwise looks pretty good

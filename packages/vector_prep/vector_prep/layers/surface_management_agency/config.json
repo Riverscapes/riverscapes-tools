@@ -1,16 +1,31 @@
 {
   "$schema": "../../vector_prep_config.schema.json",
   "parameters": {
-    "input": "${SURFACE_MANAGEMENT_INPUT}",
-    "output": "${SURFACE_MANAGEMENT_OUTPUT}",
-    "garbage": "${SURFACE_MANAGEMENT_GARBAGE}",
+    "input": "C:\\nardata\\datadownload\\blm\\blm_sma_polygons\\2026-10-19\\sma_x_h3.gpkg",
+    "output": "C:\\nardata\\datadownload\\blm\\blm_sma_polygons\\2026-10-19\\sma_x_h3_vp_output.gpkg",
+    "garbage": "C:\\nardata\\datadownload\\blm\\blm_sma_polygons\\2026-10-19\\sma_x_h3_vp_garbage.gpkg",
     "verbose": true,
     "tolerance": 20,
     "min_size": 1,
     "min_size_drop": false,
     "layer_definitions": "./layer_definitions.json",
     "field_map": {
-      "ADMIN_AGEN": "admin_agency"
+      "SMA_ID": "sma_id",
+      "ADMIN_ST": "admin_st",
+      "FAU_ID":"fau_id",
+      "ADMIN_UNIT_NAME":"admin_unit_name",
+      "ADMIN_UNIT_TYPE": "admin_unit_type",
+      "ADMIN_DEPT_CODE": "admin_dept_code",
+      "ADMIN_AGENCY_CODE": "admin_agency_code",
+      "h3geo":"h3geo"
     }
+  },
+  "metadata": {
+    "layer_id": "us-blm-sma-polygons",
+    "source_url": "https://gbp-blm-egis.hub.arcgis.com/datasets/6bf2e737c59d4111be92420ee5ab0b46/about",
+    "source_title": "Bureau of Land Management Geospatial Business Platform",
+    "snapshot_id": "2026-06-30",
+    "source_category": "ext-raw",
+    "data_prep_operator": "Lorin"
   }
 }
